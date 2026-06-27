@@ -19,11 +19,29 @@ Liveblocks や tldraw sync は開発速度を上げる候補だが、MagicalDraw
 
 ### フロントエンド
 
-- React + Vite + TypeScript
+- React + Vite + TypeScript、または Next.js + vinext + TypeScript
 - 描画: Canvas 2D から開始。大量レイヤー、拡大縮小、エフェクトが必要になったら WebGL/PixiJS を検討。
 - ローカル状態: Zustand などの小さな state 管理。
 - 通信: WebSocket。バイナリメッセージ推奨。
 - 保存補助: IndexedDB に直近イベントと未送信 stroke を置き、再接続時に復帰しやすくする。
+
+Next.js + vinext は構成として組み込める。特に、配信一覧、ルーム一覧、プロフィール、設定、管理画面、SEO が必要なページでは Vite SPA より扱いやすい。一方で、描画キャンバス本体は SSR/Server Components の利点がほぼないため、client component として明確に分離する。
+
+Next.js + vinext を採用する場合の切り分け:
+
+- Next/vinext: ページ、認証 UI、ルーム一覧、プロフィール、管理画面、静的 assets、通常の HTTP API。
+- Durable Objects: 描画ルームの authoritative state、WebSocket、参加者、stroke 検証、presence、短期 event log。
+- D1/R2: ルーム一覧やユーザーメタデータ、snapshot、長期保存。
+- Canvas client: `use client` の描画専用コンポーネント。Next の router/rendering lifecycle に同期処理を巻き込まない。
+
+避けるべきこと:
+
+- Next route handler で描画ルームの WebSocket state を持つ。
+- stroke event を Next Server Actions 経由で送る。
+- 描画中の高頻度 state を React state だけで管理する。
+- Canvas の全ピクセルを頻繁に API 送信する。
+
+この分離を守れば、Next.js + vinext は邪魔にならない。むしろ、慣れている構成で認証・管理・ページ構造を作れるため、実装速度の面では有利。
 
 ### リアルタイム同期
 
@@ -38,6 +56,85 @@ Liveblocks や tldraw sync は開発速度を上げる候補だが、MagicalDraw
   - pointermove をそのまま送らず、座標を一定間隔で間引き、複数点をまとめて 10-20Hz 程度で送る。
   - 座標はキャンバス基準の整数または fixed-point にして、JSON ではなく MessagePack/CBOR/独自 binary にする。
 
+通信経路のイメージ:
+
+```mermaid
+flowchart TD
+  Browser["ブラウザ\nNext/vinext page + Canvas client"]
+  NextPage["Next/vinext\nページ表示・通常API"]
+  Worker["Cloudflare Worker\nHTTP入口・認証確認・roomId解決"]
+  RoomDO["Room Durable Object\n1 room = 1 object"]
+  D1["D1\nユーザー・ルーム設定・通報・BAN"]
+  R2["R2\nsnapshot画像・長期event log"]
+  OtherClients["同じルームの他ブラウザ"]
+
+  Browser -->|"HTTP GET\nルームページ表示"| NextPage
+  NextPage -->|"ルーム情報取得"| Worker
+  Worker -->|"metadata read/write"| D1
+  NextPage -->|"HTML/JS/CSS"| Browser
+
+  Browser -->|"WebSocket接続\n/ws/rooms/:roomId"| Worker
+  Worker -->|"roomIdからstub取得\nupgradeを転送"| RoomDO
+  RoomDO -->|"接続保持\n参加者一覧更新"| RoomDO
+
+  Browser -->|"stroke.append\nMessagePack/CBOR"| RoomDO
+  RoomDO -->|"検証\nrate limit\nroomSeq採番"| RoomDO
+  RoomDO -->|"broadcast stroke"| OtherClients
+  RoomDO -->|"必要に応じて\n短期状態保存"| RoomDO
+  RoomDO -->|"snapshot保存指示"| R2
+
+  OtherClients -->|"cursor/presence/chat"| RoomDO
+  RoomDO -->|"broadcast presence/chat"| Browser
+```
+
+処理の流れ:
+
+1. ユーザーがルーム URL を開く。
+2. Next/vinext がページを返す。ルーム名、説明、権限などの通常データは Worker/D1 から読む。
+3. Canvas client が `/ws/rooms/:roomId` に WebSocket 接続する。
+4. Worker が `roomId` に対応する `Room Durable Object` を取得し、WebSocket upgrade を渡す。
+5. ユーザーが線を引くと、ブラウザは点列を `stroke.append` として MessagePack/CBOR で送る。
+6. Room Durable Object が stroke を検証し、`roomSeq` を付ける。
+7. Room Durable Object が同じルームの参加者全員へ同じ stroke を同じ順序で broadcast する。
+8. 一定数の stroke または一定時間ごとに、snapshot や長期 event log を R2 に保存する。
+9. 再接続したユーザーには、最新 snapshot + それ以後の event を返して復帰させる。
+
+#### stroke event のバイナリ形式候補
+
+独自 binary を最初から設計しきらない場合は、次の順で検討する。
+
+| 形式 | 向き | 利点 | 注意点 |
+| --- | --- | --- | --- |
+| MessagePack | 第一候補 | JSON に近いデータ構造を小さく送れる。JavaScript 実装が多く、デバッグしやすい。 | schema がないため、バージョン管理は自前ルールが必要。 |
+| CBOR | 第一候補に近い | 標準仕様があり、Map/Array/整数/バイナリを自然に扱える。ブラウザ/Workers でも扱いやすい。 | MessagePack より周辺ライブラリ選定を少し慎重に見る。 |
+| Protocol Buffers | 厳格な schema が欲しい場合 | schema と後方互換ルールを持てる。多言語化やログ解析に強い。 | 小さな高頻度 message では protobuf runtime/schema 管理がやや重い。 |
+| FlatBuffers | zero-copy や大型データ向け | 大きめの構造化データを効率よく読む用途に強い。 | stroke の小粒 message には複雑すぎる可能性が高い。 |
+| BSON | MongoDB 系と連携する場合 | 型付き document として扱える。 | stroke event にはやや大きくなりやすく、今回の第一候補ではない。 |
+
+MVP では MessagePack か CBOR が現実的。どちらも `ArrayBuffer` として WebSocket 送信でき、デバッグ時には JSON へ変換してログ出力しやすい。
+
+stroke message の例:
+
+```ts
+type StrokeAppend = {
+  op: "stroke.append";
+  roomSeq: number;
+  strokeId: string;
+  layerId: string;
+  color: number;
+  brushSize: number;
+  points: Array<[x: number, y: number, pressure: number, dt: number]>;
+};
+```
+
+実装では文字列キーをそのまま送ると大きくなるため、送信時は opcode と field id に変換する。
+
+```txt
+[op=2, roomSeq, strokeId, layerId, color, brushSize, points]
+```
+
+最初は MessagePack/CBOR で始め、負荷試験で message size や CPU が問題になった時点で独自 binary に寄せるのがよい。
+
 ### 永続化
 
 - Durable Objects SQLite
@@ -46,6 +143,48 @@ Liveblocks や tldraw sync は開発速度を上げる候補だが、MagicalDraw
   - 定期 snapshot PNG/WebP、サムネイル、添付画像、長期保存するイベントログ。
 - Cloudflare D1
   - ユーザー、ルーム一覧、公開設定、通報、BAN、運営用検索。
+
+### 認証・メール・管理者限定ページ
+
+将来的にユーザーログインが必要になった場合は、Better Auth + Google/GitHub OAuth + メール認証を第一候補にする。`gamine-next` でも採用経験があり、Next.js + vinext 構成との相性もよい。
+
+採用方針:
+
+- 認証ライブラリ: Better Auth
+- OAuth: Google / GitHub
+- メール認証: Cloudflare Email Service を第一候補、Resend を代替候補
+- セッション/ユーザー: D1 に保存
+- 管理者権限: D1 の user role / allowlist で管理
+
+Cloudflare Email Service を第一候補にする理由:
+
+- Durable Objects のために Workers Paid に入る前提なので、追加サービスを増やさずに済む。
+- Workers Paid では Email Sending が月 3,000 通 included、超過は $0.35/1,000 通。
+- Email Routing は Free/Paid どちらでも使える。
+- Workers binding で送れるため、Next/vinext 側の API route から Workers 経由で安全に扱いやすい。
+
+Resend を候補に残す理由:
+
+- 導入経験がある。
+- Free は 3,000 emails/月、100 emails/day、1 domain。
+- Pro は $20/月で 50,000 emails/月、超過 $0.90/1,000 emails。
+- React Email や webhook、管理画面の体験がよく、Cloudflare Email Service が beta で不安な場合のフォールバックにしやすい。
+
+開発中や匿名公開期間に管理者だけが入れるページを作る場合は、アプリ内ログインを急いで作らず、Cloudflare Access を使うのがよい。Cloudflare Access は Free Plan が $0 で、50 user limit の範囲なら管理画面やプレビュー環境の保護に十分。Cloudflare Access の OTP/IdP と Email Routing を組み合わせれば、アプリ本体の認証実装前でも `/admin` や preview URL を安全に閉じられる。
+
+段階的な導入案:
+
+1. 開発中: Cloudflare Access で `/admin/*` と preview を保護。アプリ内ユーザーは匿名。
+2. クローズド公開: 管理者だけ Access、一般ユーザーは匿名 + room token。
+3. ユーザー機能追加: Better Auth + Google/GitHub OAuth を導入。
+4. メール認証追加: Cloudflare Email Service を使う。到達性や運用で詰まる場合は Resend に切り替え可能にする。
+5. 本公開: D1 上の role/ban/allowlist と Better Auth session を管理画面に統合する。
+
+注意点:
+
+- Cloudflare Access は管理者・開発者向けの入口保護として使い、一般ユーザーのサービス内アカウント機能とは分ける。
+- メール認証は transactional email なので Cloudflare Email Service / Resend の用途に合う。ニュースレターや一斉告知は別途配信基盤を検討する。
+- 管理画面の保護は二重化してよい。Cloudflare Access で入口を閉じ、アプリ内でも admin role を確認する。
 
 ## 代替案
 
@@ -435,13 +574,13 @@ Liveblocks は「導入速度にお金を払う」選択肢。公開お絵描き
 
 ## 初期採用案
 
-- App: React + Vite + TypeScript
-- API/runtime: Cloudflare Workers + Hono
+- App: Next.js + vinext + TypeScript、または React + Vite + TypeScript
+- API/runtime: Cloudflare Workers + Hono。Next/vinext を使う場合も、描画ルームの WebSocket は Durable Objects に分離する。
 - Realtime: Durable Objects WebSocket Hibernation
 - Room storage: Durable Objects SQLite
 - Metadata DB: D1
 - Blob storage: R2
-- Auth: まず匿名 + room token。公開運用時に OAuth/メール認証を追加。
+- Auth: 初期は匿名 + room token。管理者ページは Cloudflare Access。ユーザーログインが必要になったら Better Auth + Google/GitHub OAuth + Cloudflare Email Service。Resend は代替候補。
 - Protocol: 独自 binary。開発中は schema と fixtures を `docs/spec/` に残す。
 - Observability: Workers Logs、D1/R2/DO metrics、room ごとの message rate と snapshot lag を記録。
 
@@ -469,3 +608,7 @@ Liveblocks は「導入速度にお金を払う」選択肢。公開お絵描き
 - Fly.io pricing: https://fly.io/pricing
 - pixivFANBOX handling fees: https://fanbox.pixiv.help/hc/en-us/articles/360003726293-How-much-is-the-handling-fees
 - pixivFANBOX payouts: https://fanbox.pixiv.help/hc/en-us/articles/360005114953-How-and-when-can-Creators-receive-their-pledges
+- Cloudflare Email Service overview: https://developers.cloudflare.com/email-service/
+- Cloudflare Email Service pricing: https://developers.cloudflare.com/email-service/platform/pricing/
+- Cloudflare Access pricing: https://www.cloudflare.com/sase/products/access/
+- Resend pricing: https://resend.com/pricing
