@@ -10,7 +10,8 @@
 
 - ルーム単位のリアルタイム同期と相性がよい。Durable Object を 1 ルーム 1 インスタンスにすれば、同時編集の順序制御、参加者一覧、レイヤー/キャンバス状態の authoritative state をまとめやすい。
 - WebSocket Hibernation を使うと、接続を維持したまま Durable Object を休眠でき、アイドル時間の duration 課金を避けられる。
-- Cloudflare Workers Paid は最低 $5/月で、Workers、Durable Objects、D1、R2 の無料枠がまとまっている。小規模から中規模の描画チャットでは、ほぼ固定費 $5/月 + ドメイン代 + 画像保存量で始められる可能性が高い。
+- 2026 年時点では、Durable Objects は Workers Free でも利用でき、Free では SQLite storage backend のみ使える。MVP の検証は無料枠から始められる可能性がある。
+- 本番相当の継続運用では、Workers Paid の追加枠、Cloudflare Email Service、監視、予備費を見ておくと安心。
 - R2 はストレージのインターネット向け egress が無料なので、完成画像・サムネイル・添付画像の配信コストを読みやすい。
 
 Liveblocks や tldraw sync は開発速度を上げる候補だが、MagicalDraw/pixivチャット型の「1 枚のキャンバスに線を描き込む」体験では、CRDT オブジェクト編集よりも、軽量な stroke/event 同期を自前で持つほうがコストと制御性のバランスがよい。
@@ -158,7 +159,7 @@ type StrokeAppend = {
 
 Cloudflare Email Service を第一候補にする理由:
 
-- Durable Objects のために Workers Paid に入る前提なので、追加サービスを増やさずに済む。
+- 本番運用やメール認証のために Workers Paid へ上げる場合、追加サービスを増やさずに済む。
 - Workers Paid では Email Sending が月 3,000 通 included、超過は $0.35/1,000 通。
 - Email Routing は Free/Paid どちらでも使える。
 - Workers binding で送れるため、Next/vinext 側の API route から Workers 経由で安全に扱いやすい。
@@ -218,6 +219,7 @@ Yjs の y-websocket は、クライアントが 1 endpoint に接続し、サー
 
 ### Cloudflare 前提価格
 
+- Workers Free: Durable Objects を利用可能。ただし Free plan では Durable Objects の SQLite storage backend のみ利用できる。MVP 検証は Free から始められる。
 - Workers Paid: 最低 $5/月。Workers、Pages Functions、KV、Hyperdrive、Durable Objects usage を含む。追加 egress/throughput 課金なし。
 - Workers Standard: 1,000 万 request/月 included、追加 $0.30/100 万 request。WebSocket 接続は初回 upgrade が request として数えられ、Worker 経由の WebSocket message は request に数えられない。
 - Durable Objects: 100 万 request/月 included、追加 $0.15/100 万 request。WebSocket の outgoing message は無料。incoming WebSocket message は課金上 20:1 に圧縮され、100 incoming messages が 5 requests 相当。
@@ -242,7 +244,7 @@ Yjs の y-websocket は、クライアントが 1 endpoint に接続し、サー
 
 | 規模 | 仮定 | Cloudflare 月額目安 | コメント |
 | --- | --- | ---: | --- |
-| 開発/クローズドα | 100 MAU、同時 5-10、描画 5,000 分/月、保存 1GB 未満 | $0-5 | Free でも試せるが、本番相当検証は Workers Paid $5 が無難。 |
+| 開発/クローズドα | 100 MAU、同時 5-10、描画 5,000 分/月、保存 1GB 未満 | $0-5 | Durable Objects は Free でも試せる。メール認証や本番予備費を見始めたら Workers Paid $5 を検討。 |
 | 小規模公開 | 1,000 MAU、同時 20-50、描画 50,000 分/月、保存 10GB 未満 | $5-8 | DO request は 150 万相当。超過は小さい。R2 も無料枠付近。 |
 | 中規模コミュニティ | 10,000 MAU、同時 100-300、描画 300,000 分/月、保存 100GB | $10-30 | DO request は 900 万相当で追加 $1-2 程度。R2 保存 100GB でも約 $1.50/月。実際はログ、画像処理、Bot 対策が追加要因。 |
 | 大規模/常時多数ルーム | 同時 1,000+、複数ルームが常時描画 | $50+ | duration、ログ、レート制限、監視、モデレーション、画像処理が支配的になる。負荷試験前提。 |
@@ -275,7 +277,7 @@ Yjs の y-websocket は、クライアントが 1 endpoint に接続し、サー
 
 | 項目 | 試算 | 金額 |
 | --- | --- | ---: |
-| Workers Paid | 最低料金 | $5 |
+| Workers | Free から開始可能。本番では Paid $5 を予備費込みで見込む | $0-5 |
 | Durable Objects requests | 50,000 描画分 x 30 requests = 150 万 requests 相当。100 万 included 後の 50 万 x $0.15/100 万 | 約 $0.08 |
 | Durable Objects duration | WebSocket Hibernation 前提。アイドル接続は duration をほぼ増やさない | $0-数ドル |
 | D1 | 小規模の room/user/通報程度なら included 内 | $0 |
@@ -563,14 +565,99 @@ Liveblocks は「導入速度にお金を払う」選択肢。公開お絵描き
 
 ## MVP の設計方針
 
-1. まず 1 room = 1 Durable Object で固定する。
-2. 送信イベントは JSON で始めず、最初から opcode + binary payload にする。デバッグ用に JSON dump は別途用意する。
-3. pointer event はクライアントで間引き、線単位で圧縮する。
-4. サーバーは全 stroke を検証する。最大点数、最大 message size、送信頻度、ブラシサイズ、レイヤー権限を制限する。
-5. ルーム状態は短期 event log + 定期 snapshot にする。新規参加者は最新 snapshot + 以後の差分だけ受け取る。
-6. presence/cursor は永続化しない。描画 stroke、chat、layer 操作だけ保存対象にする。
-7. R2 への snapshot 保存は 30-60 秒間隔、または stroke 数しきい値で行う。
-8. 迷惑行為対策として、匿名でも room-local user id、IP/UA hash の rate limit、mute/kick/ban、rollback snapshot を MVP に含める。
+MVP の目的は、「不特定多数が同じキャンバスに入り、ほぼリアルタイムに線を描ける」ことを最小構成で検証すること。最初から MagicalDraw/Magma 相当の高機能ツールを目指さず、同期・荒らし耐性・保存復帰の土台を先に固める。
+
+### MVP で作るもの
+
+| 領域 | MVP の範囲 |
+| --- | --- |
+| ルーム | 公開ルームを作成、ルーム URL で入室、ルーム名/説明/キャンバスサイズを持つ。 |
+| キャンバス | Canvas 2D。固定サイズ 1 枚。背景色は白または透明。 |
+| 描画 | ペン、消しゴム、色、ブラシサイズ、筆圧対応。線は stroke 単位で扱う。 |
+| 同期 | 1 room = 1 Durable Object。WebSocket で stroke event を送受信。 |
+| 通信形式 | MessagePack または CBOR。将来の独自 binary 化を見越して opcode を定義する。 |
+| 参加者表示 | 現在人数、簡易ユーザー名、カーソル/presence。 |
+| チャット | ルーム内の短文チャット。永続化は短期のみ、または MVP では最新 N 件。 |
+| 保存 | 一定間隔または一定 stroke 数で snapshot を作る。画像は R2、メタデータは D1。 |
+| 復帰 | 新規入室/再接続時に最新 snapshot + 以後の event を適用する。 |
+| 管理 | 管理者だけがルーム削除、強制退室、BAN、snapshot rollback を実行できる。 |
+| 荒らし対策 | 送信頻度制限、最大 message size、最大点数、ブラシサイズ上限、IP/UA hash ベースの rate limit。 |
+| 公開範囲 | 最初は匿名公開 + room token。管理者ページは Cloudflare Access で保護。 |
+| 観測 | room ごとの接続数、message rate、snapshot lag、エラーをログに出す。 |
+
+### MVP で採用する技術
+
+| 領域 | 採用 |
+| --- | --- |
+| アプリ | Next.js + vinext + TypeScript |
+| 描画 | Canvas 2D + Pointer Events |
+| 状態管理 | 描画中の hot path は React state に乗せすぎず、描画 store と mutable buffer を分ける。UI 状態は Zustand など軽量 store。 |
+| リアルタイム | Cloudflare Durable Objects WebSocket Hibernation |
+| ルーム状態 | Durable Objects SQLite |
+| メタデータ | D1 |
+| 画像/snapshot | R2 |
+| 通信形式 | MessagePack または CBOR |
+| 認証 | 初期は匿名 + room token。管理者は Cloudflare Access。 |
+| メール | MVP では不要。ログイン導入時に Cloudflare Email Service、代替に Resend。 |
+
+### MVP で明示的に後回しにするもの
+
+| 後回し | 理由 |
+| --- | --- |
+| ユーザー登録/ログイン | 匿名 + room token で同期体験を先に検証する。 |
+| Google/GitHub OAuth、メール認証 | 本公開やプロフィール機能が必要になってから Better Auth で追加する。 |
+| 複数レイヤー | 権限、undo、snapshot、合成が複雑になる。MVP は 1 枚キャンバス。 |
+| 高度なブラシ | まずは丸ペン/消しゴム。水彩、ぼかし、テクスチャ、入り抜き補正は後。 |
+| 選択範囲、移動、変形 | stroke 同期より編集モデルが複雑になる。 |
+| undo/redo の完全実装 | MVP では自分の直近 stroke 取り消し程度まで。全体履歴編集は後。 |
+| レイヤー権限/共同編集権限 | まずはルーム全体で描ける/描けないの単純な権限にする。 |
+| 画像アップロード/貼り付け | 著作権、容量、変形、荒らし対策が増える。 |
+| モバイル最適化 | タッチで最低限描ける程度。スマホ専用 UI は後。 |
+| PWA/offline 完全対応 | 再接続復帰を優先し、offline 編集は後。 |
+| 配信/画面共有 | お絵描き配信サイト側の別機能として扱う。 |
+| 課金/支援者特典 | 外部リンクで支援導線だけ置き、サイト内課金は後。 |
+
+### MVP では採用しないもの
+
+| 採用しない | 理由 |
+| --- | --- |
+| Liveblocks | 接続分数課金が公開チャットでは重くなりやすい。 |
+| Firebase/Supabase Realtime を stroke 同期本線に使う | fan-out message 課金が伸びやすい。 |
+| Next route handler で WebSocket room state を持つ | 状態の寿命、接続管理、順序制御が難しい。 |
+| Server Actions で stroke を送る | 高頻度・低遅延の描画同期に合わない。 |
+| 最初から独自 bit-level binary | デバッグと互換性管理が重い。MessagePack/CBOR で検証してから必要なら移行する。 |
+| 最初から WebGL/PixiJS | Canvas 2D で足りる範囲を先に確認する。 |
+
+### MVP の段階分け
+
+1. ローカル単体描画
+   - Canvas 2D、ペン、消しゴム、色、ブラシサイズ、筆圧。
+   - stroke data model を決める。
+2. 1 ルーム同期
+   - Durable Object 1 つに WebSocket 接続。
+   - stroke append を MessagePack/CBOR で broadcast。
+   - roomSeq で順序を揃える。
+3. 入退室と presence
+   - 参加者数、簡易名前、カーソル、接続/切断表示。
+4. snapshot と復帰
+   - snapshot を R2 に保存。
+   - 新規入室時に snapshot + 差分 event を適用。
+5. ルーム一覧と管理
+   - D1 にルームメタデータ。
+   - 管理者だけ Cloudflare Access で保護。
+   - BAN、kick、rollback。
+6. 公開前の安全装置
+   - rate limit、message size 上限、room ごとの接続数上限。
+   - emergency mode。新規入室/新規ルーム作成を止められるようにする。
+
+### 成功条件
+
+- 1 ルーム 10-20 人で、線が 1 秒以内に他参加者へ反映される。
+- 描画中の通信が stroke event 中心で、全画面画像を連続送信しない。
+- 再読み込みしても、最新 snapshot からキャンバスを復元できる。
+- 荒らし的な高頻度送信を Room Durable Object 側で止められる。
+- 管理者が問題ルームを閉じられる。
+- 無料枠または低額の Workers Paid で検証できる。
 
 ## 初期採用案
 
@@ -581,7 +668,7 @@ Liveblocks は「導入速度にお金を払う」選択肢。公開お絵描き
 - Metadata DB: D1
 - Blob storage: R2
 - Auth: 初期は匿名 + room token。管理者ページは Cloudflare Access。ユーザーログインが必要になったら Better Auth + Google/GitHub OAuth + Cloudflare Email Service。Resend は代替候補。
-- Protocol: 独自 binary。開発中は schema と fixtures を `docs/spec/` に残す。
+- Protocol: MessagePack または CBOR。opcode/schema と fixtures を `docs/spec/` に残し、必要になったら独自 binary へ移行する。
 - Observability: Workers Logs、D1/R2/DO metrics、room ごとの message rate と snapshot lag を記録。
 
 ## 参考ソース
