@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ギャラリー — echanotes</title>
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .filter-tabs {
+    display: flex;
+    gap: 3px;
+    padding: 4px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+  }
+  .filter-tabs button {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: background 0.15s, color 0.15s;
+  }
+  .filter-tabs button.active { background: var(--accent-soft); color: var(--accent); }
+  .filter-tabs button:hover { color: var(--text); }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+  }
+  .work { display: block; }
+  .work .thumb {
+    aspect-ratio: 4 / 3;
+    background: #fdfdfc;
+    position: relative;
+    overflow: hidden;
+  }
+  .work .thumb svg { width: 100%; height: 100%; }
+  .work .body { padding: 13px 15px 14px; }
+  .work h3 { font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
+  .work .theme { font-size: 11.5px; color: var(--text-dim); margin-bottom: 12px; }
+  .work .foot { display: flex; align-items: center; gap: 8px; }
+  .work .foot .by { font-size: 11px; color: var(--text-faint); }
+  .work .foot .spacer { flex: 1; }
+  .like {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--bg-hover);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    transition: background 0.15s, color 0.15s;
+  }
+  .like:hover { color: var(--pink); background: rgba(242, 120, 159, 0.12); }
+  .like.on { color: var(--pink); background: rgba(242, 120, 159, 0.12); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <a class="brand" href="../landing/"><span class="brand-mark">✎</span>echanotes</a>
+  <nav class="app-nav">
+    <a href="../rooms/">ルーム一覧</a>
+    <a class="active" href="./">ギャラリー</a>
+    <a href="../help/">ヘルプ</a>
+  </nav>
+  <div class="header-spacer"></div>
+  <div class="header-right">
+    <button class="icon-btn" title="お知らせ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    </button>
+    <a href="../profile/" title="マイページ"><span class="avatar" style="background:#6c8cff">は</span></a>
+  </div>
+</header>
+
+<main class="container">
+  <div class="page-head">
+    <h1>みんなのギャラリー</h1>
+    <p>ルームで生まれた合作たち。お気に入りには 🤍 を。</p>
+  </div>
+
+  <div class="toolbar">
+    <div class="filter-tabs">
+      <button class="active">新着</button>
+      <button>人気</button>
+      <button>今週のお題</button>
+      <button>フォロー中</button>
+    </div>
+  </div>
+
+  <div class="gallery-grid">
+
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="242" cy="58" r="4" fill="#e85d5d"/>
+          <g stroke="#e85d5d" stroke-width="3" stroke-linecap="round"><path d="M242 38v-13M242 78v13M222 58h-13M262 58h13M228 44l-9-9M256 44l9-9M228 72l-9 9M256 72l9 9"/></g>
+          <g stroke="#f2b04c" stroke-width="2.5" stroke-linecap="round"><path d="M186 96v-9M186 122v9M173 109h-9M199 109h9"/></g>
+          <path d="M48 148 Q62 118 96 120 Q134 116 142 148 Z" fill="none" stroke="#e85d5d" stroke-width="3.5"/>
+          <path d="M58 148v52h72v-52" fill="none" stroke="#5c5f6e" stroke-width="3.5"/>
+          <ellipse cx="226" cy="196" rx="42" ry="16" fill="none" stroke="#4cc3e8" stroke-width="3"/>
+          <path d="M210 193 q7 -11 20 0 q-7 9 -20 0 Z" fill="#f2789f"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>夏まつり、はじまる</h3>
+        <div class="theme">お題「夏まつり」・らくがきルーム #12</div>
+        <div class="foot">
+          <div class="avatar-stack">
+            <span class="avatar sm" style="background:#f2789f">ゆ</span>
+            <span class="avatar sm" style="background:#54b47f">そ</span>
+            <span class="avatar sm" style="background:#e8a34c">み</span>
+            <span class="avatar sm" style="background:#6c8cff">は</span>
+          </div>
+          <span class="by">4人の合作</span>
+          <span class="spacer"></span>
+          <button class="like on">♥ 128</button>
+        </div>
+      </div>
+    </a>
+
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <path d="M30 180 Q80 80 130 150 Q170 60 220 140 Q255 90 292 165" fill="none" stroke="#54b47f" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="252" cy="54" r="18" fill="none" stroke="#f2b04c" stroke-width="3.5"/>
+          <path d="M30 196h262" stroke="#9a9aa6" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="1 10"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>朝焼けの稜線</h3>
+        <div class="theme">お題「山と朝日」・風景スケッチ部</div>
+        <div class="foot">
+          <div class="avatar-stack">
+            <span class="avatar sm" style="background:#4cc3e8">か</span>
+            <span class="avatar sm" style="background:#b06cff">れ</span>
+            <span class="avatar sm" style="background:#e85d5d">た</span>
+          </div>
+          <span class="by">3人の合作</span>
+          <span class="spacer"></span>
+          <button class="like">♥ 96</button>
+        </div>
+      </div>
+    </a>
+
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="160" cy="116" r="44" fill="none" stroke="#f2789f" stroke-width="4"/>
+          <path d="M132 106 q5 -8 13 0M175 106 q5 -8 13 0" stroke="#1f2029" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M146 134 q14 11 28 0" stroke="#1f2029" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M120 90 l-18 -22M200 90 l18 -22" stroke="#f2789f" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>ねこみみ大集合</h3>
+        <div class="theme">お題「ねこ耳キャラ」・キャラ描き合いっこ</div>
+        <div class="foot">
+          <div class="avatar-stack">
+            <span class="avatar sm" style="background:#e8a34c">こ</span>
+            <span class="avatar sm" style="background:#6c8cff">ぬ</span>
+            <span class="avatar sm" style="background:var(--bg-active);color:var(--text-dim)">+6</span>
+          </div>
+          <span class="by">8人の合作</span>
+          <span class="spacer"></span>
+          <button class="like">♥ 214</button>
+        </div>
+      </div>
+    </a>
+
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <g stroke="#b06cff" stroke-width="3.5" fill="none" stroke-linecap="round">
+            <circle cx="130" cy="110" r="34"/>
+            <ellipse cx="130" cy="110" rx="58" ry="16" transform="rotate(-18 130 110)"/>
+          </g>
+          <g fill="#4cc3e8"><circle cx="236" cy="70" r="4"/><circle cx="262" cy="140" r="4"/><circle cx="210" cy="170" r="3"/><circle cx="60" cy="50" r="3"/></g>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>土星ステーション</h3>
+        <div class="theme">お題「宇宙ステーション」・SFなんでも部屋</div>
+        <div class="foot">
+          <div class="avatar-stack">
+            <span class="avatar sm" style="background:#54b47f">ほ</span>
+            <span class="avatar sm" style="background:#f2789f">ち</span>
+          </div>
+          <span class="by">2人の合作</span>
+          <span class="spacer"></span>
+          <button class="like">♥ 45</button>
+        </div>
+      </div>
+    </a>
+
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <path d="M96 168 q0 -64 64 -64 q64 0 64 64 Z" fill="none" stroke="#e8a34c" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M86 168h148" stroke="#e8a34c" stroke-width="4" stroke-linecap="round"/>
+          <path d="M130 124 q7 12 0 24M160 116 q7 14 0 28M190 124 q7 12 0 24" stroke="#e85d5d" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>深夜のラーメン</h3>
+        <div class="theme">お題「今日食べたもの」・飯テロキャンバス</div>
+        <div class="foot">
+          <div class="avatar-stack">
+            <span class="avatar sm" style="background:#e85d5d">り</span>
+            <span class="avatar sm" style="background:#4cc3e8">し</span>
+          </div>
+          <span class="by">2人の合作</span>
+          <span class="spacer"></span>
+          <button class="like">♥ 77</button>
+        </div>
+      </div>
+    </a>
+
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <path d="M60 190 Q160 40 260 190" fill="none" stroke="#4cc3e8" stroke-width="4" stroke-linecap="round"/>
+          <path d="M100 190 Q160 100 220 190" fill="none" stroke="#6c8cff" stroke-width="4" stroke-linecap="round"/>
+          <path d="M140 190 Q160 150 180 190" fill="none" stroke="#b06cff" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="70" cy="70" r="3" fill="#f2b04c"/><circle cx="250" cy="60" r="3" fill="#f2b04c"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>にじいろのトンネル</h3>
+        <div class="theme">フリーテーマ・深夜のらくがき会</div>
+        <div class="foot">
+          <div class="avatar-stack">
+            <span class="avatar sm" style="background:#b06cff">よ</span>
+            <span class="avatar sm" style="background:#f2789f">ゆ</span>
+            <span class="avatar sm" style="background:#6c8cff">は</span>
+          </div>
+          <span class="by">3人の合作</span>
+          <span class="spacer"></span>
+          <button class="like">♥ 61</button>
+        </div>
+      </div>
+    </a>
+
+  </div>
+</main>
+
+<footer class="app-footer">
+  <div class="inner">
+    <a class="brand" href="../landing/"><span class="brand-mark">✎</span>echanotes</a>
+    <div class="links">
+      <a href="../help/">ヘルプ</a>
+      <a href="#">利用規約</a>
+      <a href="#">プライバシー</a>
+    </div>
+    <span class="copy">© 2026 echanotes</span>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll(".filter-tabs button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll(".filter-tabs button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+    })
+  );
+  document.querySelectorAll(".like").forEach((b) =>
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      b.classList.toggle("on");
+    })
+  );
+</script>
+</body>
+</html>

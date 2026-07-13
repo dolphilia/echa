@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>echanotes — らくがきルーム</title>
+<style>
+  :root {
+    --bg: #101014;
+    --bg-elevated: #1a1a20;
+    --bg-panel: rgba(26, 26, 32, 0.88);
+    --bg-hover: rgba(255, 255, 255, 0.06);
+    --bg-active: rgba(255, 255, 255, 0.12);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --text: #ececf1;
+    --text-dim: #9a9aa6;
+    --text-faint: #62626e;
+    --accent: #6c8cff;
+    --accent-soft: rgba(108, 140, 255, 0.16);
+    --danger: #ff6c7a;
+    --radius: 14px;
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+    --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    font-family: inherit;
+    border: none;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .app {
+    display: grid;
+    grid-template-rows: 52px 1fr;
+    height: 100%;
+  }
+
+  /* ── Top bar ─────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    z-index: 30;
+  }
+
+  .topbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+
+  .brand-mark {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6c8cff, #b06cff);
+    display: grid; place-items: center;
+    font-size: 13px;
+  }
+
+  .topbar-divider {
+    width: 1px; height: 22px;
+    background: var(--border-strong);
+  }
+
+  .room-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+  .room-title .name {
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .room-title .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.8);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.45; } }
+
+  .topbar .spacer { flex: 1; }
+
+  .avatars { display: flex; }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-elevated);
+    display: grid; place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    margin-left: -7px;
+  }
+  .avatar:first-child { margin-left: 0; }
+  .avatar.more {
+    background: var(--bg-hover);
+    color: var(--text-dim);
+    font-size: 10px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 13px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn.ghost { color: var(--text-dim); }
+  .btn.ghost:hover { background: var(--bg-hover); color: var(--text); }
+  .btn.primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn.primary:hover { filter: brightness(1.1); }
+
+  .icon-btn {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    display: grid; place-items: center;
+    color: var(--text-dim);
+    transition: background 0.15s, color 0.15s;
+  }
+  .icon-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+  /* ── Main ────────────────────────────────── */
+  .main {
+    position: relative;
+    display: flex;
+    min-height: 0;
+  }
+
+  /* ── Workspace ───────────────────────────── */
+  .workspace {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    background:
+      radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px) 0 0 / 22px 22px,
+      var(--bg);
+    display: grid;
+    place-items: center;
+  }
+
+  .artboard-wrap {
+    position: relative;
+    filter: drop-shadow(0 24px 48px rgba(0,0,0,0.55)) drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+  }
+  #artboard {
+    display: block;
+    background: #fdfdfc;
+    border-radius: 6px;
+    touch-action: none;
+    cursor: crosshair;
+    width: 960px;
+    height: 640px;
+  }
+
+  /* remote cursor (mock) */
+  .remote-cursor {
+    position: absolute;
+    pointer-events: none;
+    z-index: 5;
+    transition: transform 2.8s cubic-bezier(0.45, 0, 0.25, 1);
+  }
+  .remote-cursor .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  }
+  .remote-cursor .tag {
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  /* ── Tool rail (left floating) ───────────── */
+  .tool-rail {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 7px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    z-index: 20;
+  }
+
+  .tool {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    color: var(--text-dim);
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+  }
+  .tool:hover { background: var(--bg-hover); color: var(--text); }
+  .tool.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .tool.active::before {
+    content: "";
+    position: absolute;
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 18px;
+    border-radius: 3px;
+    background: var(--accent);
+  }
+
+  .rail-divider {
+    height: 1px;
+    margin: 4px 6px;
+    background: var(--border);
+  }
+
+  .color-chip {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: grid; place-items: center;
+  }
+  .color-chip .swatch {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--current-color, #1f2029);
+    border: 2.5px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    transition: background 0.15s;
+  }
+
+  /* ── Sliders (size / opacity) ────────────── */
+  .slider-dock {
+    position: absolute;
+    left: 78px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 19;
+  }
+  .v-slider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 6px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+  }
+  .v-slider input[type="range"] {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 20px;
+    height: 130px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .v-slider .slider-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    writing-mode: vertical-rl;
+  }
+  .v-slider .value {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Palette popover ─────────────────────── */
+  .palette {
+    position: absolute;
+    left: 78px;
+    bottom: 24px;
+    width: 216px;
+    padding: 16px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    z-index: 25;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 0.18s, transform 0.18s;
+  }
+  .palette.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  .palette h3 {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-faint);
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .swatches button {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    transition: transform 0.12s, border-color 0.12s;
+  }
+  .swatches button:hover { transform: scale(1.15); }
+  .swatches button.selected {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .palette .custom-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .palette input[type="color"] {
+    width: 30px; height: 30px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+  }
+  .palette .custom-row span {
+    font-size: 11.5px;
+    color: var(--text-dim);
+  }
+
+  /* ── Zoom control (bottom center) ────────── */
+  .zoom-dock {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    z-index: 18;
+  }
+  .zoom-dock .icon-btn { width: 30px; height: 30px; border-radius: 999px; }
+  .zoom-dock .zoom-value {
+    min-width: 46px;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Chat panel ──────────────────────────── */
+  .chat {
+    width: 316px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border);
+    transition: margin-right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 22;
+  }
+  .chat.collapsed { margin-right: -316px; }
+
+  .chat-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .chat-header h2 {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .chat-header .online {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .chat-header .spacer { flex: 1; }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  .msg {
+    display: flex;
+    gap: 9px;
+  }
+  .msg .avatar {
+    width: 30px; height: 30px;
+    margin: 0;
+    border: none;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+  .msg .body { min-width: 0; }
+  .msg .meta {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    margin-bottom: 3px;
+  }
+  .msg .meta .name {
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .msg .meta .time {
+    font-size: 10px;
+    color: var(--text-faint);
+  }
+  .msg .text {
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--text);
+    word-break: break-word;
+  }
+  .msg.me .meta .name { color: var(--accent); }
+
+  .msg-system {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-faint);
+    padding: 2px 0;
+  }
+  .msg-system em {
+    font-style: normal;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px 8px;
+    font-size: 11px;
+    color: var(--text-faint);
+    min-height: 20px;
+  }
+  .typing .dots { display: inline-flex; gap: 3px; }
+  .typing .dots i {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    animation: bounce 1.2s infinite;
+  }
+  .typing .dots i:nth-child(2) { animation-delay: 0.15s; }
+  .typing .dots i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 30% { transform: translateY(-4px); opacity: 1; } }
+
+  .chat-input-area {
+    padding: 10px 12px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .stamp-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .stamp {
+    height: 28px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--bg-hover);
+    font-size: 13px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .stamp:hover { background: var(--bg-active); transform: scale(1.08); }
+
+  .chat-input {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 8px 8px 8px 13px;
+    transition: border-color 0.15s;
+  }
+  .chat-input:focus-within { border-color: var(--accent); }
+  .chat-input textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    resize: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12.5px;
+    line-height: 1.5;
+    max-height: 84px;
+  }
+  .chat-input textarea::placeholder { color: var(--text-faint); }
+  .send-btn {
+    width: 30px; height: 30px;
+    border-radius: 9px;
+    background: var(--accent);
+    color: #fff;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    transition: filter 0.15s;
+  }
+  .send-btn:hover { filter: brightness(1.1); }
+
+  /* chat toggle tab (visible when collapsed) */
+  .chat-toggle {
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    z-index: 23;
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    display: grid; place-items: center;
+    color: var(--text-dim);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .chat-toggle.visible { opacity: 1; pointer-events: auto; }
+  .chat-toggle:hover { color: var(--text); }
+  .chat-toggle .badge {
+    position: absolute;
+    top: -4px; right: -4px;
+    min-width: 16px; height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+  }
+
+  /* ── Toast ───────────────────────────────── */
+  .toast {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    padding: 8px 16px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--text-dim);
+    box-shadow: var(--shadow);
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+    z-index: 40;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ Top bar ═══ -->
+  <header class="topbar">
+    <button class="icon-btn" title="ルーム一覧へ戻る" aria-label="戻る">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="brand">
+      <div class="brand-mark">✎</div>
+      echanotes
+    </div>
+    <div class="topbar-divider"></div>
+    <div class="room-title">
+      <span class="name">らくがきルーム #12</span>
+      <span class="status"><span class="live-dot"></span>4人が参加中</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="avatars" title="参加者">
+      <div class="avatar" style="background:#f2789f">ゆ</div>
+      <div class="avatar" style="background:#54b47f">そ</div>
+      <div class="avatar" style="background:#e8a34c">み</div>
+      <div class="avatar" style="background:#6c8cff">は</div>
+    </div>
+
+    <button class="btn ghost">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      保存
+    </button>
+    <button class="btn primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a3 3 0 1 0-2.83-4M18 8a3 3 0 1 1-2.83 4M18 8 8.59 12.51m6.58 3.49L8.59 11.49M6 12a3 3 0 1 0 0 .01M18 16a3 3 0 1 1-2.83 4"/></svg>
+      招待
+    </button>
+    <button class="icon-btn" title="メニュー" aria-label="メニュー">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+    </button>
+  </header>
+
+  <!-- ═══ Main ═══ -->
+  <div class="main">
+    <div class="workspace" id="workspace">
+
+      <!-- artboard -->
+      <div class="artboard-wrap" id="artboardWrap">
+        <canvas id="artboard" width="960" height="640"></canvas>
+        <!-- mock remote cursor -->
+        <div class="remote-cursor" id="remoteCursor" style="transform:translate(620px,180px)">
+          <div class="dot" style="background:#54b47f;"></div>
+          <div class="tag" style="background:#54b47f;">そらまめ</div>
+        </div>
+      </div>
+
+      <!-- tool rail -->
+      <nav class="tool-rail" aria-label="ツール">
+        <button class="tool active" data-tool="brush" title="ブラシ (B)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.06 11.9 20.5 1.5a2.12 2.12 0 0 1 3 3L13.1 14.94"/><path d="M9.06 11.9c-1.5 0-4.06 1.1-4.06 4.6 0 2-2 3-3.5 3 1 2 3.06 3 5.06 3 3.5 0 6.5-2.5 6.5-6.1 0-2.5-2-4.5-4-4.5Z" transform="translate(1 -1) scale(0.92)"/></svg>
+        </button>
+        <button class="tool" data-tool="pen" title="ペン (P)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+        </button>
+        <button class="tool" data-tool="eraser" title="消しゴム (E)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+        </button>
+        <button class="tool" data-tool="fill" title="塗りつぶし (G)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
+        </button>
+        <button class="tool" data-tool="eyedropper" title="スポイト (I)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/></svg>
+        </button>
+        <div class="rail-divider"></div>
+        <button class="tool" id="undoBtn" title="元に戻す (⌘Z)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+        </button>
+        <button class="tool" id="redoBtn" title="やり直す (⌘⇧Z)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
+        </button>
+        <div class="rail-divider"></div>
+        <button class="color-chip" id="colorChip" title="カラー">
+          <div class="swatch" id="currentSwatch"></div>
+        </button>
+      </nav>
+
+      <!-- size / opacity sliders -->
+      <div class="slider-dock">
+        <div class="v-slider" title="ブラシサイズ">
+          <span class="value" id="sizeValue">6</span>
+          <input type="range" id="sizeSlider" min="1" max="60" value="6" aria-label="ブラシサイズ">
+          <span class="slider-label">サイズ</span>
+        </div>
+        <div class="v-slider" title="不透明度">
+          <span class="value" id="opacityValue">100</span>
+          <input type="range" id="opacitySlider" min="5" max="100" value="100" aria-label="不透明度">
+          <span class="slider-label">濃度</span>
+        </div>
+      </div>
+
+      <!-- palette popover -->
+      <div class="palette" id="palette">
+        <h3>カラーパレット</h3>
+        <div class="swatches" id="swatches"></div>
+        <div class="custom-row">
+          <input type="color" id="customColor" value="#1f2029" aria-label="カスタムカラー">
+          <span>カスタムカラー</span>
+        </div>
+      </div>
+
+      <!-- zoom -->
+      <div class="zoom-dock">
+        <button class="icon-btn" id="zoomOut" title="縮小" aria-label="縮小">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+        </button>
+        <span class="zoom-value" id="zoomValue">100%</span>
+        <button class="icon-btn" id="zoomIn" title="拡大" aria-label="拡大">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+
+      <!-- chat re-open tab -->
+      <button class="chat-toggle" id="chatToggle" title="チャットを開く" aria-label="チャットを開く">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="badge" id="chatBadge" hidden>1</span>
+      </button>
+
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <!-- ═══ Chat ═══ -->
+    <aside class="chat" id="chatPanel">
+      <div class="chat-header">
+        <h2>チャット</h2>
+        <span class="online"><span class="live-dot"></span>4人</span>
+        <div class="spacer"></div>
+        <button class="icon-btn" id="chatCollapse" title="チャットをたたむ" aria-label="チャットをたたむ">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg-system"><em>そらまめ</em> さんが入室しました</div>
+        <div class="msg">
+          <div class="avatar" style="background:#f2789f">ゆ</div>
+          <div class="body">
+            <div class="meta"><span class="name" style="color:#f2789f">ゆきうさぎ</span><span class="time">21:02</span></div>
+            <div class="text">今日のお題「夏まつり」でいこ〜🎆</div>
+          </div>
+        </div>
+        <div class="msg">
+          <div class="avatar" style="background:#54b47f">そ</div>
+          <div class="body">
+            <div class="meta"><span class="name" style="color:#54b47f">そらまめ</span><span class="time">21:03</span></div>
+            <div class="text">いいね!じゃあ左上に屋台描くね</div>
+          </div>
+        </div>
+        <div class="msg">
+          <div class="avatar" style="background:#e8a34c">み</div>
+          <div class="body">
+            <div class="meta"><span class="name" style="color:#e8a34c">みかん</span><span class="time">21:05</span></div>
+            <div class="text">花火担当します🎇 右上あけといて〜</div>
+          </div>
+        </div>
+        <div class="msg-system">お題が <em>「夏まつり」</em> に設定されました</div>
+        <div class="msg me">
+          <div class="avatar" style="background:#6c8cff">は</div>
+          <div class="body">
+            <div class="meta"><span class="name">はんざわ</span><span class="time">21:06</span></div>
+            <div class="text">了解!下のほうに金魚すくい描いてみる🐟</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="typing" id="typingIndicator" hidden>
+        <span id="typingName">みかん</span> さんが入力中
+        <span class="dots"><i></i><i></i><i></i></span>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="stamp-row">
+          <button class="stamp" data-stamp="👍">👍</button>
+          <button class="stamp" data-stamp="🎉">🎉</button>
+          <button class="stamp" data-stamp="うますぎ!">うますぎ!</button>
+          <button class="stamp" data-stamp="www">www</button>
+          <button class="stamp" data-stamp="かわいい">かわいい</button>
+        </div>
+        <div class="chat-input">
+          <textarea id="chatInput" rows="1" placeholder="メッセージを送る…"></textarea>
+          <button class="send-btn" id="sendBtn" title="送信" aria-label="送信">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ════════════════ Drawing ════════════════ */
+const canvas = document.getElementById("artboard");
+const ctx = canvas.getContext("2d");
+ctx.lineCap = "round";
+ctx.lineJoin = "round";
+
+const state = {
+  tool: "brush",
+  color: "#1f2029",
+  size: 6,
+  opacity: 1,
+  drawing: false,
+  points: [],
+  undoStack: [],
+  redoStack: [],
+  zoom: 1,
+};
+
+// welcome doodle
+(function seed() {
+  ctx.strokeStyle = "#d8d8e0";
+  ctx.lineWidth = 2;
+  ctx.font = "500 15px 'Hiragino Sans', sans-serif";
+  ctx.fillStyle = "#b9b9c4";
+  ctx.fillText("お題:夏まつり 🎆", 24, 36);
+})();
+
+function snapshot() {
+  state.undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  if (state.undoStack.length > 30) state.undoStack.shift();
+  state.redoStack.length = 0;
+}
+
+function canvasPos(e) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (canvas.width / r.width),
+    y: (e.clientY - r.top) * (canvas.height / r.height),
+  };
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  snapshot();
+  state.drawing = true;
+  state.points = [canvasPos(e)];
+
+  if (state.tool === "fill") {
+    ctx.save();
+    ctx.globalAlpha = state.opacity;
+    ctx.fillStyle = state.color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    state.drawing = false;
+  }
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!state.drawing) return;
+  const pts = state.points;
+  pts.push(canvasPos(e));
+  if (pts.length < 3) return;
+
+  const a = pts[pts.length - 3];
+  const b = pts[pts.length - 2];
+  const c = pts[pts.length - 1];
+
+  ctx.save();
+  if (state.tool === "eraser") {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = state.size * 2.2;
+  } else {
+    ctx.globalAlpha = state.tool === "pen" ? 1 : state.opacity;
+    ctx.strokeStyle = state.color;
+    ctx.lineWidth = state.tool === "pen" ? Math.max(1.5, state.size * 0.6) : state.size;
+  }
+  ctx.beginPath();
+  ctx.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2);
+  ctx.quadraticCurveTo(b.x, b.y, (b.x + c.x) / 2, (b.y + c.y) / 2);
+  ctx.stroke();
+  ctx.restore();
+});
+
+window.addEventListener("pointerup", () => {
+  if (state.drawing && state.points.length < 3) {
+    // dot for a click
+    const p = state.points[0];
+    ctx.save();
+    if (state.tool === "eraser") {
+      ctx.globalCompositeOperation = "destination-out";
+    } else {
+      ctx.globalAlpha = state.opacity;
+      ctx.fillStyle = state.color;
+    }
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, state.size / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  state.drawing = false;
+});
+
+/* undo / redo */
+function undo() {
+  if (!state.undoStack.length) return;
+  state.redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  ctx.putImageData(state.undoStack.pop(), 0, 0);
+}
+function redo() {
+  if (!state.redoStack.length) return;
+  state.undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  ctx.putImageData(state.redoStack.pop(), 0, 0);
+}
+document.getElementById("undoBtn").addEventListener("click", undo);
+document.getElementById("redoBtn").addEventListener("click", redo);
+window.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+    e.shiftKey ? redo() : undo();
+  }
+});
+
+/* ════════════════ Tools ════════════════ */
+const toolButtons = document.querySelectorAll(".tool[data-tool]");
+toolButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    toolButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.tool = btn.dataset.tool;
+  });
+});
+window.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.target.tagName === "TEXTAREA") return;
+  const map = { b: "brush", p: "pen", e: "eraser", g: "fill", i: "eyedropper" };
+  const tool = map[e.key.toLowerCase()];
+  if (tool) document.querySelector(`.tool[data-tool="${tool}"]`)?.click();
+});
+
+/* sliders */
+const sizeSlider = document.getElementById("sizeSlider");
+const opacitySlider = document.getElementById("opacitySlider");
+sizeSlider.addEventListener("input", () => {
+  state.size = +sizeSlider.value;
+  document.getElementById("sizeValue").textContent = sizeSlider.value;
+});
+opacitySlider.addEventListener("input", () => {
+  state.opacity = +opacitySlider.value / 100;
+  document.getElementById("opacityValue").textContent = opacitySlider.value;
+});
+
+/* ════════════════ Palette ════════════════ */
+const PALETTE = [
+  "#1f2029", "#5c5f6e", "#9a9aa6", "#ffffff", "#8c5a3a", "#f2b04c",
+  "#e85d5d", "#f2789f", "#b06cff", "#6c8cff", "#4cc3e8", "#54b47f",
+];
+const swatchesEl = document.getElementById("swatches");
+const paletteEl = document.getElementById("palette");
+const colorChip = document.getElementById("colorChip");
+
+function setColor(color) {
+  state.color = color;
+  document.documentElement.style.setProperty("--current-color", color);
+  document.getElementById("customColor").value = color.length === 7 ? color : "#1f2029";
+  swatchesEl.querySelectorAll("button").forEach((b) =>
+    b.classList.toggle("selected", b.dataset.color === color)
+  );
+}
+
+PALETTE.forEach((color) => {
+  const b = document.createElement("button");
+  b.style.background = color;
+  b.dataset.color = color;
+  b.title = color;
+  if (color === "#ffffff") b.style.border = "2px solid var(--border-strong)";
+  b.addEventListener("click", () => setColor(color));
+  swatchesEl.appendChild(b);
+});
+setColor("#1f2029");
+
+document.getElementById("customColor").addEventListener("input", (e) => setColor(e.target.value));
+colorChip.addEventListener("click", (e) => {
+  e.stopPropagation();
+  paletteEl.classList.toggle("open");
+});
+document.addEventListener("click", (e) => {
+  if (!paletteEl.contains(e.target)) paletteEl.classList.remove("open");
+});
+
+/* ════════════════ Fit & Zoom ════════════════ */
+const wrap = document.getElementById("artboardWrap");
+const workspace = document.getElementById("workspace");
+
+function fitArtboard() {
+  const r = workspace.getBoundingClientRect();
+  // leave room for the tool rail / sliders (left) and the zoom dock (bottom)
+  const fit = Math.min((r.width - 300) / 960, (r.height - 140) / 640, 1);
+  canvas.style.width = 960 * fit + "px";
+  canvas.style.height = 640 * fit + "px";
+}
+window.addEventListener("resize", fitArtboard);
+fitArtboard();
+
+function applyZoom() {
+  wrap.style.transform = `scale(${state.zoom})`;
+  document.getElementById("zoomValue").textContent = Math.round(state.zoom * 100) + "%";
+}
+document.getElementById("zoomIn").addEventListener("click", () => {
+  state.zoom = Math.min(2, state.zoom + 0.1);
+  applyZoom();
+});
+document.getElementById("zoomOut").addEventListener("click", () => {
+  state.zoom = Math.max(0.4, state.zoom - 0.1);
+  applyZoom();
+});
+
+/* ════════════════ Chat ════════════════ */
+const chatPanel = document.getElementById("chatPanel");
+const chatToggle = document.getElementById("chatToggle");
+const chatBadge = document.getElementById("chatBadge");
+const messages = document.getElementById("chatMessages");
+const input = document.getElementById("chatInput");
+
+document.getElementById("chatCollapse").addEventListener("click", () => {
+  chatPanel.classList.add("collapsed");
+  chatToggle.classList.add("visible");
+});
+chatToggle.addEventListener("click", () => {
+  chatPanel.classList.remove("collapsed");
+  chatToggle.classList.remove("visible");
+  chatBadge.hidden = true;
+  chatBadge.textContent = "0";
+});
+
+function timeNow() {
+  const d = new Date();
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function addMessage({ name, color, initial, text, me = false }) {
+  const el = document.createElement("div");
+  el.className = "msg" + (me ? " me" : "");
+  el.innerHTML = `
+    <div class="avatar" style="background:${color}">${initial}</div>
+    <div class="body">
+      <div class="meta">
+        <span class="name" ${me ? "" : `style="color:${color}"`}>${name}</span>
+        <span class="time">${timeNow()}</span>
+      </div>
+      <div class="text"></div>
+    </div>`;
+  el.querySelector(".text").textContent = text;
+  messages.appendChild(el);
+  messages.scrollTop = messages.scrollHeight;
+
+  if (!me && chatPanel.classList.contains("collapsed")) {
+    chatBadge.hidden = false;
+    chatBadge.textContent = String(+chatBadge.textContent + 1 || 1);
+  }
+}
+
+function sendMessage(text) {
+  const t = text.trim();
+  if (!t) return;
+  addMessage({ name: "はんざわ", color: "#6c8cff", initial: "は", text: t, me: true });
+  input.value = "";
+  input.style.height = "auto";
+}
+
+document.getElementById("sendBtn").addEventListener("click", () => sendMessage(input.value));
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    sendMessage(input.value);
+  }
+});
+input.addEventListener("input", () => {
+  input.style.height = "auto";
+  input.style.height = input.scrollHeight + "px";
+});
+document.querySelectorAll(".stamp").forEach((b) =>
+  b.addEventListener("click", () => sendMessage(b.dataset.stamp))
+);
+
+/* ════════════════ Mock presence ════════════════ */
+const remoteCursor = document.getElementById("remoteCursor");
+const typingEl = document.getElementById("typingIndicator");
+const MOCK_REPLIES = [
+  { name: "そらまめ", color: "#54b47f", initial: "そ", text: "屋台の屋根、赤にしてみた!" },
+  { name: "みかん", color: "#e8a34c", initial: "み", text: "打ち上げ花火いくよ〜🎇" },
+  { name: "ゆきうさぎ", color: "#f2789f", initial: "ゆ", text: "金魚かわいい!!" },
+];
+let replyIndex = 0;
+
+function mockActivity() {
+  // wander the remote cursor
+  const x = canvas.clientWidth * (0.1 + Math.random() * 0.75);
+  const y = canvas.clientHeight * (0.1 + Math.random() * 0.72);
+  remoteCursor.style.transform = `translate(${x}px, ${y}px)`;
+
+  // occasionally "type" then send a message
+  if (Math.random() < 0.5 && replyIndex < MOCK_REPLIES.length) {
+    const reply = MOCK_REPLIES[replyIndex++];
+    document.getElementById("typingName").textContent = reply.name;
+    typingEl.hidden = false;
+    setTimeout(() => {
+      typingEl.hidden = true;
+      addMessage(reply);
+    }, 2200);
+  }
+}
+setInterval(mockActivity, 6000);
+setTimeout(mockActivity, 2500);
+
+/* ════════════════ Toast ════════════════ */
+const toast = document.getElementById("toast");
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2400);
+}
+document.querySelector(".btn.primary").addEventListener("click", () =>
+  showToast("招待リンクをコピーしました")
+);
+document.querySelector(".btn.ghost").addEventListener("click", () =>
+  showToast("キャンバスを保存しました")
+);
+</script>
+</body>
+</html>

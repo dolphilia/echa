@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>echanotes — プロトタイプ一覧</title>
+<link rel="stylesheet" href="shared/base.css">
+<style>
+  main { max-width: 720px; margin: 0 auto; padding: 60px 26px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .sub { font-size: 13px; color: var(--text-dim); margin-bottom: 34px; }
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+  }
+  .item .icon {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 19px;
+    background: var(--accent-soft);
+    flex-shrink: 0;
+  }
+  .item .txt { flex: 1; }
+  .item b { font-size: 14.5px; }
+  .item span { display: block; margin-top: 3px; font-size: 12px; color: var(--text-dim); }
+  .item .arrow { color: var(--text-faint); }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand" style="margin-bottom:28px"><span class="brand-mark">✎</span>echanotes</div>
+  <h1>プロトタイプ一覧</h1>
+  <p class="sub">お絵描きチャットサービスの画面モックアップ集(調査・構想段階)。</p>
+  <div class="list">
+    <a class="card item" href="landing/">
+      <span class="icon">🏠</span>
+      <span class="txt"><b>トップページ</b><span>サービス紹介・ランディングページ</span></span>
+      <span class="arrow">→</span>
+    </a>
+    <a class="card item" href="login/">
+      <span class="icon">🚪</span>
+      <span class="txt"><b>はじめる / ログイン</b><span>ゲスト参加を最優先にした認証画面</span></span>
+      <span class="arrow">→</span>
+    </a>
+    <a class="card item" href="rooms/">
+      <span class="icon">🎪</span>
+      <span class="txt"><b>ルーム一覧</b><span>開催中のお絵描きチャット一覧・ルーム作成モーダル</span></span>
+      <span class="arrow">→</span>
+    </a>
+    <a class="card item" href="drawing-room/">
+      <span class="icon">🎨</span>
+      <span class="txt"><b>お絵描きページ</b><span>共同キャンバス+チャット(実際に描けます)</span></span>
+      <span class="arrow">→</span>
+    </a>
+    <a class="card item" href="gallery/">
+      <span class="icon">🖼️</span>
+      <span class="txt"><b>ギャラリー</b><span>完成した合作作品のアーカイブ</span></span>
+      <span class="arrow">→</span>
+    </a>
+    <a class="card item" href="profile/">
+      <span class="icon">👤</span>
+      <span class="txt"><b>マイページ</b><span>プロフィール・作品・参加履歴</span></span>
+      <span class="arrow">→</span>
+    </a>
+    <a class="card item" href="help/">
+      <span class="icon">💡</span>
+      <span class="txt"><b>ヘルプ</b><span>はじめかたガイド・FAQ・ショートカット</span></span>
+      <span class="arrow">→</span>
+    </a>
+  </div>
+</main>
+</body>
+</html>
