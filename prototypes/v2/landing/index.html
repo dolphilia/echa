@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>echanotes — みんなで描く、ひとつのキャンバス</title>
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+  body { overflow-x: hidden; }
+
+  /* hero */
+  .hero {
+    position: relative;
+    padding: 84px 26px 60px;
+    text-align: center;
+  }
+  .hero .deco {
+    position: absolute;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+  .hero .inner { position: relative; max-width: 720px; margin: 0 auto; }
+  .hero .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 2px 0 var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 50px);
+    font-weight: 800;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+  .hero h1 .marker {
+    position: relative;
+    white-space: nowrap;
+  }
+  .hero h1 .marker::after {
+    content: "";
+    position: absolute;
+    left: -2px; right: -2px; bottom: 6px;
+    height: 0.42em;
+    background: var(--primary-soft);
+    border-radius: 6px;
+    z-index: -1;
+  }
+  .hero p.lead {
+    margin: 22px auto 0;
+    max-width: 540px;
+    font-size: 15px;
+    line-height: 2.1;
+    color: var(--text-dim);
+  }
+  .hero .cta {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    margin-top: 34px;
+  }
+  .hero .note { margin-top: 16px; font-size: 12px; font-weight: 600; color: var(--text-faint); }
+
+  /* hero visual: mock room */
+  .hero-visual {
+    position: relative;
+    max-width: 880px;
+    margin: 60px auto 0;
+    border-radius: 24px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow-pop);
+    overflow: hidden;
+  }
+  .mock-topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    padding: 0 16px;
+    border-bottom: 1.5px solid var(--border);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+  }
+  .mock-topbar .dots { display: flex; gap: 5px; }
+  .mock-topbar .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--bg-soft); border: 1.5px solid var(--border-strong); }
+  .mock-body { display: flex; height: 340px; }
+  .mock-canvas {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(rgba(55, 55, 50, 0.08) 1.5px, transparent 1.5px) 0 0 / 22px 22px,
+      var(--bg-soft);
+    position: relative;
+  }
+  .mock-canvas svg.art {
+    width: 72%;
+    border-radius: 8px;
+    background: var(--paper);
+    box-shadow: 0 10px 26px rgba(55, 55, 50, 0.16);
+  }
+  .mock-rail {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 9px 8px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+  }
+  .mock-rail i { width: 22px; height: 22px; border-radius: 8px; background: var(--bg-soft); }
+  .mock-rail i.on { background: var(--primary-soft); outline: 2px solid var(--primary); }
+  .mock-chat {
+    width: 250px;
+    border-left: 1.5px solid var(--border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--surface);
+  }
+  .mock-msg { display: flex; gap: 8px; align-items: flex-start; }
+  .mock-msg .avatar { width: 24px; height: 24px; font-size: 9px; }
+  .mock-msg .bubble {
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.65;
+    color: var(--text-dim);
+    background: var(--bg);
+    border-radius: 3px 12px 12px 12px;
+    padding: 6px 10px;
+  }
+  .mock-msg .bubble b { display: block; font-size: 10px; color: var(--text); }
+
+  .mock-cursor {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    pointer-events: none;
+  }
+  .mock-cursor i { width: 10px; height: 10px; border-radius: 50%; border: 2.5px solid #fff; display: block; box-shadow: 0 1px 3px rgba(94,82,63,0.3); }
+  .mock-cursor span {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  /* sections */
+  section.block { padding: 88px 26px 0; }
+  .section-head { text-align: center; max-width: 560px; margin: 0 auto 44px; }
+  .section-head .kicker {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    color: var(--primary-deep);
+    background: var(--primary-soft);
+    border-radius: 999px;
+    padding: 5px 14px;
+    margin-bottom: 16px;
+  }
+  .section-head h2 { font-size: 26px; font-weight: 800; }
+  .section-head p { margin-top: 12px; font-size: 13.5px; line-height: 2; color: var(--text-dim); }
+
+  .features {
+    max-width: 1020px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .feature {
+    padding: 28px 26px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 22px;
+  }
+  .feature .icon {
+    width: 52px; height: 52px;
+    border-radius: 18px;
+    display: grid; place-items: center;
+    margin-bottom: 18px;
+  }
+  .feature:nth-child(1) .icon { background: var(--primary-soft); color: var(--primary-deep); }
+  .feature:nth-child(2) .icon { background: var(--anzu-soft); color: var(--anzu-deep); }
+  .feature:nth-child(3) .icon { background: var(--sky-soft); color: #5f8cb2; }
+  .feature h3 { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+  .feature p { font-size: 12.5px; line-height: 2; color: var(--text-dim); }
+
+  /* steps */
+  .steps {
+    max-width: 880px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    counter-reset: step;
+  }
+  .step {
+    position: relative;
+    padding: 28px 24px 26px;
+    background: var(--surface);
+    border: 2px dashed var(--border-strong);
+    border-radius: 22px;
+  }
+  .step::before {
+    counter-increment: step;
+    content: counter(step);
+    display: grid;
+    place-items: center;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--purin);
+    box-shadow: 0 2.5px 0 #c08e35;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    margin-bottom: 16px;
+  }
+  .step h3 { font-size: 15px; font-weight: 800; margin-bottom: 7px; }
+  .step p { font-size: 12.5px; line-height: 2; color: var(--text-dim); }
+
+  /* CTA band */
+  .cta-band {
+    max-width: 1020px;
+    margin: 92px auto 0;
+    padding: 58px 30px;
+    text-align: center;
+    border-radius: 28px;
+    background: var(--paper);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-band h2 { font-size: 25px; font-weight: 800; position: relative; }
+  .cta-band p { margin: 12px 0 28px; font-size: 13px; font-weight: 600; color: var(--text-dim); position: relative; }
+  .cta-band .btn { position: relative; }
+  .cta-band svg.corner { position: absolute; opacity: 0.85; }
+
+  @media (max-width: 800px) {
+    .features, .steps { grid-template-columns: 1fr; }
+    .mock-chat { display: none; }
+    .hero .deco { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <a class="brand" href="./"><span class="brand-mark">✎</span>echanotes</a>
+  <nav class="app-nav">
+    <a href="#features">機能</a>
+    <a href="#howto">使い方</a>
+    <a href="../gallery/">ギャラリー</a>
+    <a href="../help/">ヘルプ</a>
+  </nav>
+  <div class="header-spacer"></div>
+  <div class="header-right">
+    <a class="btn subtle" href="../login/">ログイン</a>
+    <a class="btn primary" href="../rooms/">無料ではじめる</a>
+  </div>
+</header>
+
+<!-- ═══ Hero ═══ -->
+<section class="hero">
+  <!-- 手描きの飾り(控えめに) -->
+  <svg class="deco" style="left:12%;top:120px" width="54" height="54" viewBox="0 0 54 54" fill="none">
+    <path d="M27 8v10M27 36v10M8 27h10M36 27h10" stroke="#dfa94f" stroke-width="4" stroke-linecap="round"/>
+  </svg>
+  <svg class="deco" style="right:13%;top:100px" width="46" height="46" viewBox="0 0 46 46" fill="none">
+    <circle cx="23" cy="23" r="14" stroke="#7fc0c9" stroke-width="4"/>
+  </svg>
+  <svg class="deco" style="left:20%;top:330px" width="44" height="30" viewBox="0 0 44 30" fill="none">
+    <path d="M4 24 Q14 6 24 18 Q32 4 40 16" stroke="#d38b8b" stroke-width="4" stroke-linecap="round"/>
+  </svg>
+  <svg class="deco" style="right:18%;top:320px" width="34" height="34" viewBox="0 0 34 34" fill="none">
+    <path d="M17 4 l3.8 8.4 8.8 1 -6.5 6 1.8 8.8 -7.9 -4.6 -7.9 4.6 1.8 -8.8 -6.5 -6 8.8 -1 Z" stroke="#64a88b" stroke-width="3.5" stroke-linejoin="round"/>
+  </svg>
+
+  <div class="inner">
+    <span class="eyebrow"><span class="live-dot"></span>いま 128 ルームが開催中</span>
+    <h1>みんなで描く、<br><span class="marker">ひとつのキャンバス。</span></h1>
+    <p class="lead">echanotes(えちゃノート)は、リアルタイムで一緒に絵を描きながらおしゃべりできるお絵描きチャット。登録なしのゲスト参加で、いますぐ誰かのキャンバスに飛び込めます。</p>
+    <div class="cta">
+      <a class="btn primary lg" href="../rooms/">ルームをのぞいてみる</a>
+      <a class="btn ghost lg" href="../login/">アカウントを作る</a>
+    </div>
+    <div class="note">アカウント登録は不要。ニックネームだけで参加できます。</div>
+  </div>
+
+  <!-- mock room visual -->
+  <div class="hero-visual">
+    <div class="mock-topbar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span style="margin-left:8px">らくがきルーム #12 — お題「夏まつり」</span>
+    </div>
+    <div class="mock-body">
+      <div class="mock-canvas">
+        <div class="mock-rail">
+          <i class="on"></i><i></i><i></i><i></i>
+        </div>
+        <svg class="art" viewBox="0 0 480 260" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="360" cy="62" r="4.5" fill="#d3684f"/>
+          <g stroke="#d3684f" stroke-width="4" stroke-linecap="round">
+            <path d="M360 40v-14M360 84v14M338 62h-14M382 62h14M344 46l-9-9M376 46l9-9M344 78l-9 9M376 78l9 9"/>
+          </g>
+          <g stroke="#dfa94f" stroke-width="3.5" stroke-linecap="round">
+            <path d="M300 90v-10M300 120v10M285 105h-10M315 105h10"/>
+          </g>
+          <path d="M60 150 Q75 120 110 122 Q150 118 158 150 Z" fill="none" stroke="#d3684f" stroke-width="4.5" stroke-linejoin="round"/>
+          <path d="M70 150 v56 h78 v-56" fill="none" stroke="#77604e" stroke-width="4.5" stroke-linejoin="round"/>
+          <path d="M84 206 v-30 h24 v30" fill="none" stroke="#77604e" stroke-width="4"/>
+          <ellipse cx="250" cy="205" rx="46" ry="18" fill="none" stroke="#7fc0c9" stroke-width="4"/>
+          <path d="M232 202 q8 -12 22 0 q-8 10 -22 0 Z" fill="#d38b8b"/>
+          <circle cx="252" cy="199" r="1.8" fill="#574f43"/>
+          <path d="M228 203 l-8 -5 l1 9 Z" fill="#d38b8b"/>
+          <text x="24" y="34" font-size="13" fill="#c4bcad" font-family="sans-serif" font-weight="600">お題:夏まつり 🎆</text>
+        </svg>
+        <div class="mock-cursor" style="left:56%;top:24%">
+          <i style="background:#dfa94f"></i><span style="background:#dfa94f">みかん</span>
+        </div>
+        <div class="mock-cursor" style="left:24%;top:56%">
+          <i style="background:#64a88b"></i><span style="background:#64a88b">そらまめ</span>
+        </div>
+      </div>
+      <div class="mock-chat">
+        <div class="mock-msg">
+          <span class="avatar" style="background:#d38b8b">ゆ</span>
+          <span class="bubble"><b>ゆきうさぎ</b>今日のお題「夏まつり」でいこ〜🎆</span>
+        </div>
+        <div class="mock-msg">
+          <span class="avatar" style="background:#64a88b">そ</span>
+          <span class="bubble"><b>そらまめ</b>じゃあ左上に屋台描くね</span>
+        </div>
+        <div class="mock-msg">
+          <span class="avatar" style="background:#dfa94f">み</span>
+          <span class="bubble"><b>みかん</b>花火担当します🎇</span>
+        </div>
+        <div class="mock-msg">
+          <span class="avatar" style="background:#7ba6c9">は</span>
+          <span class="bubble"><b>はんざわ</b>金魚すくい描いてみる🐟</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Features ═══ -->
+<section class="block" id="features">
+  <div class="section-head">
+    <div class="kicker">できること</div>
+    <h2>描くことが、そのまま会話になる</h2>
+    <p>難しい設定は一切なし。ブラウザを開けば、そこがアトリエです。</p>
+  </div>
+  <div class="features">
+    <div class="feature">
+      <div class="icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </div>
+      <h3>リアルタイム共同キャンバス</h3>
+      <p>ひとつのキャンバスに、みんなの筆致がその場で重なっていく。参加者のカーソルも見えるから、隣で描いている感覚に。</p>
+    </div>
+    <div class="feature">
+      <div class="icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <h3>チャットとスタンプで交流</h3>
+      <p>描きながらおしゃべり。ワンタップのスタンプで「うますぎ!」を即座に届けられます。お題機能で盛り上がりも簡単。</p>
+    </div>
+    <div class="feature">
+      <div class="icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+      </div>
+      <h3>作品はギャラリーに残る</h3>
+      <p>完成した合作はルームごとにアーカイブ。あとから見返したり、みんなのギャラリーで公開したりできます。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ How to ═══ -->
+<section class="block" id="howto">
+  <div class="section-head">
+    <div class="kicker">はじめかた</div>
+    <h2>準備は、3ステップだけ</h2>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <h3>ニックネームを決める</h3>
+      <p>アカウント登録は不要。好きな名前とカラーを選ぶだけで準備完了です。</p>
+    </div>
+    <div class="step">
+      <h3>ルームに参加する</h3>
+      <p>開催中のルーム一覧から気になるキャンバスへ。もちろん自分でルームを立ててもOK。</p>
+    </div>
+    <div class="step">
+      <h3>描いて、話して、残す</h3>
+      <p>あとは自由に。完成した作品は保存して、ギャラリーでシェアできます。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<div class="container">
+  <div class="cta-band">
+    <svg class="corner" style="left:36px;top:34px" width="44" height="44" viewBox="0 0 44 44" fill="none">
+      <path d="M22 6v8M22 30v8M6 22h8M30 22h8" stroke="#dfa94f" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <svg class="corner" style="right:40px;bottom:38px" width="40" height="28" viewBox="0 0 44 30" fill="none">
+      <path d="M4 24 Q14 6 24 18 Q32 4 40 16" stroke="#7fc0c9" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <h2>さあ、キャンバスへ。</h2>
+    <p>いまこの瞬間も、誰かの絵が生まれています。</p>
+    <a class="btn primary lg" href="../rooms/">開催中のルームを見る</a>
+  </div>
+</div>
+
+<footer class="app-footer">
+  <div class="inner">
+    <a class="brand" href="./"><span class="brand-mark">✎</span>echanotes</a>
+    <div class="links">
+      <a href="../help/">ヘルプ</a>
+      <a href="#">利用規約</a>
+      <a href="#">プライバシー</a>
+      <a href="#">お問い合わせ</a>
+    </div>
+    <span class="copy">© 2026 echanotes</span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マイページ — echanotes</title>
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+  .profile-hero {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 38px 0 30px;
+  }
+  .big-avatar {
+    width: 92px; height: 92px;
+    border-radius: 50%;
+    background: #7ba6c9;
+    border: 4px solid var(--surface);
+    box-shadow: 0 0 0 2px var(--border), 0 6px 18px rgba(55, 55, 50, 0.14);
+    display: grid; place-items: center;
+    font-size: 36px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .profile-hero .info { flex: 1; }
+  .profile-hero h1 {
+    font-size: 23px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .profile-hero .id { font-size: 12px; font-weight: 600; color: var(--text-faint); }
+  .profile-hero .bio { margin-top: 7px; font-size: 13px; font-weight: 500; color: var(--text-dim); line-height: 1.9; }
+
+  .stats { display: flex; gap: 14px; margin-bottom: 32px; }
+  .stat {
+    flex: 1;
+    padding: 18px 22px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .stat .num { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.3; }
+  .stat .label { margin-top: 3px; font-size: 11.5px; font-weight: 700; color: var(--text-dim); }
+  .stat:nth-child(1) .num { color: #5f8cb2; }
+  .stat:nth-child(2) .num { color: var(--primary-deep); }
+  .stat:nth-child(3) .num { color: #c47676; }
+  .stat:nth-child(4) .num { color: #b5852f; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 5px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    width: fit-content;
+    margin-bottom: 24px;
+  }
+  .tabs button {
+    height: 34px;
+    padding: 0 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dim);
+    transition: background 0.15s, color 0.15s;
+  }
+  .tabs button:hover { color: var(--text); }
+  .tabs button.active { background: var(--primary-soft); color: var(--primary-deep); }
+
+  .works {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
+  }
+  .works.hidden { display: none; }
+  .work { display: block; }
+  .work .thumb {
+    aspect-ratio: 4 / 3;
+    background: var(--paper);
+    border-bottom: 1.5px solid var(--border);
+    overflow: hidden;
+  }
+  .work .thumb svg { width: 100%; height: 100%; }
+  .work .body { padding: 13px 15px 14px; }
+  .work h3 { font-size: 13.5px; font-weight: 800; margin-bottom: 2px; }
+  .work .meta { font-size: 11px; font-weight: 600; color: var(--text-faint); display: flex; gap: 10px; }
+
+  .history { display: none; flex-direction: column; gap: 12px; }
+  .history.visible { display: flex; }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .history-item .icon {
+    width: 42px; height: 42px;
+    border-radius: 14px;
+    background: var(--primary-soft);
+    color: var(--primary-deep);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .history-item:nth-child(2) .icon { background: var(--purin-soft); color: #b5852f; }
+  .history-item:nth-child(3) .icon { background: var(--sky-soft); color: #5f8cb2; }
+  .history-item .txt { flex: 1; }
+  .history-item .txt b { font-size: 13.5px; font-weight: 800; }
+  .history-item .txt span { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 600; color: var(--text-dim); }
+  .history-item time { font-size: 11px; font-weight: 700; color: var(--text-faint); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <a class="brand" href="../landing/"><span class="brand-mark">✎</span>echanotes</a>
+  <nav class="app-nav">
+    <a href="../rooms/">ルーム一覧</a>
+    <a href="../gallery/">ギャラリー</a>
+    <a href="../help/">ヘルプ</a>
+  </nav>
+  <div class="header-spacer"></div>
+  <div class="header-right">
+    <button class="icon-btn" title="お知らせ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    </button>
+    <a href="./" title="マイページ"><span class="avatar" style="background:#7ba6c9">は</span></a>
+  </div>
+</header>
+
+<main class="container">
+
+  <div class="profile-hero">
+    <div class="big-avatar">は</div>
+    <div class="info">
+      <h1>はんざわ <span class="id">@hanzawa · 2026年3月から</span></h1>
+      <p class="bio">金魚とラーメンばかり描いています🐟 まったりルームによく出没。お気軽に誘ってください!</p>
+    </div>
+    <button class="btn ghost">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      プロフィールを編集
+    </button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="num">42</div><div class="label">参加したルーム</div></div>
+    <div class="stat"><div class="num">18</div><div class="label">公開した合作</div></div>
+    <div class="stat"><div class="num">327</div><div class="label">もらった ♥</div></div>
+    <div class="stat"><div class="num">12</div><div class="label">フレンド</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="active" data-tab="works">作品</button>
+    <button data-tab="history">参加履歴</button>
+    <button>フレンド</button>
+    <button>いいねした作品</button>
+  </div>
+
+  <!-- works -->
+  <div class="works" id="worksTab">
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="160" cy="130" rx="56" ry="22" fill="none" stroke="#7fc0c9" stroke-width="4.5"/>
+          <path d="M138 126 q9 -14 26 0 q-9 12 -26 0 Z" fill="#d38b8b"/>
+          <circle cx="162" cy="122" r="2.2" fill="#574f43"/>
+          <path d="M132 128 l-10 -7 l1.5 12 Z" fill="#d38b8b"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>夏まつり、はじまる</h3>
+        <div class="meta"><span>4人の合作</span><span>♥ 128</span></div>
+      </div>
+    </a>
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <path d="M96 168 q0 -64 64 -64 q64 0 64 64 Z" fill="none" stroke="#dfa94f" stroke-width="5"/>
+          <path d="M86 168h148" stroke="#dfa94f" stroke-width="5" stroke-linecap="round"/>
+          <path d="M130 124 q7 12 0 24M160 116 q7 14 0 28M190 124 q7 12 0 24" stroke="#d3684f" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>深夜のラーメン</h3>
+        <div class="meta"><span>2人の合作</span><span>♥ 77</span></div>
+      </div>
+    </a>
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <path d="M140 190 Q160 150 180 190" fill="none" stroke="#a08cc4" stroke-width="5" stroke-linecap="round"/>
+          <path d="M100 190 Q160 100 220 190" fill="none" stroke="#7ba6c9" stroke-width="5" stroke-linecap="round"/>
+          <path d="M60 190 Q160 40 260 190" fill="none" stroke="#7fc0c9" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>にじいろのトンネル</h3>
+        <div class="meta"><span>3人の合作</span><span>♥ 61</span></div>
+      </div>
+    </a>
+    <a class="card work" href="#">
+      <div class="thumb">
+        <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="160" cy="110" r="36" fill="none" stroke="#dfa94f" stroke-width="5"/>
+          <g stroke="#dfa94f" stroke-width="4" stroke-linecap="round"><path d="M160 60v-14M160 160v14M110 110h-14M210 110h14"/></g>
+          <path d="M60 200h200" stroke="#b8b0a0" stroke-width="3" stroke-dasharray="1 11" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>まひるの太陽</h3>
+        <div class="meta"><span>ソロ作品</span><span>♥ 34</span></div>
+      </div>
+    </a>
+  </div>
+
+  <!-- history -->
+  <div class="history" id="historyTab">
+    <div class="history-item">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </div>
+      <div class="txt"><b>らくがきルーム #12</b><span>お題「夏まつり」・4人で 1時間24分</span></div>
+      <time>今日 21:00</time>
+    </div>
+    <div class="history-item">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </div>
+      <div class="txt"><b>飯テロキャンバス</b><span>お題「今日食べたもの」・2人で 30分</span></div>
+      <time>昨日 23:12</time>
+    </div>
+    <div class="history-item">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <div class="txt"><b>キャラ描き合いっこ</b><span>観覧のみ・45分</span></div>
+      <time>7/10 20:30</time>
+    </div>
+  </div>
+
+</main>
+
+<footer class="app-footer">
+  <div class="inner">
+    <a class="brand" href="../landing/"><span class="brand-mark">✎</span>echanotes</a>
+    <div class="links">
+      <a href="../help/">ヘルプ</a>
+      <a href="#">利用規約</a>
+      <a href="#">プライバシー</a>
+    </div>
+    <span class="copy">© 2026 echanotes</span>
+  </div>
+</footer>
+
+<script>
+  const works = document.getElementById("worksTab");
+  const history = document.getElementById("historyTab");
+  document.querySelectorAll(".tabs button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll(".tabs button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+      const isHistory = b.dataset.tab === "history";
+      works.classList.toggle("hidden", isHistory);
+      history.classList.toggle("visible", isHistory);
+    })
+  );
+</script>
+</body>
+</html>

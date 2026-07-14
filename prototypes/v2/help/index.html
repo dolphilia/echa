@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ヘルプ — echanotes</title>
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+  .help-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 42px;
+    align-items: start;
+  }
+  .help-nav {
+    position: sticky;
+    top: 86px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .help-nav a {
+    padding: 9px 15px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    transition: background 0.15s, color 0.15s;
+  }
+  .help-nav a:hover { background: var(--bg-soft); color: var(--text); }
+  .help-nav a.active { background: var(--primary-soft); color: var(--primary-deep); font-weight: 700; }
+
+  .help-body h2 {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 44px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .help-body h2:first-child { margin-top: 0; }
+  .help-body h2::before {
+    content: "";
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+
+  .quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .quick .card { padding: 22px; }
+  .quick .num {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--purin);
+    box-shadow: 0 2px 0 #c08e35;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    margin-bottom: 13px;
+  }
+  .quick h3 { font-size: 14px; font-weight: 800; margin-bottom: 6px; }
+  .quick p { font-size: 12px; line-height: 1.95; font-weight: 500; color: var(--text-dim); }
+
+  details {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 9px;
+    overflow: hidden;
+  }
+  details summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 19px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary:hover { background: var(--surface-dim); }
+  details summary::before {
+    content: "Q";
+    width: 24px; height: 24px;
+    border-radius: 9px;
+    background: var(--primary-soft);
+    color: var(--primary-deep);
+    font-size: 11px;
+    font-weight: 800;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  details summary::after {
+    content: "";
+    margin-left: auto;
+    width: 8px; height: 8px;
+    border-right: 2.5px solid var(--text-faint);
+    border-bottom: 2.5px solid var(--text-faint);
+    border-radius: 1px;
+    transform: rotate(45deg);
+    transition: transform 0.2s;
+  }
+  details[open] summary::after { transform: rotate(-135deg); }
+  details .answer {
+    padding: 2px 19px 17px 55px;
+    font-size: 12.5px;
+    line-height: 2;
+    font-weight: 500;
+    color: var(--text-dim);
+  }
+
+  .shortcut-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .shortcut-table th, .shortcut-table td {
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .shortcut-table th {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    background: var(--surface-dim);
+  }
+  .shortcut-table tr:last-child td { border-bottom: none; }
+  kbd {
+    display: inline-block;
+    min-width: 24px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1.5px solid var(--border-strong);
+    border-bottom-width: 3px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  .contact-band {
+    margin-top: 46px;
+    padding: 28px;
+    border-radius: var(--radius);
+    background: var(--primary-soft);
+    border: 1.5px solid #d0e2d8;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .contact-band .txt { flex: 1; }
+  .contact-band b { font-size: 14.5px; font-weight: 800; }
+  .contact-band p { margin-top: 3px; font-size: 12px; font-weight: 600; color: var(--primary-deep); }
+  .contact-band .btn { flex-shrink: 0; }
+
+  @media (max-width: 760px) {
+    .help-layout { grid-template-columns: 1fr; }
+    .help-nav { position: static; flex-direction: row; flex-wrap: wrap; }
+    .quick { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <a class="brand" href="../landing/"><span class="brand-mark">✎</span>echanotes</a>
+  <nav class="app-nav">
+    <a href="../rooms/">ルーム一覧</a>
+    <a href="../gallery/">ギャラリー</a>
+    <a class="active" href="./">ヘルプ</a>
+  </nav>
+  <div class="header-spacer"></div>
+  <div class="header-right">
+    <button class="icon-btn" title="お知らせ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    </button>
+    <a href="../profile/" title="マイページ"><span class="avatar" style="background:#7ba6c9">は</span></a>
+  </div>
+</header>
+
+<main class="container">
+  <div class="page-head">
+    <h1>ヘルプセンター</h1>
+    <p>echanotes の使い方、よくある質問、ショートカットのまとめ。</p>
+  </div>
+
+  <div class="help-layout">
+    <nav class="help-nav">
+      <a class="active" href="#start">はじめかた</a>
+      <a href="#faq">よくある質問</a>
+      <a href="#shortcuts">ショートカット</a>
+      <a href="#rules">コミュニティガイドライン</a>
+      <a href="#contact">お問い合わせ</a>
+    </nav>
+
+    <div class="help-body">
+      <h2 id="start">はじめかた</h2>
+      <div class="quick">
+        <div class="card">
+          <div class="num">1</div>
+          <h3>ニックネームを決める</h3>
+          <p>アカウント登録は不要です。トップページの「はじめる」から、好きな名前とカラーを選びましょう。</p>
+        </div>
+        <div class="card">
+          <div class="num">2</div>
+          <h3>ルームに参加する</h3>
+          <p>ルーム一覧から「参加する」を押すだけ。満員のルームも「観覧」でのぞけます。</p>
+        </div>
+        <div class="card">
+          <div class="num">3</div>
+          <h3>描いて、話す</h3>
+          <p>左のツールバーからブラシを選んで描き始めましょう。右のチャットでいつでもおしゃべりできます。</p>
+        </div>
+      </div>
+
+      <h2 id="faq">よくある質問</h2>
+      <details open>
+        <summary>アカウント登録しなくても使えますか?</summary>
+        <div class="answer">はい。ニックネームだけでゲストとして参加できます。ただし、作品の保存・ギャラリーへの公開・フレンド機能を使うにはアカウント登録(無料)が必要です。</div>
+      </details>
+      <details>
+        <summary>誰かが変な絵を描いてしまったら?</summary>
+        <div class="answer">ルームのホストは参加者ごとの描画の取り消し・退出処理ができます。また、キャンバス右上のメニューから通報も可能です。荒らし対策として「承認制ルーム」も用意しています。</div>
+      </details>
+      <details>
+        <summary>スマホやタブレットでも描けますか?</summary>
+        <div class="answer">描けます。タッチ・スタイラス(Apple Pencil など)の筆圧にも対応予定です。画面が小さい場合、チャットは下からスワイプで呼び出す形になります。</div>
+      </details>
+      <details>
+        <summary>完成した絵はどこに保存されますか?</summary>
+        <div class="answer">ルーム終了時にキャンバスが自動でアーカイブされ、参加者全員のマイページに残ります。ホストが「公開」を選ぶと、みんなのギャラリーにも掲載されます。</div>
+      </details>
+      <details>
+        <summary>レイヤー機能はありますか?</summary>
+        <div class="answer">現在は 1 キャンバス方式です。「自分のレイヤーに描く」モードを開発中で、まもなく提供予定です。</div>
+      </details>
+
+      <h2 id="shortcuts">キーボードショートカット</h2>
+      <table class="shortcut-table">
+        <tr><th>操作</th><th>キー</th></tr>
+        <tr><td>ブラシ</td><td><kbd>B</kbd></td></tr>
+        <tr><td>ペン</td><td><kbd>P</kbd></td></tr>
+        <tr><td>消しゴム</td><td><kbd>E</kbd></td></tr>
+        <tr><td>塗りつぶし</td><td><kbd>G</kbd></td></tr>
+        <tr><td>スポイト</td><td><kbd>I</kbd></td></tr>
+        <tr><td>元に戻す</td><td><kbd>⌘</kbd> + <kbd>Z</kbd></td></tr>
+        <tr><td>やり直す</td><td><kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd></td></tr>
+        <tr><td>チャット送信</td><td><kbd>Enter</kbd>(改行は <kbd>⇧</kbd> + <kbd>Enter</kbd>)</td></tr>
+      </table>
+
+      <h2 id="rules">コミュニティガイドライン</h2>
+      <details>
+        <summary>みんなが気持ちよく描くために</summary>
+        <div class="answer">他の人の描いたものを勝手に消さない・上書きしない、卑わい/攻撃的な表現を描かない、チャットでのハラスメントをしない。違反が続くアカウントには利用制限を行います。</div>
+      </details>
+
+      <div class="contact-band" id="contact">
+        <div class="txt">
+          <b>解決しませんでしたか?</b>
+          <p>お問い合わせフォームから運営チームに直接ご連絡いただけます。通常 2 営業日以内に返信します。</p>
+        </div>
+        <a class="btn primary" href="#">お問い合わせ</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="app-footer">
+  <div class="inner">
+    <a class="brand" href="../landing/"><span class="brand-mark">✎</span>echanotes</a>
+    <div class="links">
+      <a href="./">ヘルプ</a>
+      <a href="#">利用規約</a>
+      <a href="#">プライバシー</a>
+    </div>
+    <span class="copy">© 2026 echanotes</span>
+  </div>
+</footer>
+
+<script>
+  const links = document.querySelectorAll(".help-nav a");
+  links.forEach((a) =>
+    a.addEventListener("click", () => {
+      links.forEach((x) => x.classList.remove("active"));
+      a.classList.add("active");
+    })
+  );
+</script>
+</body>
+</html>

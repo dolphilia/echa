@@ -3,51 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>echanotes — プロトタイプ一覧</title>
+<title>echanotes v2 — プロトタイプ一覧</title>
 <link rel="stylesheet" href="shared/base.css">
 <style>
   main { max-width: 720px; margin: 0 auto; padding: 60px 26px; }
-  h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-  .sub { font-size: 13px; color: var(--text-dim); margin-bottom: 34px; }
-  h2 { font-size: 14px; font-weight: 700; color: var(--text-dim); margin: 30px 0 12px; }
-  .list { display: flex; flex-direction: column; gap: 10px; }
-  .item { display: flex; align-items: center; gap: 16px; padding: 18px 20px; }
+  h1 { font-size: 23px; font-weight: 800; margin-bottom: 6px; }
+  .sub { font-size: 13px; font-weight: 600; color: var(--text-dim); margin-bottom: 34px; }
+  .list { display: flex; flex-direction: column; gap: 12px; }
+  .item { display: flex; align-items: center; gap: 16px; padding: 18px 22px; }
   .item .icon {
-    width: 42px; height: 42px;
-    border-radius: 12px;
+    width: 46px; height: 46px;
+    border-radius: 16px;
     display: grid; place-items: center;
-    font-size: 19px;
-    background: var(--accent-soft);
+    font-size: 20px;
+    background: var(--bg-soft);
     flex-shrink: 0;
   }
+  .item:nth-child(1) .icon { background: var(--anzu-soft); }
+  .item:nth-child(2) .icon { background: var(--sky-soft); }
+  .item:nth-child(3) .icon { background: var(--purin-soft); }
+  .item:nth-child(4) .icon { background: var(--azuki-soft); }
+  .item:nth-child(5) .icon { background: var(--primary-soft); }
   .item .txt { flex: 1; }
-  .item b { font-size: 14.5px; }
-  .item span { display: block; margin-top: 3px; font-size: 12px; color: var(--text-dim); }
-  .item .arrow { color: var(--text-faint); }
-  .ver {
-    font-size: 10.5px; font-weight: 700;
-    border-radius: 999px; padding: 2px 9px; margin-left: 8px;
-  }
-  .ver.v1 { background: var(--accent-soft); color: var(--accent); }
-  .ver.v2 { background: rgba(85, 153, 122, 0.18); color: #6fbf98; }
+  .item b { font-size: 15px; font-weight: 800; }
+  .item span { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--text-dim); }
+  .item .arrow { color: var(--text-faint); font-weight: 800; }
 </style>
 </head>
 <body>
 <main>
-  <div class="brand" style="margin-bottom:28px"><span class="brand-mark">✎</span>echanotes</div>
-  <h1>プロトタイプ一覧</h1>
-  <p class="sub">お絵描きチャットサービスの画面モックアップ集(調査・構想段階)。</p>
-
-  <h2>デザイン案 <span class="ver v2">v2 — ライトトーン(最新)</span></h2>
-  <div class="list">
-    <a class="card item" href="v2/">
-      <span class="icon">🍀</span>
-      <span class="txt"><b>v2 プロトタイプ一覧へ</b><span>白〜薄灰の無彩色ベース+緑の主要アクション/丸ゴシック/太めの線と角丸(全7ページ)</span></span>
-      <span class="arrow">→</span>
-    </a>
-  </div>
-
-  <h2>デザイン案 <span class="ver v1">v1 — ダーク・クールトーン</span></h2>
+  <div class="brand" style="margin-bottom:28px"><span class="brand-mark">✎</span>echanotes <span style="font-size:11px;font-weight:800;color:var(--anzu-deep);background:var(--anzu-soft);border-radius:999px;padding:3px 10px;margin-left:6px">v2 案</span></div>
+  <h1>プロトタイプ一覧(v2)</h1>
+  <p class="sub">白〜薄灰の無彩色ベース。主要アクションは緑、レトロ喫茶の差し色はサブに。紙色は「描く場所」だけに。</p>
   <div class="list">
     <a class="card item" href="landing/">
       <span class="icon">🏠</span>

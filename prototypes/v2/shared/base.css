@@ -1,0 +1,259 @@
+/* ═══════════════════════════════════════════════════
+   echanotes v2 — デザイントークン & 共通コンポーネント
+   方向性:
+   ・ベースは白〜薄い灰色の無彩色。色は「理由があるとき」だけ使う
+   ・主要アクションは緑。あんず等のレトロ喫茶色はサブの差し色
+   ・紙色ベージュ(--paper)は「描く場所」など、ここぞの箇所だけに使う
+   ・丸ゴシック、太めの線、大きめの角丸、控えめな遊び心
+   ═══════════════════════════════════════════════════ */
+:root {
+  /* base — 無彩色 */
+  --bg: #f5f5f4;
+  --bg-soft: #ebebe9;
+  --surface: #ffffff;
+  --surface-dim: #fafaf9;
+  --border: #e6e6e3;
+  --border-strong: #d5d5d0;
+
+  /* text — 真っ黒ではない濃灰 */
+  --text: #3e3e3a;
+  --text-dim: #8a8a83;
+  --text-faint: #b6b6ae;
+
+  /* 紙色 — ここぞというときだけ */
+  --paper: #fbf8ef;
+
+  /* primary — 緑 */
+  --primary: #55997a;
+  --primary-deep: #427e63;
+  --primary-soft: #e4efe9;
+
+  /* sub accents — レトロ喫茶の差し色(控えめに) */
+  --anzu: #e8845e;
+  --anzu-deep: #d16b45;
+  --anzu-soft: #fbe9e0;
+  --sky: #7ba6c9;
+  --sky-soft: #e8eef4;
+  --purin: #dfa94f;
+  --purin-soft: #f8efdd;
+  --azuki: #d38b8b;
+  --azuki-soft: #f6e9e9;
+  --sumire: #a08cc4;
+  --coffee: #77604e;
+
+  --radius: 18px;
+  --radius-sm: 12px;
+  --shadow-soft: 0 2px 6px rgba(55, 55, 50, 0.05), 0 8px 24px rgba(55, 55, 50, 0.07);
+  --shadow-pop: 0 4px 10px rgba(55, 55, 50, 0.07), 0 14px 36px rgba(55, 55, 50, 0.11);
+
+  --font: "Hiragino Maru Gothic ProN", "Hiragino Maru Gothic Pro",
+          "Zen Maru Gothic", "BIZ UDGothic", "Hiragino Sans", "Noto Sans JP",
+          system-ui, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  line-height: 1.7;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; border: none; background: none; color: inherit; cursor: pointer; }
+img { max-width: 100%; display: block; }
+
+/* ── Header ── */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 62px;
+  padding: 0 26px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1.5px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.brand-mark {
+  width: 30px; height: 30px;
+  border-radius: 10px;
+  background: var(--primary);
+  box-shadow: 0 2.5px 0 var(--primary-deep);
+  display: grid; place-items: center;
+  font-size: 15px;
+  color: #fff;
+}
+
+.app-nav { display: flex; gap: 4px; }
+.app-nav a {
+  padding: 8px 15px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  transition: background 0.15s, color 0.15s;
+}
+.app-nav a:hover { background: var(--bg-soft); color: var(--text); }
+.app-nav a.active { background: var(--primary-soft); color: var(--primary-deep); font-weight: 700; }
+
+.header-spacer { flex: 1; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+/* ── Avatar ── */
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.avatar.sm { width: 24px; height: 24px; font-size: 10px; }
+.avatar-stack { display: flex; }
+.avatar-stack .avatar { border: 2.5px solid var(--surface); margin-left: -8px; }
+.avatar-stack .avatar:first-child { margin-left: 0; }
+
+/* ── Buttons — 押すと沈む ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: transform 0.08s, box-shadow 0.08s, background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.btn.primary {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--primary-deep);
+}
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.primary:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--primary-deep); }
+.btn.secondary {
+  background: var(--anzu);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--anzu-deep);
+}
+.btn.secondary:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--anzu-deep); }
+.btn.ghost {
+  background: var(--surface);
+  color: var(--text);
+  border: 1.5px solid var(--border-strong);
+  box-shadow: 0 2.5px 0 var(--border-strong);
+}
+.btn.ghost:hover { background: var(--surface-dim); }
+.btn.ghost:active { transform: translateY(2px); box-shadow: 0 0.5px 0 var(--border-strong); }
+.btn.subtle { color: var(--text-dim); }
+.btn.subtle:hover { background: var(--bg-soft); color: var(--text); }
+.btn.lg { height: 48px; padding: 0 28px; font-size: 15px; }
+
+.icon-btn {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  color: var(--text-dim);
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: var(--bg-soft); color: var(--text); }
+
+/* ── Badges / tags ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge.live { background: var(--primary-soft); color: var(--primary-deep); }
+.badge.full { background: var(--azuki-soft); color: #b96a6a; }
+.badge.soon { background: var(--purin-soft); color: #b5852f; }
+.badge.neutral { background: var(--bg-soft); color: var(--text-dim); }
+
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: 0.4; } }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+}
+a.card:hover, .card.hoverable:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-pop);
+}
+
+/* ── Layout ── */
+.container { max-width: 1120px; margin: 0 auto; padding: 0 26px; }
+
+.page-head { margin: 36px 0 24px; }
+.page-head h1 { font-size: 23px; font-weight: 800; letter-spacing: 0.01em; }
+.page-head p { margin-top: 5px; font-size: 13px; color: var(--text-dim); }
+
+/* ── Footer ── */
+.app-footer {
+  margin-top: 84px;
+  border-top: 1.5px solid var(--border);
+  padding: 30px 26px 42px;
+  background: var(--surface-dim);
+}
+.app-footer .inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+.app-footer .links { display: flex; gap: 20px; flex: 1; justify-content: flex-end; }
+.app-footer a { font-size: 12px; font-weight: 600; color: var(--text-faint); }
+.app-footer a:hover { color: var(--text-dim); }
+.app-footer .copy { font-size: 12px; color: var(--text-faint); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
