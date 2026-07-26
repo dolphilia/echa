@@ -3,9 +3,119 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ルーム一覧 — echanotes</title>
+<title>ルームを探す — echanotes</title>
 <link rel="stylesheet" href="../shared/base.css">
 <style>
+  [hidden] { display: none !important; }
+
+  .home {
+    padding-top: 34px;
+  }
+  .home-intro {
+    display: flex;
+    align-items: flex-end;
+    gap: 28px;
+    margin-bottom: 28px;
+  }
+  .home-intro .copy { flex: 1; min-width: 0; }
+  .live-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 28px;
+    padding: 0 12px;
+    margin-bottom: 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-dim);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .home-intro h1 {
+    font-size: clamp(24px, 3vw, 32px);
+    line-height: 1.35;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+  .home-intro p {
+    margin-top: 8px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .home-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    margin-bottom: 14px;
+  }
+  .section-heading h2 { font-size: 18px; font-weight: 800; }
+  .section-heading p { font-size: 12px; color: var(--text-dim); }
+  .section-heading .spacer { flex: 1; }
+
+  .recent-section {
+    margin-bottom: 32px;
+  }
+  .recent-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .recent-room {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    padding: 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .recent-room:hover { border-color: var(--border-strong); box-shadow: var(--shadow-soft); }
+  .recent-thumb {
+    position: relative;
+    width: 88px;
+    aspect-ratio: 16 / 10;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 11px;
+    background: var(--paper);
+    border: 1px solid var(--border);
+  }
+  .recent-thumb svg { width: 100%; height: 100%; }
+  .recent-room .info { min-width: 0; flex: 1; }
+  .recent-room h3 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13.5px;
+    font-weight: 800;
+  }
+  .recent-room p { margin-top: 2px; font-size: 11px; color: var(--text-dim); }
+  .recent-room .return {
+    flex-shrink: 0;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--primary-deep);
+  }
+
+  .rooms-section {
+    scroll-margin-top: 82px;
+  }
+  .rooms-count {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-faint);
+  }
+
   .toolbar {
     display: flex;
     align-items: center;
@@ -142,6 +252,79 @@
     color: var(--text-dim);
   }
 
+  .guest-about {
+    margin-top: 46px;
+    padding: 26px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+  }
+  .guest-about-head {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .guest-about-head h2 { font-size: 17px; font-weight: 800; }
+  .guest-about-head p { margin-top: 3px; font-size: 12px; color: var(--text-dim); }
+  .guest-about-head .spacer { flex: 1; }
+  .guest-points {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1.5px solid var(--border);
+  }
+  .guest-point {
+    display: flex;
+    gap: 11px;
+    padding: 18px 20px 2px 0;
+  }
+  .guest-point + .guest-point {
+    padding-left: 20px;
+    border-left: 1.5px solid var(--border);
+  }
+  .guest-point .number {
+    display: grid;
+    place-items: center;
+    width: 25px;
+    height: 25px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary-soft);
+    color: var(--primary-deep);
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .guest-point h3 { font-size: 12.5px; font-weight: 800; }
+  .guest-point p { margin-top: 3px; font-size: 11px; line-height: 1.8; color: var(--text-dim); }
+
+  @media (max-width: 780px) {
+    .app-header { gap: 10px; padding: 0 16px; }
+    .app-nav { display: none; }
+    .home { padding-top: 24px; }
+    .home-intro { align-items: flex-start; flex-direction: column; gap: 16px; }
+    .home-actions { width: 100%; }
+    .home-actions .btn { flex: 1; }
+    .recent-grid { grid-template-columns: 1fr; }
+    .guest-about-head { align-items: flex-start; flex-direction: column; }
+    .guest-points { grid-template-columns: 1fr; }
+    .guest-point { padding: 15px 0; }
+    .guest-point + .guest-point { padding-left: 0; border-left: 0; border-top: 1.5px solid var(--border); }
+  }
+
+  @media (max-width: 560px) {
+    .container { padding-left: 16px; padding-right: 16px; }
+    .header-right .btn.subtle { display: none; }
+    .header-right .btn { height: 36px; padding: 0 14px; font-size: 12px; }
+    .filter-tabs { width: 100%; overflow-x: auto; }
+    .filter-tabs button { flex: 1; min-width: max-content; padding: 0 12px; }
+    .search { max-width: none; width: 100%; }
+    select.sort { flex: 1; }
+    .room-grid { grid-template-columns: 1fr; gap: 14px; }
+    .section-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+    .recent-room .return { display: none; }
+    .guest-about { padding: 20px; }
+  }
+
   /* modal */
   .modal-overlay {
     position: fixed;
@@ -216,17 +399,21 @@
   }
 </style>
 </head>
-<body>
+<body data-auth="guest">
 
 <header class="app-header">
-  <a class="brand" href="../landing/"><span class="brand-mark">✎</span>echanotes</a>
+  <a class="brand" href="./"><span class="brand-mark">✎</span>echanotes</a>
   <nav class="app-nav">
-    <a class="active" href="./">ルーム一覧</a>
+    <a class="active" href="./">ルーム</a>
     <a href="../gallery/">ギャラリー</a>
     <a href="../help/">ヘルプ</a>
   </nav>
   <div class="header-spacer"></div>
-  <div class="header-right">
+  <div class="header-right" data-auth-only="guest">
+    <a class="btn subtle" href="../login/">ログイン</a>
+    <a class="btn primary" href="../login/">アカウントを作る</a>
+  </div>
+  <div class="header-right" data-auth-only="user" hidden>
     <button class="icon-btn" title="お知らせ">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
     </button>
@@ -234,24 +421,70 @@
   </div>
 </header>
 
-<main class="container">
-  <div class="page-head" style="display:flex;align-items:flex-end;gap:20px;">
-    <div style="flex:1">
-      <h1>開催中のルーム</h1>
-      <p>いま <b style="color:var(--primary-deep)">128 ルーム・542 人</b>が描いています</p>
+<main class="container home">
+  <section class="home-intro" aria-label="ホーム">
+    <div class="copy">
+      <span class="live-summary"><span class="live-dot"></span>128ルーム・542人が参加中</span>
+      <h1 id="homeTitle" data-auth-only="guest">ルームを探す</h1>
+      <h1 data-auth-only="user" hidden>おかえりなさい、はんざわさん。</h1>
+      <p data-auth-only="guest">公開ルームは登録なしでも参加できます。ニックネームを決めたら、すぐにキャンバスへ。</p>
+      <p data-auth-only="user" hidden>参加中のキャンバスへ戻るか、いま開催中のルームをのぞいてみましょう。</p>
     </div>
-    <button class="btn primary" id="openCreate">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-      ルームを作る
-    </button>
-  </div>
+    <div class="home-actions">
+      <a class="btn primary" href="#rooms" data-auth-only="guest">開催中のルームを見る</a>
+      <button class="btn primary" id="openCreate" data-auth-only="user" hidden>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        ルームを作る
+      </button>
+    </div>
+  </section>
 
+  <section class="recent-section" data-auth-only="user" hidden aria-labelledby="recentTitle">
+    <div class="section-heading">
+      <div>
+        <h2 id="recentTitle">参加中・最近見たルーム</h2>
+        <p>前回の続きからすぐに再開できます</p>
+      </div>
+    </div>
+    <div class="recent-grid">
+      <a class="recent-room" href="../drawing-room/">
+        <div class="recent-thumb">
+          <svg viewBox="0 0 160 100" aria-hidden="true">
+            <circle cx="122" cy="26" r="3" fill="#d3684f"/>
+            <path d="M24 64 Q36 44 58 51 M27 64v24h40V64 M84 82q20-19 39 0" fill="none" stroke="#77604e" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="info"><h3>らくがきルーム #12</h3><p>参加中 · 4人で描画中</p></div>
+        <span class="return">戻る →</span>
+      </a>
+      <a class="recent-room" href="../drawing-room/">
+        <div class="recent-thumb">
+          <svg viewBox="0 0 160 100" aria-hidden="true">
+            <path d="M20 78Q47 29 72 69Q95 20 140 73" fill="none" stroke="#64a88b" stroke-width="3.5" stroke-linecap="round"/>
+            <circle cx="126" cy="25" r="9" fill="none" stroke="#dfa94f" stroke-width="3"/>
+          </svg>
+        </div>
+        <div class="info"><h3>風景スケッチ部</h3><p>最近見た · 3人で描画中</p></div>
+        <span class="return">見る →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="rooms-section" id="rooms" aria-labelledby="roomsTitle">
+  <div class="section-heading">
+    <div>
+      <h2 id="roomsTitle">開催中のルーム</h2>
+      <p>参加したいルームや、気になるキャンバスを探せます</p>
+    </div>
+    <span class="spacer"></span>
+    <span class="rooms-count">128件</span>
+  </div>
   <div class="toolbar">
     <div class="filter-tabs">
       <button class="active">すべて</button>
       <button>参加できる</button>
       <button>観覧OK</button>
-      <button>フレンド</button>
+      <button data-auth-only="user" hidden>フレンド</button>
     </div>
     <div class="search">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -460,11 +693,37 @@
     </a>
 
   </div>
+  </section>
+
+  <section class="guest-about" data-auth-only="guest" aria-labelledby="guestAboutTitle">
+    <div class="guest-about-head">
+      <div>
+        <h2 id="guestAboutTitle">はじめてでも、そのまま参加できます</h2>
+        <p>echanotesは、描きながら話せる共同キャンバスです。</p>
+      </div>
+      <span class="spacer"></span>
+      <a class="btn ghost" href="../login/">アカウントについて</a>
+    </div>
+    <div class="guest-points">
+      <div class="guest-point">
+        <span class="number">1</span>
+        <div><h3>ルームを選ぶ</h3><p>開催中のキャンバスから、気になるお題や雰囲気を選びます。</p></div>
+      </div>
+      <div class="guest-point">
+        <span class="number">2</span>
+        <div><h3>ニックネームを決める</h3><p>公開ルームへのゲスト参加なら、アカウント登録は不要です。</p></div>
+      </div>
+      <div class="guest-point">
+        <span class="number">3</span>
+        <div><h3>描いて、話す</h3><p>同じキャンバスで描きながら、チャットやスタンプで交流できます。</p></div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="app-footer">
   <div class="inner">
-    <a class="brand" href="../landing/"><span class="brand-mark">✎</span>echanotes</a>
+    <a class="brand" href="./"><span class="brand-mark">✎</span>echanotes</a>
     <div class="links">
       <a href="../help/">ヘルプ</a>
       <a href="#">利用規約</a>
@@ -475,7 +734,7 @@
 </footer>
 
 <!-- ═══ Create-room modal ═══ -->
-<div class="modal-overlay" id="createModal">
+<div class="modal-overlay" id="createModal" aria-hidden="true" inert>
   <div class="modal">
     <h2>新しいルームを作る</h2>
     <div class="field">
@@ -505,11 +764,82 @@
   </div>
 </div>
 
+<!-- ═══ Guest join modal ═══ -->
+<div class="modal-overlay" id="guestModal" aria-hidden="true" inert>
+  <div class="modal">
+    <h2>ゲストとして参加する</h2>
+    <div class="field">
+      <label for="guestName">ニックネーム</label>
+      <input id="guestName" type="text" placeholder="呼ばれたい名前" value="おえかきゲスト">
+    </div>
+    <div class="field">
+      <label>参加カラー</label>
+      <div class="seg" data-seg aria-label="参加カラー">
+        <button class="on">みどり</button><button>あんず</button><button>そら</button><button>あずき</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn subtle" id="closeGuest">キャンセル</button>
+      <a class="btn primary" href="../drawing-room/">この名前で参加</a>
+    </div>
+  </div>
+</div>
+
 <script>
+  const authState = new URLSearchParams(location.search).get("auth") === "user"
+    ? "user"
+    : "guest";
+  document.body.dataset.auth = authState;
+  document.querySelectorAll("[data-auth-only]").forEach((element) => {
+    element.hidden = element.dataset.authOnly !== authState;
+  });
+  document.querySelectorAll(".join:not(.watch)").forEach((label) => {
+    if (label.textContent.trim() === "参加する") {
+      label.textContent = authState === "guest" ? "ゲスト参加" : "参加する";
+    }
+  });
+
+  function setModalOpen(modal, open) {
+    modal.classList.toggle("open", open);
+    modal.setAttribute("aria-hidden", String(!open));
+    if (open) {
+      modal.removeAttribute("inert");
+    } else {
+      modal.setAttribute("inert", "");
+    }
+  }
+
   const overlay = document.getElementById("createModal");
-  document.getElementById("openCreate").addEventListener("click", () => overlay.classList.add("open"));
-  document.getElementById("closeCreate").addEventListener("click", () => overlay.classList.remove("open"));
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+  document.getElementById("openCreate").addEventListener("click", () => {
+    setModalOpen(overlay, true);
+    requestAnimationFrame(() => overlay.querySelector("input").focus());
+  });
+  document.getElementById("closeCreate").addEventListener("click", () => setModalOpen(overlay, false));
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) setModalOpen(overlay, false);
+  });
+
+  const guestOverlay = document.getElementById("guestModal");
+  document.getElementById("closeGuest").addEventListener("click", () => setModalOpen(guestOverlay, false));
+  guestOverlay.addEventListener("click", (e) => {
+    if (e.target === guestOverlay) setModalOpen(guestOverlay, false);
+  });
+  if (authState === "guest") {
+    document.querySelectorAll(".room-card").forEach((card) => {
+      if (card.querySelector(".join.watch")) return;
+      card.addEventListener("click", (e) => {
+        e.preventDefault();
+        setModalOpen(guestOverlay, true);
+        requestAnimationFrame(() => document.getElementById("guestName").focus());
+      });
+    });
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    setModalOpen(overlay, false);
+    setModalOpen(guestOverlay, false);
+  });
 
   document.querySelectorAll("[data-seg]").forEach((seg) => {
     seg.querySelectorAll("button").forEach((b) =>

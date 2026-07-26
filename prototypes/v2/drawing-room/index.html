@@ -10,7 +10,10 @@
 
   .app {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 58px 1fr;
+    width: 100%;
+    min-width: 0;
     height: 100vh;
   }
 
@@ -19,6 +22,8 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+    overflow: hidden;
     padding: 0 16px;
     background: var(--surface);
     border-bottom: 1.5px solid var(--border);
@@ -38,7 +43,13 @@
   .topbar .btn { height: 36px; padding: 0 16px; font-size: 12.5px; }
 
   /* ── Main ── */
-  .main { position: relative; display: flex; min-height: 0; }
+  .main {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
 
   .workspace {
     position: relative;
@@ -54,16 +65,104 @@
 
   .artboard-wrap {
     position: relative;
+    transform-origin: center;
     filter: drop-shadow(0 14px 30px rgba(55, 55, 50, 0.18)) drop-shadow(0 3px 8px rgba(55, 55, 50, 0.1));
   }
-  #artboard {
+  #artboard,
+  #strokePreview {
     display: block;
-    background: var(--paper);
     border-radius: 10px;
-    touch-action: none;
-    cursor: crosshair;
     width: 960px;
     height: 640px;
+  }
+  #artboard {
+    background: #fff;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  #strokePreview {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .workspace.eyedropper-active #artboard { cursor: none; }
+  .workspace.zoom-active #artboard { cursor: zoom-in; }
+  .workspace.zoom-scrubbing #artboard { cursor: ew-resize; }
+  .workspace.pan-ready,
+  .workspace.pan-ready #artboard { cursor: grab; }
+  .workspace.panning,
+  .workspace.panning #artboard { cursor: grabbing; }
+
+  .eyedropper-cursor {
+    --sampled-color: #fff;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 120px;
+    height: 120px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 24;
+    filter: drop-shadow(0 4px 7px rgba(55, 55, 50, 0.32));
+  }
+  .eyedropper-cursor canvas {
+    position: absolute;
+    inset: 18px;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgba(55, 55, 50, 0.3);
+    image-rendering: pixelated;
+  }
+  .eyedropper-ring {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+  }
+  .eyedropper-ring path {
+    fill: none;
+    stroke-width: 18;
+    stroke-linecap: butt;
+  }
+  .eyedropper-ring .ring-outline {
+    fill: none;
+    stroke: rgba(55, 55, 50, 0.55);
+    stroke-width: 20;
+  }
+  .eyedropper-ring .sampled-half { stroke: var(--sampled-color); }
+  .eyedropper-ring .current-half { stroke: var(--current-color); }
+  .eyedropper-reticle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    transform: translate(-50%, -50%);
+  }
+  .eyedropper-reticle::before,
+  .eyedropper-reticle::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    background: #161713;
+    box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.9);
+    transform: translate(-50%, -50%);
+  }
+  .eyedropper-reticle::before { width: 16px; height: 1px; }
+  .eyedropper-reticle::after { width: 1px; height: 16px; }
+  .eyedropper-reticle i {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid #161713;
+    transform: translate(-50%, -50%);
   }
 
   .remote-cursor {
@@ -93,21 +192,20 @@
   .tool-rail {
     position: absolute;
     left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 16px;
     display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 8px;
+    flex-direction: row;
+    gap: 2px;
+    padding: 5px;
     background: var(--surface);
     border: 1.5px solid var(--border);
-    border-radius: 20px;
+    border-radius: 18px;
     box-shadow: var(--shadow-pop);
     z-index: 20;
   }
   .tool {
-    width: 42px; height: 42px;
-    border-radius: 14px;
+    width: 36px; height: 36px;
+    border-radius: 12px;
     display: grid; place-items: center;
     color: var(--text-dim);
     transition: background 0.15s, color 0.15s;
@@ -118,18 +216,24 @@
   .tool.active::before {
     content: "";
     position: absolute;
-    left: -8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px; height: 18px;
+    left: 50%;
+    bottom: -5px;
+    transform: translateX(-50%);
+    width: 16px; height: 3px;
     border-radius: 4px;
     background: var(--primary);
   }
-  .rail-divider { height: 1.5px; margin: 4px 7px; background: var(--border); border-radius: 2px; }
+  .rail-divider {
+    width: 1.5px;
+    height: 20px;
+    margin: 8px 3px;
+    background: var(--border);
+    border-radius: 2px;
+  }
 
-  .color-chip { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; }
+  .color-chip { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; }
   .color-chip .swatch {
-    width: 26px; height: 26px;
+    width: 22px; height: 22px;
     border-radius: 50%;
     background: var(--current-color, #574f43);
     border: 3px solid #fff;
@@ -140,51 +244,172 @@
   /* ── Sliders ── */
   .slider-dock {
     position: absolute;
-    left: 84px;
+    left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 19;
-  }
-  .v-slider {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    padding: 13px 7px;
+    padding: 9px 5px;
     background: var(--surface);
     border: 1.5px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-pop);
+    z-index: 19;
+  }
+  .v-slider {
+    --slider-thumb-offset: 13px;
+    position: relative;
+    width: 32px;
+    height: 112px;
+    transition: opacity 0.15s;
+  }
+  .v-slider::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 4px;
+    bottom: 4px;
+    width: 6px;
     border-radius: 999px;
-    box-shadow: var(--shadow-soft);
+    background: #cfd1ce;
+    transform: translateX(-50%);
+  }
+  .v-slider::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: var(--slider-thumb-offset);
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #b8bab5;
+    border-radius: 50%;
+    background: #f7f7f5;
+    box-shadow:
+      0 2px 5px rgba(55, 55, 50, 0.17),
+      0 0 0 1.5px rgba(255, 255, 255, 0.65);
+    transform: translate(-50%, 50%);
+    transition: bottom 0.04s linear, box-shadow 0.15s;
+    pointer-events: none;
+  }
+  .v-slider:focus-within::after {
+    border-color: #a7aaa4;
+    box-shadow:
+      0 2px 6px rgba(55, 55, 50, 0.17),
+      0 0 0 2.5px rgba(255, 255, 255, 0.9);
   }
   .v-slider input[type="range"] {
+    position: absolute;
+    inset: 0;
     writing-mode: vertical-lr;
     direction: rtl;
-    width: 20px;
-    height: 128px;
-    accent-color: var(--primary);
+    width: 32px;
+    height: 112px;
+    margin: 0;
+    opacity: 0;
     cursor: pointer;
+    z-index: 1;
   }
-  .v-slider .slider-label {
-    font-size: 9px; font-weight: 800; letter-spacing: 0.05em;
-    color: var(--text-faint); writing-mode: vertical-rl;
+  .v-slider.disabled { opacity: 0.35; }
+  .v-slider.disabled input { cursor: not-allowed; }
+  .slider-dock .tool.active::before {
+    left: -8px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 18px;
   }
-  .v-slider .value {
-    font-size: 10.5px; font-weight: 800; color: var(--text-dim);
-    font-variant-numeric: tabular-nums;
+  .slider-dock .tool {
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border-color: transparent;
   }
+  .slider-dock .tool:hover,
+  .slider-dock .tool.active { background: transparent; }
 
-  /* ── Palette popover ── */
-  .palette {
+  .slider-preview {
     position: absolute;
-    left: 84px;
-    bottom: 26px;
-    width: 224px;
-    padding: 17px;
+    width: 156px;
+    padding: 12px;
     background: var(--surface);
     border: 1.5px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 18px;
+    box-shadow: var(--shadow-pop);
+    pointer-events: none;
+    z-index: 23;
+  }
+  .slider-preview::before {
+    content: "";
+    position: absolute;
+    left: -7px;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    background: var(--surface);
+    border-left: 1.5px solid var(--border);
+    border-bottom: 1.5px solid var(--border);
+    transform: translateY(-50%) rotate(45deg);
+  }
+  .slider-preview-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 9px;
+  }
+  .slider-preview-header strong {
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .slider-preview-header span {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .slider-preview-stage {
+    height: 104px;
+    border-radius: 13px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .slider-preview-stage.opacity {
+    background-color: #fff;
+    background-image:
+      linear-gradient(45deg, var(--border) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--border) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--border) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--border) 75%);
+    background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+    background-size: 12px 12px;
+  }
+  .slider-preview-dot {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--current-color);
+    box-shadow: 0 2px 8px rgba(55, 55, 50, 0.25);
+  }
+
+  /* ── Color dialog ── */
+  .palette {
+    --picker-hue: 0;
+    position: fixed;
+    left: 84px;
+    top: 146px;
+    width: 292px;
+    max-width: calc(100% - 100px);
+    max-height: calc(100vh - 94px);
+    padding: 13px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
     box-shadow: var(--shadow-pop);
     z-index: 25;
     opacity: 0;
@@ -193,39 +418,262 @@
     transition: opacity 0.18s, transform 0.18s;
   }
   .palette.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
-  .palette h3 {
-    font-size: 11px; font-weight: 800; color: var(--text-faint);
-    letter-spacing: 0.08em; margin-bottom: 11px;
+  .picker-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 13px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
   }
-  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-  .swatches button {
+  .palette.dragging .picker-header { cursor: grabbing; }
+  .picker-header h3 { font-size: 16px; font-weight: 800; }
+  .picker-current {
+    width: 20px;
+    height: 20px;
+    margin-left: auto;
+    border-radius: 50%;
+    background: var(--current-color);
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1.5px var(--border-strong);
+  }
+  .picker-header .icon-btn { width: 28px; height: 28px; }
+  .picker-panel { display: none; min-height: 252px; }
+  .picker-panel.active { display: flex; }
+
+  /* Circle picker */
+  .circle-panel { align-items: center; justify-content: center; }
+  .color-wheel {
+    position: relative;
+    width: min(238px, 100%);
     aspect-ratio: 1;
     border-radius: 50%;
-    border: 2.5px solid transparent;
-    transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+    background: conic-gradient(from 90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+    box-shadow: inset 0 0 0 1px rgba(55, 55, 50, 0.12);
+    cursor: crosshair;
+    touch-action: none;
   }
-  .swatches button:hover { transform: scale(1.15); }
-  .swatches button.selected {
-    border-color: #fff;
-    box-shadow: 0 0 0 2.5px var(--primary);
+  .color-wheel::before {
+    content: "";
+    position: absolute;
+    inset: 25px;
+    border-radius: 50%;
+    background: var(--surface);
   }
-  .palette .custom-row {
-    display: flex; align-items: center; gap: 10px;
-    margin-top: 14px; padding-top: 13px;
+  .circle-sv {
+    position: absolute;
+    inset: 56px;
+    z-index: 1;
+    border-radius: 3px;
+    background:
+      linear-gradient(to top, #000, transparent),
+      linear-gradient(to right, #fff, hsl(var(--picker-hue), 100%, 50%));
+    box-shadow: 0 2px 8px rgba(55, 55, 50, 0.28);
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .picker-handle {
+    position: absolute;
+    width: 17px;
+    height: 17px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 5px rgba(30, 30, 26, 0.5), 0 0 0 1px rgba(30, 30, 26, 0.35);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .hue-handle {
+    z-index: 2;
+    width: 19px;
+    height: 19px;
+    background: hsl(var(--picker-hue), 100%, 50%);
+  }
+
+  /* Square picker */
+  .square-panel { flex-direction: column; justify-content: center; gap: 16px; }
+  .square-sv {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 14px;
+    background:
+      linear-gradient(to top, #000, transparent),
+      linear-gradient(to right, #fff, hsl(var(--picker-hue), 100%, 50%));
+    box-shadow: inset 0 0 0 1px rgba(55, 55, 50, 0.15);
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .hue-range {
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+    cursor: pointer;
+  }
+  .hue-range::-webkit-slider-thumb,
+  .channel-row input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--primary);
+    box-shadow: 0 1px 4px rgba(55, 55, 50, 0.25);
+  }
+
+  /* Slider picker */
+  .sliders-panel { flex-direction: column; gap: 10px; }
+  .picker-mode-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 3px;
+    background: var(--bg);
+    border-radius: 12px;
+  }
+  .picker-mode-tabs button {
+    height: 34px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--text-dim);
+  }
+  .picker-mode-tabs button.active {
+    color: var(--primary-deep);
+    background: var(--primary-soft);
+    box-shadow: 0 1px 3px rgba(55, 55, 50, 0.1);
+  }
+  .channel-group {
+    display: none;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: 14px;
+  }
+  .channel-group.active { display: flex; }
+  .channel-row {
+    display: grid;
+    grid-template-columns: 18px 1fr 42px;
+    align-items: center;
+    gap: 9px;
+    min-height: 33px;
+  }
+  .channel-row label { font-size: 12px; font-weight: 800; color: var(--text-dim); }
+  .channel-row output {
+    text-align: right;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .channel-row input[type="range"] {
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--border-strong);
+    cursor: pointer;
+  }
+  #hsbHue { background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  #hsbSaturation { background: linear-gradient(to right, #fff, hsl(var(--picker-hue), 100%, 50%)); }
+  #hsbBrightness { background: linear-gradient(to right, #000, hsl(var(--picker-hue), 100%, 50%)); }
+  #rgbRed { background: linear-gradient(to right, #000, #f00); }
+  #rgbGreen { background: linear-gradient(to right, #000, #0f0); }
+  #rgbBlue { background: linear-gradient(to right, #000, #00f); }
+  .hex-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: 14px;
+  }
+  .hex-row label { font-size: 12px; font-weight: 800; color: var(--text-dim); }
+  .hex-row input {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    padding: 0 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    font: 800 12px/1 inherit;
+    text-transform: uppercase;
+    outline: none;
+  }
+  .hex-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+  /* Saved palette */
+  .saved-panel { flex-direction: column; gap: 10px; }
+  .saved-palette-title {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-faint);
+    letter-spacing: 0.06em;
+  }
+  .saved-swatches {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    overflow: hidden;
+    border: 1.5px solid var(--border);
+    border-radius: 15px;
+  }
+  .saved-swatches button {
+    aspect-ratio: 1;
+    border-radius: 0;
+    position: relative;
+  }
+  .saved-swatches button:hover { z-index: 1; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.8); }
+  .saved-swatches button.selected::after {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1.5px rgba(55, 55, 50, 0.45);
+  }
+
+  /* Picker type tabs */
+  .picker-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+    margin-top: 12px;
+    padding-top: 11px;
     border-top: 1.5px solid var(--border);
   }
-  .palette input[type="color"] {
-    width: 30px; height: 30px; border: none; border-radius: 9px;
-    background: none; cursor: pointer;
+  .picker-tabs button {
+    height: 38px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    color: var(--text-faint);
   }
-  .palette .custom-row span { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+  .picker-tabs button:hover { background: var(--bg); color: var(--text-dim); }
+  .picker-tabs button.active { color: var(--primary-deep); background: var(--primary-soft); }
+  .picker-tabs svg { width: 21px; height: 21px; }
+
+  @media (max-width: 560px) {
+    .palette {
+      left: 70px;
+      width: 276px;
+      max-width: calc(100% - 82px);
+    }
+    .picker-panel { min-height: 238px; }
+    .circle-sv { inset: 54px; }
+  }
 
   /* ── Zoom ── */
   .zoom-dock {
     position: absolute;
     bottom: 20px;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, 8px);
     display: flex;
     align-items: center;
     gap: 2px;
@@ -234,7 +682,20 @@
     border: 1.5px solid var(--border);
     border-radius: 999px;
     box-shadow: var(--shadow-soft);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.16s ease,
+      visibility 0.16s ease,
+      transform 0.16s ease;
     z-index: 18;
+  }
+  .zoom-dock.visible {
+    transform: translate(-50%, 0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
   .zoom-dock .icon-btn { width: 30px; height: 30px; border-radius: 999px; }
   .zoom-dock .zoom-value {
@@ -246,6 +707,8 @@
   /* ── Chat ── */
   .chat {
     width: 320px;
+    max-width: 100%;
+    min-width: 0;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -461,10 +924,21 @@
 
       <div class="artboard-wrap" id="artboardWrap">
         <canvas id="artboard" width="960" height="640"></canvas>
+        <canvas id="strokePreview" width="960" height="640" aria-hidden="true"></canvas>
         <div class="remote-cursor" id="remoteCursor" style="transform:translate(620px,180px)">
           <div class="dot" style="background:#64a88b;"></div>
           <div class="tag" style="background:#64a88b;">そらまめ</div>
         </div>
+      </div>
+
+      <div class="eyedropper-cursor" id="eyedropperCursor" aria-hidden="true" hidden>
+        <canvas id="eyedropperPreview" width="84" height="84"></canvas>
+        <svg class="eyedropper-ring" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="ring-outline" cx="60" cy="60" r="50"/>
+          <path class="sampled-half" d="M10 60 A50 50 0 0 1 110 60"/>
+          <path class="current-half" d="M110 60 A50 50 0 0 1 10 60"/>
+        </svg>
+        <span class="eyedropper-reticle"><i></i></span>
       </div>
 
       <!-- tool rail -->
@@ -472,17 +946,11 @@
         <button class="tool active" data-tool="brush" title="ブラシ (B)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.06 11.9 20.5 1.5a2.12 2.12 0 0 1 3 3L13.1 14.94"/><path d="M9.06 11.9c-1.5 0-4.06 1.1-4.06 4.6 0 2-2 3-3.5 3 1 2 3.06 3 5.06 3 3.5 0 6.5-2.5 6.5-6.1 0-2.5-2-4.5-4-4.5Z" transform="translate(1 -1) scale(0.92)"/></svg>
         </button>
-        <button class="tool" data-tool="pen" title="ペン (P)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
-        </button>
         <button class="tool" data-tool="eraser" title="消しゴム (E)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
         </button>
-        <button class="tool" data-tool="fill" title="塗りつぶし (G)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
-        </button>
-        <button class="tool" data-tool="eyedropper" title="スポイト (I)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/></svg>
+        <button class="tool" data-tool="zoom" title="ズーム (Z)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
         </button>
         <div class="rail-divider"></div>
         <button class="tool" id="undoBtn" title="元に戻す (⌘Z)">
@@ -498,31 +966,125 @@
       </nav>
 
       <!-- sliders -->
-      <div class="slider-dock">
+      <div class="slider-dock" aria-label="ブラシ調整">
         <div class="v-slider" title="ブラシサイズ">
-          <span class="value" id="sizeValue">8</span>
           <input type="range" id="sizeSlider" min="1" max="60" value="8" aria-label="ブラシサイズ">
-          <span class="slider-label">サイズ</span>
         </div>
-        <div class="v-slider" title="不透明度">
-          <span class="value" id="opacityValue">100</span>
+        <button class="tool" data-tool="eyedropper" title="スポイト (I)" aria-label="スポイト">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4.5" y="4.5" width="15" height="15" rx="4"/></svg>
+        </button>
+        <div class="v-slider" id="opacityControl" title="不透明度">
           <input type="range" id="opacitySlider" min="5" max="100" value="100" aria-label="不透明度">
-          <span class="slider-label">濃度</span>
+        </div>
+      </div>
+
+      <div class="slider-preview" id="sliderPreview" aria-hidden="true" hidden>
+        <div class="slider-preview-header">
+          <strong id="sliderPreviewLabel">サイズ</strong>
+          <span id="sliderPreviewValue">8 px</span>
+        </div>
+        <div class="slider-preview-stage" id="sliderPreviewStage">
+          <span class="slider-preview-dot" id="sliderPreviewDot"></span>
         </div>
       </div>
 
       <!-- palette -->
-      <div class="palette" id="palette">
-        <h3>カラーパレット</h3>
-        <div class="swatches" id="swatches"></div>
-        <div class="custom-row">
-          <input type="color" id="customColor" value="#574f43" aria-label="カスタムカラー">
-          <span>カスタムカラー</span>
+      <div class="palette" id="palette" role="dialog" aria-label="カラー" aria-hidden="true" inert>
+        <div class="picker-header">
+          <h3>カラー</h3>
+          <span class="picker-current" aria-hidden="true"></span>
+          <button class="icon-btn" id="paletteClose" title="閉じる" aria-label="カラーダイアログを閉じる">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
         </div>
+
+        <div class="picker-panel circle-panel active" data-picker-panel="circle">
+          <div class="color-wheel" id="colorWheel" aria-label="色相環">
+            <span class="picker-handle hue-handle" id="circleHueHandle"></span>
+            <div class="circle-sv" id="circleSv" aria-label="彩度と明度">
+              <span class="picker-handle" id="circleSvHandle"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="picker-panel square-panel" data-picker-panel="square">
+          <div class="square-sv" id="squareSv" aria-label="彩度と明度">
+            <span class="picker-handle" id="squareSvHandle"></span>
+          </div>
+          <input class="hue-range" id="squareHue" type="range" min="0" max="360" value="0" aria-label="色相">
+        </div>
+
+        <div class="picker-panel sliders-panel" data-picker-panel="sliders">
+          <div class="picker-mode-tabs" aria-label="カラーモード">
+            <button class="active" data-slider-mode="hsb">HSB</button>
+            <button data-slider-mode="rgb">RGB</button>
+          </div>
+          <div class="channel-group active" data-channel-group="hsb">
+            <div class="channel-row">
+              <label for="hsbHue">H</label>
+              <input id="hsbHue" type="range" min="0" max="360" value="0">
+              <output id="hsbHueValue">0°</output>
+            </div>
+            <div class="channel-row">
+              <label for="hsbSaturation">S</label>
+              <input id="hsbSaturation" type="range" min="0" max="100" value="0">
+              <output id="hsbSaturationValue">0%</output>
+            </div>
+            <div class="channel-row">
+              <label for="hsbBrightness">B</label>
+              <input id="hsbBrightness" type="range" min="0" max="100" value="0">
+              <output id="hsbBrightnessValue">0%</output>
+            </div>
+          </div>
+          <div class="channel-group" data-channel-group="rgb">
+            <div class="channel-row">
+              <label for="rgbRed">R</label>
+              <input id="rgbRed" type="range" min="0" max="255" value="0">
+              <output id="rgbRedValue">0</output>
+            </div>
+            <div class="channel-row">
+              <label for="rgbGreen">G</label>
+              <input id="rgbGreen" type="range" min="0" max="255" value="0">
+              <output id="rgbGreenValue">0</output>
+            </div>
+            <div class="channel-row">
+              <label for="rgbBlue">B</label>
+              <input id="rgbBlue" type="range" min="0" max="255" value="0">
+              <output id="rgbBlueValue">0</output>
+            </div>
+          </div>
+          <div class="hex-row">
+            <label for="hexColor">HEX</label>
+            <input id="hexColor" value="#574F43" maxlength="7" spellcheck="false" aria-label="HEXカラー">
+          </div>
+        </div>
+
+        <div class="picker-panel saved-panel" data-picker-panel="palette">
+          <div class="saved-palette-title">
+            <span>保存済みパレット</span>
+            <span>キャンプファイア</span>
+          </div>
+          <div class="saved-swatches" id="savedSwatches"></div>
+        </div>
+
+        <nav class="picker-tabs" aria-label="カラー選択方式">
+          <button class="active" data-picker-view="circle" title="サークル" aria-label="サークル">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><rect x="8" y="8" width="8" height="8" rx="0.8"/></svg>
+          </button>
+          <button data-picker-view="square" title="スクエア" aria-label="スクエア">
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+          </button>
+          <button data-picker-view="sliders" title="スライダー" aria-label="スライダー">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M4 7h7M15 7h5M4 17h3M11 17h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+          </button>
+          <button data-picker-view="palette" title="パレット" aria-label="パレット">
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg>
+          </button>
+        </nav>
       </div>
 
       <!-- zoom -->
-      <div class="zoom-dock">
+      <div class="zoom-dock" id="zoomDock" aria-hidden="true" inert>
         <button class="icon-btn" id="zoomOut" title="縮小" aria-label="縮小">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>
         </button>
@@ -613,25 +1175,48 @@
 /* ════════ Drawing ════════ */
 const canvas = document.getElementById("artboard");
 const ctx = canvas.getContext("2d");
+const strokePreview = document.getElementById("strokePreview");
+const strokeCtx = strokePreview.getContext("2d");
+const eyedropperCursor = document.getElementById("eyedropperCursor");
+const eyedropperPreview = document.getElementById("eyedropperPreview");
+const eyedropperPreviewCtx = eyedropperPreview.getContext("2d");
+eyedropperPreviewCtx.imageSmoothingEnabled = false;
 ctx.lineCap = "round";
 ctx.lineJoin = "round";
+strokeCtx.lineCap = "round";
+strokeCtx.lineJoin = "round";
 
 const state = {
   tool: "brush",
+  lastDrawingTool: "brush",
   color: "#574f43",
   size: 8,
   opacity: 1,
   drawing: false,
   points: [],
+  activeStroke: null,
+  strokeFrame: null,
   undoStack: [],
   redoStack: [],
   zoom: 1,
+  panX: 0,
+  panY: 0,
+  zoomScrubbing: false,
+  zoomPointerId: null,
+  zoomStartX: 0,
+  zoomStartValue: 1,
+  zoomFocalX: 0,
+  zoomFocalY: 0,
+  spacePressed: false,
+  panning: false,
+  panPointerId: null,
+  lastPointerX: 0,
+  lastPointerY: 0,
 };
 
-(function seed() {
-  ctx.font = "600 15px 'Hiragino Maru Gothic ProN', sans-serif";
-  ctx.fillStyle = "#c4bcad";
-  ctx.fillText("お題:夏まつり 🎆", 24, 36);
+(function initializeCanvas() {
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 })();
 
 function snapshot() {
@@ -648,66 +1233,181 @@ function canvasPos(e) {
   };
 }
 
+function canvasColorAt(point) {
+  const x = Math.min(canvas.width - 1, Math.max(0, Math.floor(point.x)));
+  const y = Math.min(canvas.height - 1, Math.max(0, Math.floor(point.y)));
+  const [red, green, blue] = ctx.getImageData(x, y, 1, 1).data;
+  return "#" + [red, green, blue]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function updateEyedropperPreview(e) {
+  if (state.tool !== "eyedropper") {
+    eyedropperCursor.hidden = true;
+    return;
+  }
+
+  const point = canvasPos(e);
+  const sampledColor = canvasColorAt(point);
+  const workspaceRect = document.getElementById("workspace").getBoundingClientRect();
+  const sampleSize = 11;
+  const sourceX = clamp(Math.floor(point.x) - 5, 0, canvas.width - sampleSize);
+  const sourceY = clamp(Math.floor(point.y) - 5, 0, canvas.height - sampleSize);
+
+  eyedropperPreviewCtx.clearRect(0, 0, eyedropperPreview.width, eyedropperPreview.height);
+  eyedropperPreviewCtx.drawImage(
+    canvas,
+    sourceX,
+    sourceY,
+    sampleSize,
+    sampleSize,
+    0,
+    0,
+    eyedropperPreview.width,
+    eyedropperPreview.height
+  );
+
+  eyedropperCursor.style.left = e.clientX - workspaceRect.left + "px";
+  eyedropperCursor.style.top = e.clientY - workspaceRect.top + "px";
+  eyedropperCursor.style.setProperty("--sampled-color", sampledColor);
+  eyedropperCursor.hidden = false;
+}
+
+canvas.addEventListener("pointermove", updateEyedropperPreview);
+canvas.addEventListener("pointerleave", () => {
+  eyedropperCursor.hidden = true;
+});
+
+function appendStrokePoint(point) {
+  const last = state.points[state.points.length - 1];
+  if (last && Math.hypot(point.x - last.x, point.y - last.y) < 0.25) return;
+  state.points.push(point);
+}
+
+function drawStrokePath(context, points, stroke) {
+  if (!points.length) return;
+
+  const lineWidth = stroke.tool === "eraser" ? stroke.size * 2.2 : stroke.size;
+  context.lineWidth = lineWidth;
+  context.strokeStyle = stroke.tool === "eraser" ? "#fff" : stroke.color;
+  context.fillStyle = context.strokeStyle;
+
+  if (points.length === 1) {
+    context.beginPath();
+    context.arc(points[0].x, points[0].y, lineWidth / 2, 0, Math.PI * 2);
+    context.fill();
+    return;
+  }
+
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+  if (points.length === 2) {
+    context.lineTo(points[1].x, points[1].y);
+  } else {
+    for (let index = 1; index < points.length - 1; index++) {
+      const point = points[index];
+      const next = points[index + 1];
+      context.quadraticCurveTo(
+        point.x,
+        point.y,
+        (point.x + next.x) / 2,
+        (point.y + next.y) / 2
+      );
+    }
+    const previous = points[points.length - 2];
+    const last = points[points.length - 1];
+    context.quadraticCurveTo(previous.x, previous.y, last.x, last.y);
+  }
+  context.stroke();
+}
+
+function renderStrokePreview() {
+  state.strokeFrame = null;
+  strokeCtx.clearRect(0, 0, strokePreview.width, strokePreview.height);
+  if (!state.drawing || !state.activeStroke) return;
+
+  strokeCtx.save();
+  strokeCtx.globalAlpha = 1;
+  drawStrokePath(strokeCtx, state.points, state.activeStroke);
+  strokeCtx.restore();
+  strokePreview.style.opacity = String(
+    state.activeStroke.tool === "eraser" ? 1 : state.activeStroke.opacity
+  );
+}
+
+function scheduleStrokePreview() {
+  if (state.strokeFrame !== null) return;
+  state.strokeFrame = requestAnimationFrame(renderStrokePreview);
+}
+
+function finishStroke() {
+  if (!state.drawing || !state.activeStroke) return;
+
+  if (state.strokeFrame !== null) {
+    cancelAnimationFrame(state.strokeFrame);
+    state.strokeFrame = null;
+  }
+  renderStrokePreview();
+
+  ctx.save();
+  ctx.globalAlpha = state.activeStroke.tool === "eraser"
+    ? 1
+    : state.activeStroke.opacity;
+  ctx.drawImage(strokePreview, 0, 0);
+  ctx.restore();
+
+  strokeCtx.clearRect(0, 0, strokePreview.width, strokePreview.height);
+  strokePreview.style.opacity = "1";
+  state.drawing = false;
+  state.points = [];
+  state.activeStroke = null;
+}
+
 canvas.addEventListener("pointerdown", (e) => {
+  if (state.spacePressed) return;
+
+  const point = canvasPos(e);
+
+  if (state.tool === "zoom") {
+    if (e.button === 0) startZoomScrub(e);
+    return;
+  }
+
+  if (state.tool === "eyedropper") {
+    setColor(canvasColorAt(point));
+    document.querySelector(`.tool[data-tool="${state.lastDrawingTool}"]`)?.click();
+    return;
+  }
+
   canvas.setPointerCapture(e.pointerId);
   snapshot();
   state.drawing = true;
-  state.points = [canvasPos(e)];
-
-  if (state.tool === "fill") {
-    ctx.save();
-    ctx.globalAlpha = state.opacity;
-    ctx.fillStyle = state.color;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-    state.drawing = false;
-  }
+  state.points = [point];
+  state.activeStroke = {
+    tool: state.tool,
+    color: state.color,
+    size: state.size,
+    opacity: state.opacity,
+  };
+  renderStrokePreview();
 });
 
 canvas.addEventListener("pointermove", (e) => {
   if (!state.drawing) return;
-  const pts = state.points;
-  pts.push(canvasPos(e));
-  if (pts.length < 3) return;
-
-  const a = pts[pts.length - 3];
-  const b = pts[pts.length - 2];
-  const c = pts[pts.length - 1];
-
-  ctx.save();
-  if (state.tool === "eraser") {
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = state.size * 2.2;
-  } else {
-    ctx.globalAlpha = state.tool === "pen" ? 1 : state.opacity;
-    ctx.strokeStyle = state.color;
-    ctx.lineWidth = state.tool === "pen" ? Math.max(1.5, state.size * 0.6) : state.size;
-  }
-  ctx.beginPath();
-  ctx.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2);
-  ctx.quadraticCurveTo(b.x, b.y, (b.x + c.x) / 2, (b.y + c.y) / 2);
-  ctx.stroke();
-  ctx.restore();
+  const events = typeof e.getCoalescedEvents === "function"
+    ? e.getCoalescedEvents()
+    : [e];
+  events.forEach((event) => appendStrokePoint(canvasPos(event)));
+  scheduleStrokePreview();
 });
 
-window.addEventListener("pointerup", () => {
-  if (state.drawing && state.points.length < 3) {
-    const p = state.points[0];
-    ctx.save();
-    if (state.tool === "eraser") {
-      ctx.globalCompositeOperation = "destination-out";
-    } else {
-      ctx.globalAlpha = state.opacity;
-      ctx.fillStyle = state.color;
-    }
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, state.size / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-  state.drawing = false;
+window.addEventListener("pointerup", (e) => {
+  if (!state.drawing) return;
+  appendStrokePoint(canvasPos(e));
+  finishStroke();
 });
+window.addEventListener("pointercancel", finishStroke);
 
 function undo() {
   if (!state.undoStack.length) return;
@@ -735,88 +1435,646 @@ toolButtons.forEach((btn) => {
     toolButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     state.tool = btn.dataset.tool;
+    if (state.tool === "brush" || state.tool === "eraser") {
+      state.lastDrawingTool = state.tool;
+    }
+    updateToolControls();
   });
 });
 window.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.target.tagName === "TEXTAREA") return;
-  const map = { b: "brush", p: "pen", e: "eraser", g: "fill", i: "eyedropper" };
+  const map = { b: "brush", e: "eraser", i: "eyedropper", z: "zoom" };
   const tool = map[e.key.toLowerCase()];
   if (tool) document.querySelector(`.tool[data-tool="${tool}"]`)?.click();
 });
 
 const sizeSlider = document.getElementById("sizeSlider");
 const opacitySlider = document.getElementById("opacitySlider");
+const opacityControl = document.getElementById("opacityControl");
+const zoomDock = document.getElementById("zoomDock");
+const sliderPreview = document.getElementById("sliderPreview");
+const sliderPreviewLabel = document.getElementById("sliderPreviewLabel");
+const sliderPreviewValue = document.getElementById("sliderPreviewValue");
+const sliderPreviewStage = document.getElementById("sliderPreviewStage");
+const sliderPreviewDot = document.getElementById("sliderPreviewDot");
+let activeSliderPreview = null;
+let activeSliderInput = null;
+let sliderPreviewPointerId = null;
+let zoomDockHideTimer = null;
+
+function updateSliderVisual(input) {
+  const min = Number(input.min);
+  const max = Number(input.max);
+  const progress = (Number(input.value) - min) / (max - min);
+  const thumbOffset = 13 + clamp(progress, 0, 1) * 86;
+  input.parentElement.style.setProperty("--slider-thumb-offset", `${thumbOffset}px`);
+}
+
+function updateSliderPreview(type) {
+  if (type === "size") {
+    const isEraser = state.lastDrawingTool === "eraser";
+    const diameter = clamp(state.size, 1, 60);
+    sliderPreviewLabel.textContent = isEraser ? "消しゴムサイズ" : "サイズ";
+    sliderPreviewValue.textContent = `${Math.round(state.size)} px`;
+    sliderPreviewStage.classList.remove("opacity");
+    sliderPreviewDot.style.width = `${diameter}px`;
+    sliderPreviewDot.style.height = `${diameter}px`;
+    sliderPreviewDot.style.background = isEraser ? "#fff" : state.color;
+    sliderPreviewDot.style.opacity = "1";
+    sliderPreviewDot.style.border = isEraser ? "1.5px solid var(--border-strong)" : "none";
+    sliderPreviewDot.style.boxShadow = "none";
+    return;
+  }
+
+  sliderPreviewLabel.textContent = "濃度";
+  sliderPreviewValue.textContent = `${Math.round(state.opacity * 100)}%`;
+  sliderPreviewStage.classList.add("opacity");
+  sliderPreviewDot.style.width = "64px";
+  sliderPreviewDot.style.height = "64px";
+  sliderPreviewDot.style.background = state.color;
+  sliderPreviewDot.style.opacity = String(state.opacity);
+  sliderPreviewDot.style.border = "none";
+  sliderPreviewDot.style.boxShadow = "0 2px 8px rgba(55, 55, 50, 0.25)";
+}
+
+function positionSliderPreview(input) {
+  const workspaceRect = document.getElementById("workspace").getBoundingClientRect();
+  const dockRect = document.querySelector(".slider-dock").getBoundingClientRect();
+  const inputRect = input.getBoundingClientRect();
+  const previewRect = sliderPreview.getBoundingClientRect();
+  const maxLeft = Math.max(8, workspaceRect.width - previewRect.width - 8);
+  const maxTop = Math.max(8, workspaceRect.height - previewRect.height - 8);
+  sliderPreview.style.left = `${clamp(dockRect.right - workspaceRect.left + 12, 8, maxLeft)}px`;
+  sliderPreview.style.top = `${clamp(
+    inputRect.top + inputRect.height / 2 - workspaceRect.top - previewRect.height / 2,
+    8,
+    maxTop
+  )}px`;
+}
+
+function showSliderPreview(type, input) {
+  activeSliderPreview = type;
+  activeSliderInput = input;
+  sliderPreview.hidden = false;
+  sliderPreview.setAttribute("aria-hidden", "false");
+  updateSliderPreview(type);
+  positionSliderPreview(input);
+}
+
+function hideSliderPreview() {
+  activeSliderPreview = null;
+  activeSliderInput = null;
+  sliderPreview.hidden = true;
+  sliderPreview.setAttribute("aria-hidden", "true");
+}
+
+function bindSliderPreview(input, type) {
+  input.addEventListener("pointerdown", (e) => {
+    sliderPreviewPointerId = e.pointerId;
+    showSliderPreview(type, input);
+  });
+  input.addEventListener("focus", () => {
+    if (sliderPreviewPointerId === null) showSliderPreview(type, input);
+  });
+  input.addEventListener("blur", () => {
+    if (sliderPreviewPointerId === null) hideSliderPreview();
+  });
+}
+
+function updateToolControls() {
+  const disabled = state.lastDrawingTool === "eraser";
+  const eyedropperActive = state.tool === "eyedropper";
+  const zoomActive = state.tool === "zoom";
+  opacitySlider.disabled = disabled;
+  opacityControl.classList.toggle("disabled", disabled);
+  document.getElementById("workspace").classList.toggle("eyedropper-active", eyedropperActive);
+  document.getElementById("workspace").classList.toggle("zoom-active", zoomActive);
+  if (!eyedropperActive) eyedropperCursor.hidden = true;
+  if (!zoomActive) stopZoomScrub();
+  syncZoomDockForTool();
+}
+
 sizeSlider.addEventListener("input", () => {
   state.size = +sizeSlider.value;
-  document.getElementById("sizeValue").textContent = sizeSlider.value;
+  updateSliderVisual(sizeSlider);
+  if (activeSliderPreview === "size" || document.activeElement === sizeSlider) {
+    showSliderPreview("size", sizeSlider);
+  }
 });
 opacitySlider.addEventListener("input", () => {
   state.opacity = +opacitySlider.value / 100;
-  document.getElementById("opacityValue").textContent = opacitySlider.value;
+  updateSliderVisual(opacitySlider);
+  if (activeSliderPreview === "opacity" || document.activeElement === opacitySlider) {
+    showSliderPreview("opacity", opacitySlider);
+  }
 });
+updateSliderVisual(sizeSlider);
+updateSliderVisual(opacitySlider);
+bindSliderPreview(sizeSlider, "size");
+bindSliderPreview(opacitySlider, "opacity");
+window.addEventListener("pointerup", (e) => {
+  if (e.pointerId !== sliderPreviewPointerId) return;
+  sliderPreviewPointerId = null;
+  hideSliderPreview();
+});
+window.addEventListener("pointercancel", (e) => {
+  if (e.pointerId !== sliderPreviewPointerId) return;
+  sliderPreviewPointerId = null;
+  hideSliderPreview();
+});
+window.addEventListener("resize", () => {
+  if (activeSliderInput) positionSliderPreview(activeSliderInput);
+});
+updateToolControls();
 
-/* ════════ Palette — レトロ喫茶の12色 ════════ */
-const PALETTE = [
-  "#574f43", "#8d8577", "#b8b0a0", "#fffefb", "#77604e", "#dfa94f",
-  "#d3684f", "#d38b8b", "#a08cc4", "#7ba6c9", "#7fc0c9", "#64a88b",
+/* ════════ Color picker ════════ */
+const SAVED_PALETTE = [
+  "#5f9987", "#70a18f", "#aabf8d", "#ead18c", "#efb36f", "#e98f62",
+  "#df675b", "#bd574f", "#974a49", "#7f4142", "#78a08f", "#90ad91",
+  "#b3bf94", "#efd995", "#f3bd7f", "#eca171", "#df7c69", "#c5685c",
+  "#a95d55", "#9b6f66", "#b9bda0", "#cfd0aa", "#ded7a7", "#f4dda4",
 ];
-const swatchesEl = document.getElementById("swatches");
 const paletteEl = document.getElementById("palette");
 const colorChip = document.getElementById("colorChip");
+const colorWheel = document.getElementById("colorWheel");
+const circleSv = document.getElementById("circleSv");
+const squareSv = document.getElementById("squareSv");
+const savedSwatches = document.getElementById("savedSwatches");
+const picker = { h: 31, s: 23, v: 34 };
 
-function setColor(color) {
-  state.color = color;
-  document.documentElement.style.setProperty("--current-color", color);
-  document.getElementById("customColor").value = color.length === 7 ? color : "#574f43";
-  swatchesEl.querySelectorAll("button").forEach((b) =>
-    b.classList.toggle("selected", b.dataset.color === color)
-  );
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
-PALETTE.forEach((color) => {
-  const b = document.createElement("button");
-  b.style.background = color;
-  b.dataset.color = color;
-  b.title = color;
-  if (color === "#fffefb") b.style.border = "2.5px solid var(--border-strong)";
-  b.addEventListener("click", () => setColor(color));
-  swatchesEl.appendChild(b);
+function hsvToRgb(h, s, v) {
+  const hue = ((h % 360) + 360) % 360;
+  const saturation = s / 100;
+  const brightness = v / 100;
+  const chroma = brightness * saturation;
+  const x = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
+  const m = brightness - chroma;
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+
+  if (hue < 60) [red, green, blue] = [chroma, x, 0];
+  else if (hue < 120) [red, green, blue] = [x, chroma, 0];
+  else if (hue < 180) [red, green, blue] = [0, chroma, x];
+  else if (hue < 240) [red, green, blue] = [0, x, chroma];
+  else if (hue < 300) [red, green, blue] = [x, 0, chroma];
+  else [red, green, blue] = [chroma, 0, x];
+
+  return {
+    r: Math.round((red + m) * 255),
+    g: Math.round((green + m) * 255),
+    b: Math.round((blue + m) * 255),
+  };
+}
+
+function rgbToHsv(r, g, b) {
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+
+  if (delta) {
+    if (max === red) hue = 60 * (((green - blue) / delta) % 6);
+    else if (max === green) hue = 60 * ((blue - red) / delta + 2);
+    else hue = 60 * ((red - green) / delta + 4);
+  }
+  if (hue < 0) hue += 360;
+
+  return {
+    h: hue,
+    s: max === 0 ? 0 : delta / max * 100,
+    v: max * 100,
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  return "#" + [r, g, b]
+    .map((value) => Math.round(value).toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
+}
+
+function hexToRgb(color) {
+  const match = color.trim().match(/^#?([0-9a-f]{6})$/i);
+  if (!match) return null;
+  const value = match[1];
+  return {
+    r: parseInt(value.slice(0, 2), 16),
+    g: parseInt(value.slice(2, 4), 16),
+    b: parseInt(value.slice(4, 6), 16),
+  };
+}
+
+function syncPickerUi() {
+  const rgb = hsvToRgb(picker.h, picker.s, picker.v);
+  const hex = rgbToHex(rgb);
+  const hueRadians = picker.h * Math.PI / 180;
+
+  state.color = hex;
+  document.documentElement.style.setProperty("--current-color", hex);
+  paletteEl.style.setProperty("--picker-hue", picker.h);
+
+  document.getElementById("circleHueHandle").style.left = 50 + Math.cos(hueRadians) * 43 + "%";
+  document.getElementById("circleHueHandle").style.top = 50 + Math.sin(hueRadians) * 43 + "%";
+  document.getElementById("circleSvHandle").style.left = picker.s + "%";
+  document.getElementById("circleSvHandle").style.top = 100 - picker.v + "%";
+  document.getElementById("squareSvHandle").style.left = picker.s + "%";
+  document.getElementById("squareSvHandle").style.top = 100 - picker.v + "%";
+
+  document.getElementById("squareHue").value = picker.h;
+  document.getElementById("hsbHue").value = picker.h;
+  document.getElementById("hsbSaturation").value = picker.s;
+  document.getElementById("hsbBrightness").value = picker.v;
+  document.getElementById("hsbHueValue").textContent = Math.round(picker.h) + "°";
+  document.getElementById("hsbSaturationValue").textContent = Math.round(picker.s) + "%";
+  document.getElementById("hsbBrightnessValue").textContent = Math.round(picker.v) + "%";
+
+  document.getElementById("rgbRed").value = rgb.r;
+  document.getElementById("rgbGreen").value = rgb.g;
+  document.getElementById("rgbBlue").value = rgb.b;
+  document.getElementById("rgbRedValue").textContent = rgb.r;
+  document.getElementById("rgbGreenValue").textContent = rgb.g;
+  document.getElementById("rgbBlueValue").textContent = rgb.b;
+  document.getElementById("hexColor").value = hex;
+
+  savedSwatches.querySelectorAll("button").forEach((button) => {
+    button.classList.toggle("selected", button.dataset.color.toUpperCase() === hex);
+  });
+}
+
+function setPickerHsv(h, s, v) {
+  picker.h = clamp(h, 0, 360);
+  picker.s = clamp(s, 0, 100);
+  picker.v = clamp(v, 0, 100);
+  syncPickerUi();
+}
+
+function setColor(color) {
+  const rgb = hexToRgb(color);
+  if (!rgb) return;
+  const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+  setPickerHsv(hsv.h, hsv.s, hsv.v);
+}
+
+function bindPickerDrag(element, update) {
+  let pointerId = null;
+  element.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pointerId = e.pointerId;
+    element.setPointerCapture(pointerId);
+    update(e);
+  });
+  element.addEventListener("pointermove", (e) => {
+    if (e.pointerId === pointerId) update(e);
+  });
+  const finish = (e) => {
+    if (e.pointerId === pointerId) pointerId = null;
+  };
+  element.addEventListener("pointerup", finish);
+  element.addEventListener("pointercancel", finish);
+}
+
+bindPickerDrag(colorWheel, (e) => {
+  if (e.type === "pointerdown" && e.target !== colorWheel) return;
+  const rect = colorWheel.getBoundingClientRect();
+  const x = e.clientX - (rect.left + rect.width / 2);
+  const y = e.clientY - (rect.top + rect.height / 2);
+  const hue = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  setPickerHsv(hue, picker.s, picker.v);
 });
+
+function updateSvFromPointer(element, e) {
+  const rect = element.getBoundingClientRect();
+  const saturation = clamp((e.clientX - rect.left) / rect.width, 0, 1) * 100;
+  const brightness = (1 - clamp((e.clientY - rect.top) / rect.height, 0, 1)) * 100;
+  setPickerHsv(picker.h, saturation, brightness);
+}
+
+bindPickerDrag(circleSv, (e) => updateSvFromPointer(circleSv, e));
+bindPickerDrag(squareSv, (e) => updateSvFromPointer(squareSv, e));
+
+document.getElementById("squareHue").addEventListener("input", (e) =>
+  setPickerHsv(+e.target.value, picker.s, picker.v)
+);
+document.getElementById("hsbHue").addEventListener("input", (e) =>
+  setPickerHsv(+e.target.value, picker.s, picker.v)
+);
+document.getElementById("hsbSaturation").addEventListener("input", (e) =>
+  setPickerHsv(picker.h, +e.target.value, picker.v)
+);
+document.getElementById("hsbBrightness").addEventListener("input", (e) =>
+  setPickerHsv(picker.h, picker.s, +e.target.value)
+);
+
+["rgbRed", "rgbGreen", "rgbBlue"].forEach((id) => {
+  document.getElementById(id).addEventListener("input", () => {
+    const hsv = rgbToHsv(
+      +document.getElementById("rgbRed").value,
+      +document.getElementById("rgbGreen").value,
+      +document.getElementById("rgbBlue").value
+    );
+    setPickerHsv(hsv.h, hsv.s, hsv.v);
+  });
+});
+
+function applyHexInput() {
+  const input = document.getElementById("hexColor");
+  const rgb = hexToRgb(input.value);
+  if (rgb) setColor(input.value);
+  else input.value = state.color;
+}
+document.getElementById("hexColor").addEventListener("change", applyHexInput);
+document.getElementById("hexColor").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    applyHexInput();
+    e.target.blur();
+  }
+});
+
+SAVED_PALETTE.forEach((color) => {
+  const button = document.createElement("button");
+  button.style.background = color;
+  button.dataset.color = color;
+  button.title = color;
+  button.setAttribute("aria-label", color);
+  button.addEventListener("click", () => setColor(color));
+  savedSwatches.appendChild(button);
+});
+
+document.querySelectorAll("[data-picker-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("[data-picker-view]").forEach((item) =>
+      item.classList.toggle("active", item === button)
+    );
+    document.querySelectorAll("[data-picker-panel]").forEach((panel) =>
+      panel.classList.toggle("active", panel.dataset.pickerPanel === button.dataset.pickerView)
+    );
+  });
+});
+
+document.querySelectorAll("[data-slider-mode]").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll("[data-slider-mode]").forEach((item) =>
+      item.classList.toggle("active", item === button)
+    );
+    document.querySelectorAll("[data-channel-group]").forEach((group) =>
+      group.classList.toggle("active", group.dataset.channelGroup === button.dataset.sliderMode)
+    );
+  });
+});
+
 setColor("#574f43");
 
-document.getElementById("customColor").addEventListener("input", (e) => setColor(e.target.value));
-colorChip.addEventListener("click", (e) => {
-  e.stopPropagation();
-  paletteEl.classList.toggle("open");
-});
-document.addEventListener("click", (e) => {
-  if (!paletteEl.contains(e.target)) paletteEl.classList.remove("open");
+function setPaletteOpen(open) {
+  paletteEl.classList.toggle("open", open);
+  paletteEl.setAttribute("aria-hidden", String(!open));
+  paletteEl.inert = !open;
+  if (open) constrainPalettePosition();
+}
+
+function constrainPalettePosition() {
+  const rect = paletteEl.getBoundingClientRect();
+  const styles = getComputedStyle(paletteEl);
+  const currentLeft = parseFloat(paletteEl.style.left || styles.left);
+  const currentTop = parseFloat(paletteEl.style.top || styles.top);
+  const margin = 8;
+  const left = clamp(currentLeft, margin, Math.max(margin, window.innerWidth - rect.width - margin));
+  const top = clamp(currentTop, margin, Math.max(margin, window.innerHeight - rect.height - margin));
+  paletteEl.style.left = left + "px";
+  paletteEl.style.top = top + "px";
+}
+
+const pickerHeader = paletteEl.querySelector(".picker-header");
+let paletteDrag = null;
+
+pickerHeader.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.target.closest("button")) return;
+  e.preventDefault();
+  const rect = paletteEl.getBoundingClientRect();
+  paletteDrag = {
+    pointerId: e.pointerId,
+    offsetX: e.clientX - rect.left,
+    offsetY: e.clientY - rect.top,
+  };
+  pickerHeader.setPointerCapture(e.pointerId);
+  paletteEl.classList.add("dragging");
 });
 
-/* ════════ Fit & Zoom ════════ */
+window.addEventListener("pointermove", (e) => {
+  if (!paletteDrag || e.pointerId !== paletteDrag.pointerId) return;
+  const rect = paletteEl.getBoundingClientRect();
+  const margin = 8;
+  const left = clamp(
+    e.clientX - paletteDrag.offsetX,
+    margin,
+    Math.max(margin, window.innerWidth - rect.width - margin)
+  );
+  const top = clamp(
+    e.clientY - paletteDrag.offsetY,
+    margin,
+    Math.max(margin, window.innerHeight - rect.height - margin)
+  );
+  paletteEl.style.left = left + "px";
+  paletteEl.style.top = top + "px";
+});
+
+function stopPaletteDrag(e) {
+  if (!paletteDrag || e.pointerId !== paletteDrag.pointerId) return;
+  paletteDrag = null;
+  paletteEl.classList.remove("dragging");
+}
+window.addEventListener("pointerup", stopPaletteDrag);
+window.addEventListener("pointercancel", stopPaletteDrag);
+window.addEventListener("resize", constrainPalettePosition);
+
+colorChip.addEventListener("click", (e) => {
+  e.stopPropagation();
+  setPaletteOpen(!paletteEl.classList.contains("open"));
+});
+document.getElementById("paletteClose").addEventListener("click", () =>
+  setPaletteOpen(false)
+);
+
+/* ════════ Pan & Zoom ════════ */
 const wrap = document.getElementById("artboardWrap");
 const workspace = document.getElementById("workspace");
 
-function fitArtboard() {
-  const r = workspace.getBoundingClientRect();
-  const fit = Math.min((r.width - 300) / 960, (r.height - 140) / 640, 1);
-  canvas.style.width = 960 * fit + "px";
-  canvas.style.height = 640 * fit + "px";
+function setZoomDockVisible(visible) {
+  zoomDock.classList.toggle("visible", visible);
+  zoomDock.setAttribute("aria-hidden", String(!visible));
+  if (visible) {
+    zoomDock.removeAttribute("inert");
+  } else {
+    zoomDock.setAttribute("inert", "");
+  }
 }
-window.addEventListener("resize", fitArtboard);
-fitArtboard();
 
-function applyZoom() {
-  wrap.style.transform = `scale(${state.zoom})`;
+function syncZoomDockForTool() {
+  clearTimeout(zoomDockHideTimer);
+  zoomDockHideTimer = null;
+  setZoomDockVisible(state.tool === "zoom");
+}
+
+function showZoomDockForActivity() {
+  clearTimeout(zoomDockHideTimer);
+  zoomDockHideTimer = null;
+  setZoomDockVisible(true);
+  if (state.tool === "zoom") return;
+  zoomDockHideTimer = setTimeout(() => {
+    setZoomDockVisible(false);
+    zoomDockHideTimer = null;
+  }, 900);
+}
+
+function applyViewportTransform() {
+  wrap.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
   document.getElementById("zoomValue").textContent = Math.round(state.zoom * 100) + "%";
 }
+
+function setZoom(nextZoom, focalPoint = null) {
+  const previousZoom = state.zoom;
+  const clampedZoom = Math.min(2, Math.max(0.4, nextZoom));
+  if (clampedZoom === previousZoom) return;
+
+  if (focalPoint) {
+    const rect = wrap.getBoundingClientRect();
+    const ratio = clampedZoom / previousZoom;
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    state.panX += (focalPoint.x - centerX) * (1 - ratio);
+    state.panY += (focalPoint.y - centerY) * (1 - ratio);
+  }
+
+  state.zoom = clampedZoom;
+  applyViewportTransform();
+  showZoomDockForActivity();
+}
+
+function startZoomScrub(e) {
+  e.preventDefault();
+  state.zoomScrubbing = true;
+  state.zoomPointerId = e.pointerId;
+  state.zoomStartX = e.clientX;
+  state.zoomStartValue = state.zoom;
+  state.zoomFocalX = e.clientX;
+  state.zoomFocalY = e.clientY;
+  workspace.classList.add("zoom-scrubbing");
+  canvas.setPointerCapture(e.pointerId);
+}
+
+function updateZoomScrub(e) {
+  if (!state.zoomScrubbing || e.pointerId !== state.zoomPointerId) return;
+  const distance = e.clientX - state.zoomStartX;
+  const nextZoom = state.zoomStartValue * Math.exp(distance * 0.0045);
+  setZoom(nextZoom, { x: state.zoomFocalX, y: state.zoomFocalY });
+}
+
+function stopZoomScrub(e = null) {
+  if (!state.zoomScrubbing) return;
+  if (e && e.pointerId !== state.zoomPointerId) return;
+  const pointerId = state.zoomPointerId;
+  state.zoomScrubbing = false;
+  state.zoomPointerId = null;
+  workspace.classList.remove("zoom-scrubbing");
+  if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
+    canvas.releasePointerCapture(pointerId);
+  }
+}
+
+function isTextInput(target) {
+  return target instanceof Element &&
+    Boolean(target.closest("input, textarea, select, button, [contenteditable='true']"));
+}
+
+function isWorkspaceControl(target) {
+  return target instanceof Element &&
+    Boolean(target.closest(".tool-rail, .slider-dock, .palette, .zoom-dock, .chat-toggle"));
+}
+
+function stopPanning() {
+  const pointerId = state.panPointerId;
+  state.panning = false;
+  state.panPointerId = null;
+  workspace.classList.remove("panning");
+  if (pointerId !== null && workspace.hasPointerCapture(pointerId)) {
+    workspace.releasePointerCapture(pointerId);
+  }
+}
+
+window.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || isTextInput(e.target)) return;
+  e.preventDefault();
+  state.spacePressed = true;
+  workspace.classList.add("pan-ready");
+});
+
+window.addEventListener("keyup", (e) => {
+  if (e.code !== "Space") return;
+  state.spacePressed = false;
+  stopPanning();
+  workspace.classList.remove("pan-ready");
+});
+
+window.addEventListener("blur", () => {
+  state.spacePressed = false;
+  stopZoomScrub();
+  stopPanning();
+  workspace.classList.remove("pan-ready");
+});
+
+workspace.addEventListener("pointerdown", (e) => {
+  if (!state.spacePressed || e.button !== 0 || isWorkspaceControl(e.target)) return;
+  e.preventDefault();
+  state.panning = true;
+  state.panPointerId = e.pointerId;
+  state.lastPointerX = e.clientX;
+  state.lastPointerY = e.clientY;
+  workspace.classList.add("panning");
+  workspace.setPointerCapture(e.pointerId);
+});
+
+window.addEventListener("pointermove", (e) => {
+  updateZoomScrub(e);
+  if (!state.panning || e.pointerId !== state.panPointerId) return;
+  state.panX += e.clientX - state.lastPointerX;
+  state.panY += e.clientY - state.lastPointerY;
+  state.lastPointerX = e.clientX;
+  state.lastPointerY = e.clientY;
+  applyViewportTransform();
+});
+
+window.addEventListener("pointerup", (e) => {
+  stopZoomScrub(e);
+  if (!state.panning || e.pointerId !== state.panPointerId) return;
+  stopPanning();
+});
+window.addEventListener("pointercancel", (e) => {
+  stopZoomScrub(e);
+  stopPanning();
+});
+
+workspace.addEventListener("wheel", (e) => {
+  if (isWorkspaceControl(e.target)) return;
+  e.preventDefault();
+  const zoomFactor = Math.exp(-e.deltaY * 0.001);
+  setZoom(state.zoom * zoomFactor, { x: e.clientX, y: e.clientY });
+}, { passive: false });
+
 document.getElementById("zoomIn").addEventListener("click", () => {
-  state.zoom = Math.min(2, state.zoom + 0.1);
-  applyZoom();
+  setZoom(state.zoom + 0.1);
 });
 document.getElementById("zoomOut").addEventListener("click", () => {
-  state.zoom = Math.max(0.4, state.zoom - 0.1);
-  applyZoom();
+  setZoom(state.zoom - 0.1);
 });
 
 /* ════════ Chat ════════ */
