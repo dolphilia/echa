@@ -117,12 +117,36 @@ export function validateEventLog(log) {
     return errors;
   }
   let expectedRoomSeq = 1;
+  const strokeActors = new Map();
+  const lastClientSeqByActor = new Map();
   for (const [index, event] of log.events.entries()) {
     if (event.roomSeq !== expectedRoomSeq) {
       errors.push(
         `events[${index}].roomSeq must be ${expectedRoomSeq}, got ${event.roomSeq}`
       );
       expectedRoomSeq = event.roomSeq;
+    }
+    if (!Number.isSafeInteger(event.clientSeq) || event.clientSeq <= 0) {
+      errors.push(
+        `events[${index}].clientSeq must be a positive safe integer`
+      );
+    }
+    if (event.op === "stroke.begin" && typeof event.actor === "string") {
+      strokeActors.set(event.id, event.actor);
+    }
+    const actorId = event.actor ?? strokeActors.get(event.id);
+    if (actorId) {
+      const expectedClientSeq = (lastClientSeqByActor.get(actorId) ?? 0) + 1;
+      if (event.clientSeq !== expectedClientSeq) {
+        errors.push(
+          `events[${index}].clientSeq for ${actorId} must be `
+          + `${expectedClientSeq}, got ${event.clientSeq}`
+        );
+      }
+      lastClientSeqByActor.set(actorId, event.clientSeq);
+    }
+    if (event.op === "stroke.end" || event.op === "stroke.cancel") {
+      strokeActors.delete(event.id);
     }
     expectedRoomSeq += 1;
   }
@@ -200,9 +224,13 @@ export function strokeToEventTemplates(
   return events;
 }
 
-function cloneEvent(template, { roomSeq, strokeId, actorId, offsetX, offsetY }) {
+function cloneEvent(
+  template,
+  { roomSeq, clientSeq, strokeId, actorId, offsetX, offsetY }
+) {
   const event = structuredClone(template);
   event.roomSeq = roomSeq;
+  event.clientSeq = clientSeq;
   event.id = strokeId;
   if (event.actor !== undefined) event.actor = actorId;
 
@@ -244,6 +272,7 @@ export function generateEventLog(
     strokeToEventTemplates(stroke, { appendIntervalMs, maxPointsPerAppend })
   );
   const events = [];
+  const actorClientSeq = new Map();
   let packedBytes = 0;
   let repetition = 0;
 
@@ -259,8 +288,11 @@ export function generateEventLog(
     const offsetY = (cycle * 11) % 61;
 
     for (const template of templates[strokeIndex]) {
+      const clientSeq = (actorClientSeq.get(actorId) ?? 0) + 1;
+      actorClientSeq.set(actorId, clientSeq);
       const event = cloneEvent(template, {
         roomSeq: events.length + 1,
+        clientSeq,
         strokeId,
         actorId,
         offsetX,
@@ -317,6 +349,7 @@ export function rawFixtureToEventLog(
     for (const template of templates) {
       events.push(cloneEvent(template, {
         roomSeq: events.length + 1,
+        clientSeq: events.length + 1,
         strokeId,
         actorId,
         offsetX: 0,

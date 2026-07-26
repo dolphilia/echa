@@ -1,0 +1,113 @@
+{
+  "schema": "echa.raw-strokes.v1",
+  "recordedAt": "2026-07-27T00:00:00.000Z",
+  "canvas": {
+    "width": 960,
+    "height": 640
+  },
+  "session": {
+    "source": "hand-authored-canonical-renderer-fixture",
+    "durationMs": 1700
+  },
+  "strokes": [
+    {
+      "caseId": "single-dot",
+      "tool": "brush",
+      "color": "#151515",
+      "size": 1,
+      "opacity": 1,
+      "points": [
+        { "x": 80, "y": 80, "dt": 0 }
+      ]
+    },
+    {
+      "caseId": "opaque-curve",
+      "tool": "brush",
+      "color": "#574f43",
+      "size": 8,
+      "opacity": 1,
+      "points": [
+        { "x": 110, "y": 155, "dt": 0 },
+        { "x": 126.25, "y": 151.5, "dt": 18 },
+        { "x": 145.5, "y": 149.25, "dt": 36 },
+        { "x": 167.75, "y": 152.5, "dt": 54 },
+        { "x": 190, "y": 160, "dt": 72 },
+        { "x": 214, "y": 173, "dt": 91 },
+        { "x": 239, "y": 191, "dt": 109 },
+        { "x": 264, "y": 211, "dt": 128 },
+        { "x": 288, "y": 230, "dt": 146 },
+        { "x": 310, "y": 245, "dt": 164 }
+      ]
+    },
+    {
+      "caseId": "low-opacity-zigzag",
+      "tool": "brush",
+      "color": "#2f7fb8",
+      "size": 22,
+      "opacity": 0.35,
+      "points": [
+        { "x": 160, "y": 330, "dt": 0 },
+        { "x": 210, "y": 290, "dt": 25 },
+        { "x": 260, "y": 370, "dt": 50 },
+        { "x": 310, "y": 290, "dt": 75 },
+        { "x": 360, "y": 370, "dt": 100 },
+        { "x": 410, "y": 290, "dt": 125 },
+        { "x": 460, "y": 330, "dt": 150 }
+      ]
+    },
+    {
+      "caseId": "fast-stroke",
+      "tool": "brush",
+      "color": "#d16f63",
+      "size": 12,
+      "opacity": 0.7,
+      "points": [
+        { "x": 520, "y": 110, "dt": 0 },
+        { "x": 570, "y": 130, "dt": 4 },
+        { "x": 630, "y": 120, "dt": 8 },
+        { "x": 700, "y": 160, "dt": 12 },
+        { "x": 780, "y": 130, "dt": 16 },
+        { "x": 860, "y": 175, "dt": 20 }
+      ]
+    },
+    {
+      "caseId": "eraser-overlap",
+      "tool": "eraser",
+      "color": "#ffffff",
+      "size": 14,
+      "opacity": 1,
+      "points": [
+        { "x": 280, "y": 285, "dt": 0 },
+        { "x": 295, "y": 310, "dt": 31 },
+        { "x": 310, "y": 335, "dt": 62 },
+        { "x": 325, "y": 360, "dt": 93 }
+      ]
+    },
+    {
+      "caseId": "edge-clipping",
+      "tool": "brush",
+      "color": "#50a176",
+      "size": 60,
+      "opacity": 1,
+      "points": [
+        { "x": 0, "y": 610, "dt": 0 },
+        { "x": 40, "y": 630, "dt": 30 },
+        { "x": 100, "y": 640, "dt": 60 }
+      ]
+    },
+    {
+      "caseId": "cancelled-stroke",
+      "tool": "brush",
+      "color": "#ff00ff",
+      "size": 60,
+      "opacity": 1,
+      "cancelled": true,
+      "points": [
+        { "x": 600, "y": 480, "dt": 0 },
+        { "x": 760, "y": 520, "dt": 40 },
+        { "x": 900, "y": 580, "dt": 80 }
+      ]
+    }
+  ]
+}
+

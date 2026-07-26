@@ -1,0 +1,24 @@
+{
+  "schema": "echa.renderer-fixture-manifest.v1",
+  "fixture": "canonical-strokes.json",
+  "canvas": {
+    "width": 960,
+    "height": 640,
+    "background": "#ffffff",
+    "colorSpace": "srgb"
+  },
+  "protocolVersion": 1,
+  "rendererVersion": null,
+  "rgbaHash": null,
+  "objectByteHash": null,
+  "cases": [
+    "single-dot",
+    "opaque-curve",
+    "low-opacity-zigzag",
+    "fast-stroke",
+    "eraser-overlap",
+    "edge-clipping",
+    "cancelled-stroke"
+  ]
+}
+

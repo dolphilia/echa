@@ -52,6 +52,8 @@ test("generator emits complete strokes until the target is reached", () => {
   assert.deepEqual(validateEventLog(log), []);
   assert.equal(log.events[0].roomSeq, 1);
   assert.equal(log.events.at(-1).roomSeq, log.events.length);
+  assert.equal(log.events[0].clientSeq, 1);
+  assert.ok(log.events.every((event) => Number.isInteger(event.clientSeq)));
 
   const summary = summarizeEventLog(log);
   assert.equal(summary.eventCount, log.events.length);
@@ -81,6 +83,7 @@ test("single-pass analysis uses every recorded stroke exactly once", () => {
   assert.equal(analysis.endCount, 4);
   assert.equal(analysis.eventCount, 18);
   assert.equal(analysis.maximumPointsPerAppend, 3);
+  assert.equal(log.events.at(-1).clientSeq, log.events.length);
   assert.ok(analysis.eventsPerRecordedMinute > 0);
   assert.ok(analysis.eventsPerActiveMinute > analysis.eventsPerRecordedMinute);
 });
@@ -111,4 +114,15 @@ test("event log validator finds a sequence gap", () => {
   const log = generateEventLog(fixture, { targetEvents: 20 });
   log.events[3].roomSeq = 10;
   assert.ok(validateEventLog(log).length > 0);
+});
+
+test("event log validator finds an actor clientSeq gap", () => {
+  const log = generateEventLog(fixture, {
+    targetEvents: 20,
+    actors: 1
+  });
+  log.events[3].clientSeq += 1;
+  assert.ok(
+    validateEventLog(log).some((error) => error.includes("clientSeq"))
+  );
 });

@@ -485,9 +485,11 @@ MVP では完成画像の生成・保存とギャラリー公開を行わない�
 1人で約10分間利用したfixtureでは、次の結果だった。
 
 - 403.6 events / 実時間分
-- 約54.8 KiB / 実時間分
+- 約59.9 KiB / 実時間分
 - 約24,200 events / ユーザー時間
-- 約3.21 MiB / ユーザー時間
+- 約3.51 MiB / ユーザー時間
+
+byte値はprotocol初稿に合わせ`clientSeq`を各eventへ追加したschemaで再解析した。event数、stroke数、point数、時間指標は以前の解析から変わらない。
 
 同程度の活動量を基準にすると、100,000 drawing eventsは約4.1ユーザー時間に相当する。最大2時間では「1人で約48,400 drawing events」「2人分の同等活動量で約96,800 drawing events」となり、100,000件という暫定上限と概ね対応する。
 
@@ -950,10 +952,10 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 
 | event数 | stroke数 | point数 | 推定MessagePack | cold replay |
 | ---: | ---: | ---: | ---: | ---: |
-| 10,001 | 2,222 | 15,561 | 約786.9 KiB | 約33.8 ms |
-| 100,001 | 22,222 | 155,561 | 約7.75 MiB | 約1,795.9 ms |
+| 10,001 | 2,222 | 15,561 | 約912.8 KiB | 約33.8 ms |
+| 100,001 | 22,222 | 155,561 | 約8.99 MiB | 約1,795.9 ms |
 
-100,001 eventsでは8msごとにブラウザへ制御を返し、測定上の最大sliceは8msだった。この値はツールの動作確認結果であり、実利用の上限根拠にはしない。実際の複数ユーザー操作を記録したfixture、複数端末、複数回の測定結果で置き換える。
+推定byteは`clientSeq`追加後のschemaで再生成した。cold replay値は同じpoint列を使った初回測定値であり、rendererが無視するmetadata追加後のブラウザ再測定は必要である。100,001 eventsでは8msごとにブラウザへ制御を返し、測定上の最大sliceは8msだった。この値はツールの動作確認結果であり、実利用の上限根拠にはしない。実際の複数ユーザー操作を記録したfixture、複数端末、複数回の測定結果で置き換える。
 
 このsampleでは100,000 drawing eventsでも推定64MiBへ達していない。event数上限とbyte上限は別々に保持し、さらに復帰時間を主要な判断基準にする。
 
@@ -1199,23 +1201,23 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 
 ## 計画書を作る前に用意する成果物
 
-次の成果物が揃えば、実装計画をタスクへ分解しやすい。
+次の成果物が揃えば、実装計画をタスクへ分解しやすい。2026-07-27時点で、仕様・fixture・spike実行票として作成できるものは初稿を用意した。`作成済み`は実装結果ではなく、計画入力としての初稿があることを表す。
 
-1. `docs/spec/stroke-protocol.md`
+1. `docs/spec/stroke-protocol.md` — 作成済み
    - opcode
    - schema
    - 上限
    - 順序
    - 再送
    - versioning
-2. `docs/spec/room-lifecycle.md`
+2. `docs/spec/room-lifecycle.md` — 作成済み
    - 状態遷移
    - role
    - 公開範囲
    - 終了条件
    - idleと全員退出猶予の分離
    - 通報証跡の保全を含む終了順序
-3. `docs/spec/event-log-recovery.md`
+3. `docs/spec/event-log-recovery.md` — 作成済み
    - 保持上限
    - eventとbyteの計数定義
    - soft close thresholdと終了用予約領域
@@ -1226,34 +1228,34 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
    - 上限到達時の終了
    - event 保持
    - 復帰
-4. `docs/spec/data-model.md`
+4. `docs/spec/data-model.md` — 作成済み
    - D1
    - DO SQLite
    - ID
    - retention
-5. `docs/spec/guest-session.md`
+5. `docs/spec/guest-session.md` — 作成済み
    - cookie
    - room ticket
    - nickname
    - rate limit identity
-6. レンダラー fixture
+6. `tools/renderer-fixtures/v1/` — fixture初稿とschema testを作成済み
    - 基本 stroke
    - 濃度
    - 消しゴム
    - 単点
    - cancel
-7. 2 クライアント同期 spike
-8. 共通WASMレンダラーとsnapshot優先トラック
+7. 2 クライアント同期 spike — `docs/spikes/two-client-sync.md`に実行票を作成済み、spike本体は未実行
+8. 共通WASMレンダラーとsnapshot優先トラック — `docs/spikes/snapshot-vertical-slice.md`に実行票を作成済み、spike本体は未実行
    - Browser / WorkersのRGBA hash一致
    - Queueまたは専用Workerでのlossless snapshot生成
    - R2保存とmanifest commit
    - snapshot + tail replay
    - shadow modeとevent log fallback
    - 採用／延期の判定記録
-9. 自動終了時の接続切断・証跡保全・データ削除 spike
-10. Durable Object WebSocket Hibernation spike
-11. 小規模負荷試験の条件
-12. Better Auth + D1の最小認証spike
+9. 自動終了時の接続切断・証跡保全・データ削除 spike — `docs/spikes/room-close-cleanup.md`に実行票を作成済み、spike本体は未実行
+10. Durable Object WebSocket Hibernation spike — `docs/spikes/websocket-hibernation.md`に実行票を作成済み、spike本体は未実行
+11. 小規模負荷試験の条件 — `docs/spec/load-test-plan.md`を作成済み
+12. Better Auth + D1の最小認証spike — `docs/spikes/auth-d1.md`に実行票を作成済み、provider決定とspike本体は未実行
     - user / session schema
     - OAuth callback
     - cookie設定

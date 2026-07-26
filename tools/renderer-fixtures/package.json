@@ -1,0 +1,9 @@
+{
+  "name": "echa-renderer-fixtures",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
+

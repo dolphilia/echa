@@ -6,6 +6,7 @@
 
 - モックアップ上の実操作から raw stroke fixture を記録
 - raw stroke を `stroke.begin` / `stroke.append` / `stroke.end` へ変換
+- 接続内の`clientSeq`とserver側の`roomSeq`を付与
 - 指定event数または推定wire byte数までevent logを増幅
 - JSON byte数とMessagePack相当の推定byte数を集計
 - ブラウザのCanvas 2Dでevent logをcold replay
