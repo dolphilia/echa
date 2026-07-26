@@ -1,0 +1,12 @@
+{
+  "name": "echa-event-log-benchmark",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "analyze-raw": "node cli/analyze-raw.mjs",
+    "generate": "node cli/generate.mjs",
+    "summarize": "node cli/summarize.mjs",
+    "serve": "node server.mjs",
+    "test": "node --test"
+  }
+}

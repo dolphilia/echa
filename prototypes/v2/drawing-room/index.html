@@ -1171,12 +1171,18 @@
   </div>
 </div>
 
+<script src="../../../tools/event-log-benchmark/web/recorder.js"></script>
 <script>
 /* ════════ Drawing ════════ */
 const canvas = document.getElementById("artboard");
 const ctx = canvas.getContext("2d");
 const strokePreview = document.getElementById("strokePreview");
 const strokeCtx = strokePreview.getContext("2d");
+const measurementRecorder = window.EchaMeasurementRecorder?.create({
+  canvasWidth: canvas.width,
+  canvasHeight: canvas.height,
+  source: "prototypes/v2/drawing-room"
+});
 const eyedropperCursor = document.getElementById("eyedropperCursor");
 const eyedropperPreview = document.getElementById("eyedropperPreview");
 const eyedropperPreviewCtx = eyedropperPreview.getContext("2d");
@@ -1390,6 +1396,7 @@ canvas.addEventListener("pointerdown", (e) => {
     size: state.size,
     opacity: state.opacity,
   };
+  measurementRecorder?.beginStroke(state.activeStroke, point, e.timeStamp);
   renderStrokePreview();
 });
 
@@ -1398,16 +1405,28 @@ canvas.addEventListener("pointermove", (e) => {
   const events = typeof e.getCoalescedEvents === "function"
     ? e.getCoalescedEvents()
     : [e];
-  events.forEach((event) => appendStrokePoint(canvasPos(event)));
+  const points = events.map((event) => canvasPos(event));
+  points.forEach(appendStrokePoint);
+  measurementRecorder?.appendPoints(
+    points.map((point, index) => ({
+      ...point,
+      capturedAt: events[index].timeStamp,
+    }))
+  );
   scheduleStrokePreview();
 });
 
 window.addEventListener("pointerup", (e) => {
   if (!state.drawing) return;
-  appendStrokePoint(canvasPos(e));
+  const point = canvasPos(e);
+  appendStrokePoint(point);
+  measurementRecorder?.endStroke(point, e.timeStamp);
   finishStroke();
 });
-window.addEventListener("pointercancel", finishStroke);
+window.addEventListener("pointercancel", () => {
+  measurementRecorder?.cancelStroke();
+  finishStroke();
+});
 
 function undo() {
   if (!state.undoStack.length) return;
