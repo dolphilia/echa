@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { headers } from "next/headers";
 import AuthActions from "./auth-actions";
+import DrawingRoom from "./drawing-room";
 import { createAuth } from "./server/auth";
 import {
   listOwnedLiveRoomSlugs,
@@ -10,11 +11,27 @@ import {
 
 const STATUS_LABELS: Record<PublicRoom["status"], string> = {
   active: "お絵描き中",
-  waiting: "参加待ち",
+  waiting: "準備中",
   idle: "ひと休み中",
 };
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    accountDeleted?: string;
+    room?: string;
+    sync?: string;
+  }>;
+}) {
+  const parameters = await searchParams;
+  if (
+    env.APP_ENV === "local"
+    && parameters?.sync === "1"
+    && parameters.room
+  ) {
+    return <DrawingRoom roomName="E2E同期ルーム" />;
+  }
   const requestHeaders = new Headers(await headers());
   const [session, rooms] = await Promise.all([
     createAuth(env).api.getSession({ headers: requestHeaders }),
@@ -31,7 +48,20 @@ export default async function Home() {
         <a className="home-brand" href="/">koge</a>
         <div className="home-account">
           {activeUser ? (
-            <span className="home-user">{activeUser.name}</span>
+            <a
+              className="home-profile-link"
+              href="/settings"
+              aria-label="アカウント設定"
+            >
+              <span className="home-profile-avatar" aria-hidden="true">
+                {activeUser.image ? (
+                  <img alt="" src={activeUser.image} />
+                ) : (
+                  [...activeUser.name].slice(0, 1).join("").toUpperCase()
+                )}
+              </span>
+              <span className="home-user">{activeUser.name}</span>
+            </a>
           ) : (
             <span className="home-user">ゲスト</span>
           )}
@@ -41,6 +71,11 @@ export default async function Home() {
 
       <section className="home-intro">
         <div>
+          {parameters?.accountDeleted === "1" ? (
+            <p className="home-account-notice" role="status">
+              アカウントの削除を受け付けました。
+            </p>
+          ) : null}
           <p className="home-kicker">開催中のルーム</p>
           <h1>いま描ける場所を見つける</h1>
           <p>
@@ -85,7 +120,6 @@ export default async function Home() {
                     ) : null}
                   </div>
                   <h3>{room.name}</h3>
-                  <p>{room.theme || "お題なし"}</p>
                   <div className="home-room-footer">
                     <span>
                       描く人 {room.participantCount}/{room.participantLimit}

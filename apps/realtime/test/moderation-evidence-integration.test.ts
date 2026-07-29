@@ -79,7 +79,6 @@ it("accepts a member report and commits a fixed evidence bundle", async () => {
     publicSlug,
     ownerUserId: ownerId,
     name: "Evidence integration",
-    theme: "Safety",
     visibility: "public",
     participantLimit: ROOM_PARTICIPANT_LIMIT,
     viewerLimit: ROOM_VIEWER_LIMIT,

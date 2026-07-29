@@ -8,6 +8,10 @@ import {
   type RoomTicketRegistrationResult,
 } from "@koge/protocol";
 import { DrawingRoom } from "./drawing-room";
+import {
+  requestAccountDeletion,
+  resumePendingAccountDeletions,
+} from "./account-deletion";
 import { processModerationEvidenceJob } from "./moderation-evidence";
 import {
   enqueueExpiredModerationEvidence,
@@ -594,11 +598,13 @@ const handler = {
         orphanScan,
         deletedRateAbuseOutcomes,
         deletedServiceBanAudits,
+        accountDeletions,
       ] = await Promise.all([
         enqueueExpiredModerationEvidence(env),
         scanSnapshotOrphans(env),
         deleteExpiredRateAbuseOutcomes(env.DB),
         deleteExpiredServiceBanAudits(env.DB),
+        resumePendingAccountDeletions(env),
       ]);
       console.log(JSON.stringify({
         level: "info",
@@ -607,6 +613,7 @@ const handler = {
         orphanScan,
         deletedRateAbuseOutcomes,
         deletedServiceBanAudits,
+        accountDeletions,
       }));
     })());
   },
@@ -666,6 +673,11 @@ export class RoomProvisioningService extends WorkerEntrypoint<Env> {
         return Response.json({
           members: await room.activeRoomMembers(),
         } satisfies ActiveRoomMembersResult);
+      }
+      if (path === "/accounts/deletion") {
+        return Response.json(
+          await requestAccountDeletion(await request.json(), this.env),
+        );
       }
       if (path === "/operations/snapshot-orphans/scan") {
         return Response.json(await scanSnapshotOrphans(this.env));

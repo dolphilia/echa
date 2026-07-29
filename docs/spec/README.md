@@ -28,9 +28,9 @@ Phase別の当時の状態は`docs/results/`、採用判断は`docs/decisions/`�
 | `stroke-protocol.md` | stroke wire semantics、順序、再送、上限 | production利用者E2E済み |
 | `room-lifecycle.md` | 状態遷移、終了、証跡、cleanup | production利用者E2E・終了後health済み |
 | `event-log-recovery.md` | event log、snapshot、復帰、compaction | snapshot-first採用、productionはshadow |
-| `data-model.md` | D1、DO SQLite、R2、retention | migration `0001`〜`0017`をproduction適用済み |
-| `guest-session.md` | guest cookie、招待token、room ticket | production利用者E2E済み |
-| `chat-protocol.md` | chat wire semantics、権限、保持、rate limit | production利用者E2E済み |
+| `data-model.md` | D1、DO SQLite、R2、retention | D1 migration `0001`〜`0019`、DO schema v28 |
+| `guest-session.md` | guest cookie、招待token、room ticket | guest viewer限定を実装、preview E2E待ち |
+| `chat-protocol.md` | chat wire semantics、権限、保持、rate limit | ログインユーザー全role送信を実装、preview E2E待ち |
 | `load-test-plan.md` | event log・WebSocket・snapshotの測定条件 | Phase 7測定を反映 |
 
 関連成果物:

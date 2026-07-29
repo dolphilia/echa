@@ -7,6 +7,7 @@ import {
   captureRateAbuseRoomOutcome,
   type RateAbuseCounters,
 } from "./rate-abuse-metrics";
+import { finalizeAccountDeletion } from "./account-deletion";
 
 type CleanupRoomTarget = DurableObjectBase<Env> & {
   stats(): Promise<RateAbuseCounters>;
@@ -29,7 +30,7 @@ export async function processRoomCleanupJob(
   validateRoomCleanupJob(input);
   const job = input;
   const projection = await env.DB.prepare(
-    `SELECT r.status, r.cleanup_job_id,
+    `SELECT r.status, r.cleanup_job_id, r.owner_user_id,
             EXISTS (
               SELECT 1
               FROM reports report
@@ -53,6 +54,7 @@ export async function processRoomCleanupJob(
   ).bind(job.roomId).first<{
     status: string;
     cleanup_job_id: string | null;
+    owner_user_id: string;
     evidence_required: number;
     metrics_captured: number;
   }>();
@@ -97,6 +99,9 @@ export async function processRoomCleanupJob(
     "SELECT 1 AS present FROM rooms WHERE id = ?",
   ).bind(job.roomId).first<{ present: number }>();
   if (remaining) throw new Error("room cleanup projection delete failed");
+  if (projection.owner_user_id) {
+    await finalizeAccountDeletion(env.DB, projection.owner_user_id);
+  }
 
   return {
     status: "deleted",

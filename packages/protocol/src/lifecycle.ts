@@ -4,6 +4,7 @@ export const ROOM_CLOSE_REASONS = [
   "max_duration",
   "activity_limit",
   "admin",
+  "account",
   "probe",
 ] as const;
 

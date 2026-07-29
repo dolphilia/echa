@@ -391,7 +391,6 @@ describe("phase 2 room synchronization", () => {
       publicSlug: "1".repeat(32),
       ownerUserId: "owner-phase5-chat-policy",
       name: "Chat policy",
-      theme: null,
       visibility: "public",
       participantLimit: 20,
       viewerLimit: 100,
@@ -504,7 +503,7 @@ describe("phase 2 room synchronization", () => {
     host.close(1000, "test complete");
   });
 
-  it("allows viewer chat only when the host setting enables it", async () => {
+  it("allows chat-enabled viewers and preserves their profile", async () => {
     const roomId = "room-phase5-viewer-chat-enabled";
     const room = env.DRAWING_ROOM.getByName(roomId);
     const createdAt = Date.now();
@@ -514,7 +513,6 @@ describe("phase 2 room synchronization", () => {
       publicSlug: "2".repeat(32),
       ownerUserId: "owner-viewer-chat-enabled",
       name: "Viewer chat",
-      theme: null,
       visibility: "public",
       participantLimit: 20,
       viewerLimit: 100,
@@ -532,6 +530,9 @@ describe("phase 2 room synchronization", () => {
           "x-koge-actor": "actor-viewer-chat-enabled",
           "x-koge-connection": "connection-viewer-chat-enabled",
           "x-koge-role": "viewer",
+          "x-koge-can-chat": "1",
+          "x-koge-display-name": "Viewer profile",
+          "x-koge-avatar-url": "https://example.test/viewer.png",
         },
       },
     ));
@@ -552,7 +553,12 @@ describe("phase 2 room synchronization", () => {
       text: "viewer allowed",
     }));
     await expect(accepted).resolves.toMatchObject({
-      message: { role: "viewer", text: "viewer allowed" },
+      message: {
+        role: "viewer",
+        displayName: "Viewer profile",
+        avatarUrl: "https://example.test/viewer.png",
+        text: "viewer allowed",
+      },
     });
     viewer.close(1000, "test complete");
     host.close(1000, "test complete");
@@ -568,7 +574,6 @@ describe("phase 2 room synchronization", () => {
       publicSlug: "3".repeat(32),
       ownerUserId: "owner-phase6-lifecycle",
       name: "Lifecycle",
-      theme: null,
       visibility: "public",
       participantLimit: 20,
       viewerLimit: 100,
@@ -670,7 +675,6 @@ describe("phase 2 room synchronization", () => {
       publicSlug: "4".repeat(32),
       ownerUserId: "owner-phase6-empty-timeout",
       name: "Empty timeout",
-      theme: null,
       visibility: "public",
       participantLimit: 20,
       viewerLimit: 100,
@@ -750,7 +754,6 @@ describe("phase 2 room synchronization", () => {
       publicSlug: "5".repeat(32),
       ownerUserId: "owner-phase6-max-duration",
       name: "Maximum duration",
-      theme: null,
       visibility: "public",
       participantLimit: 20,
       viewerLimit: 100,
@@ -802,7 +805,6 @@ describe("phase 2 room synchronization", () => {
       publicSlug: "a".repeat(32),
       ownerUserId: "owner-phase6-time-warning",
       name: "Maximum duration warnings",
-      theme: null,
       visibility: "public",
       participantLimit: 20,
       viewerLimit: 100,
@@ -816,9 +818,17 @@ describe("phase 2 room synchronization", () => {
         `DROP TABLE room_time_limit;
          DROP TABLE room_bans;
          DROP TABLE actor_abuse_state;
+         ALTER TABLE room_tickets DROP COLUMN can_chat;
+         ALTER TABLE room_tickets DROP COLUMN display_name;
+         ALTER TABLE room_tickets DROP COLUMN avatar_url;
+         ALTER TABLE connections DROP COLUMN can_chat;
+         ALTER TABLE connections DROP COLUMN display_name;
+         ALTER TABLE connections DROP COLUMN avatar_url;
+         ALTER TABLE chat_messages DROP COLUMN display_name;
+         ALTER TABLE chat_messages DROP COLUMN avatar_url;
          DELETE FROM room_metrics
          WHERE name IN ('rate_limited', 'short_mute', 'abuse_disconnect');
-         DELETE FROM _sql_schema_migrations WHERE id IN (24, 25, 26);`,
+         DELETE FROM _sql_schema_migrations WHERE id IN (24, 25, 26, 27, 28);`,
       );
       await state.storage.setAlarm(maxEndsAt);
     });
@@ -826,7 +836,7 @@ describe("phase 2 room synchronization", () => {
     room = env.DRAWING_ROOM.getByName(roomId);
     await expect(room.health()).resolves.toEqual({
       ok: true,
-      schemaVersion: 26,
+      schemaVersion: 28,
     });
     await expect(runInDurableObject(
       room,
@@ -898,7 +908,6 @@ describe("phase 2 room synchronization", () => {
       publicSlug: "6".repeat(32),
       ownerUserId: "owner-phase6-host-close",
       name: "Host close",
-      theme: null,
       visibility: "public",
       participantLimit: 20,
       viewerLimit: 100,
@@ -966,7 +975,6 @@ describe("phase 2 room synchronization", () => {
       publicSlug: "7".repeat(32),
       ownerUserId: "owner-phase6-admin-suspend",
       name: "Admin suspend",
-      theme: null,
       visibility: "public",
       participantLimit: 20,
       viewerLimit: 100,

@@ -17,7 +17,6 @@ type RoomAccessRow = {
   status: "waiting" | "active" | "idle";
   provisioning_status: "ready";
   visibility: "public" | "unlisted";
-  viewer_chat_enabled: number;
 };
 
 type MembershipRow = {
@@ -31,6 +30,11 @@ type GuestSessionRow = {
 
 type InviteRow = {
   id: string;
+};
+
+type UserProfileRow = {
+  name: string;
+  image: string | null;
 };
 
 export type RoomAccessSubject = {
@@ -155,8 +159,7 @@ export async function issueRoomTicket(
     throw new TypeError("invalid public room slug");
   }
   const room = await database.prepare(
-    `SELECT id, owner_user_id, status, provisioning_status, visibility,
-            viewer_chat_enabled
+    `SELECT id, owner_user_id, status, provisioning_status, visibility
      FROM rooms
      WHERE public_slug = ?
        AND provisioning_status = 'ready'
@@ -171,6 +174,14 @@ export async function issueRoomTicket(
   if (controls?.room_entry_enabled !== 1) {
     throw new RoomEntryDisabledError(
       "room entry is paused by emergency control",
+    );
+  }
+  if (
+    input.subject.kind === "guest"
+    && input.requestedRole === "participant"
+  ) {
+    throw new RoomAccessForbiddenError(
+      "drawing participation requires an authenticated user",
     );
   }
   await assertSubjectNotServiceBanned(database, input.subject, now);
@@ -197,6 +208,16 @@ export async function issueRoomTicket(
   ).first<{ id: string }>();
   if (activeBan) {
     throw new RoomAccessForbiddenError("subject is banned from this room");
+  }
+  const profile = input.subject.kind === "user"
+    ? await database.prepare(
+        `SELECT name, image
+         FROM user
+         WHERE id = ? AND status = 'active'`,
+      ).bind(input.subject.id).first<UserProfileRow>()
+    : null;
+  if (input.subject.kind === "user" && !profile) {
+    throw new RoomAccessForbiddenError("active user profile is required");
   }
   if (room.visibility === "unlisted" && !isOwner) {
     if (!input.inviteToken || !/^[a-f0-9]{64}$/.test(input.inviteToken)) {
@@ -275,6 +296,9 @@ export async function issueRoomTicket(
     actorId: membership.actor_id,
     connectionId: `connection_${randomHex(16)}`,
     role: membership.role,
+    canChat: input.subject.kind === "user",
+    displayName: profile?.name ?? null,
+    avatarUrl: profile?.image ?? null,
     sessionBindingHash: await sha256Hex(
       `${input.subject.kind}:${input.subject.id}`,
     ),
@@ -309,7 +333,7 @@ export async function issueRoomTicket(
   return {
     ...result,
     publicSlug: input.publicSlug,
-    canChat: membership.role !== "viewer" || room.viewer_chat_enabled === 1,
+    canChat: input.subject.kind === "user",
   };
 }
 

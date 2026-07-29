@@ -2,15 +2,16 @@
 
 更新日: 2026-07-29
 状態: public / unlisted roomのguest session、room actor、single-use ticketを
-productionへ反映し、利用者E2Eまでpass。abuse controlも実装済み
+productionへ反映済み。guest viewer限定はlocal自動・画面テスト済み、
+preview利用者E2E待ち。abuse controlも実装済み
 
 ## Identityの分離
 
 | identity | lifetime | purpose |
 | --- | --- | --- |
-| guest session | 暫定30日 | nickname/color再利用、abuse control |
+| guest session | 暫定30日 | viewer再入室、abuse control |
 | actor ID | room開催中 | presence、stroke、chat |
-| user session | auth policy依存 | room作成、ownership |
+| user session | auth policy依存 | room作成、ownership、描画、chat送信 |
 | room ticket | 暫定60秒・1回 | WebSocket接続 |
 | invite token | revokeまで | unlisted roomへの参加権 |
 
@@ -61,6 +62,8 @@ ticket claims:
 - room ID
 - actor ID
 - role
+- chat送信可否
+- serverで検証した表示名・avatar URL
 - guestまたはuser session IDへのbinding
 - issued / expires
 - protocol permission
@@ -87,12 +90,13 @@ WebSocket側へ認証cookieを共有する方式ではないため、現在の�
 ## 入室フロー
 
 1. GET room metadata。
-2. guest nickname/colorを設定または再利用。
+2. user sessionまたはguest sessionを検証する。
 3. public slugまたはinvite tokenをPOST。
 4. auth、room status、capacity、ban、rate limitを検証。
 5. room内actor IDとticketを発行。
 6. WebSocket upgrade時にticketを消費。
-7. DOがconnection attachmentへactor/role/connection IDを保存。
+7. DOがconnection attachmentへactor/role/connection ID/chat送信権限/
+   server由来プロフィールを保存。
 8. welcomeでprotocol version、roomSeq、snapshot metadataを返す。
 
 ## 再接続
@@ -105,10 +109,13 @@ WebSocket側へ認証cookieを共有する方式ではないため、現在の�
 - 同じsessionの再入室は同じroom actorとして扱う。
 - 同じactorの同時connectionは1つとし、新しいticket接続を優先して旧接続を
   `connection replaced`で閉じる。再接続競合と複数tabは同じ規則にする。
-- public roomではparticipant / viewerを入室時に選ぶ。選択はtab sessionへ
-  保存し、reload時の新ticketにも使う。
-- guestまたは非owner userは新ticket発行時にparticipant / viewerを変更できる。
-  ownerはrequested roleにかかわらず常にhostとして解決する。
+- activeなログインユーザーはpublic roomでparticipant / viewerを入室時に選ぶ。
+  選択はtab sessionへ保存し、reload時の新ticketにも使う。
+- guestはviewerだけを選択でき、participant ticket要求はserverで拒否する。
+- 非owner userは新ticket発行時にparticipant / viewerを変更できる。ownerは
+  requested roleにかかわらず常にhostとして解決する。
+- activeなログインユーザーは全roleでchatを送信でき、guest viewerは受信だけ
+  許可する。
 
 ## Abuse control
 

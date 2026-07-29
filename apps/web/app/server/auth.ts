@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 
 const MINIMUM_SECRET_LENGTH = 32;
 
@@ -91,6 +92,23 @@ export function createAuth(environment: AuthEnvironment) {
     },
     emailAndPassword: {
       enabled: false,
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            const user = await environment.DB.prepare(
+              "SELECT status FROM user WHERE id = ?",
+            ).bind(session.userId).first<{ status: string }>();
+            if (user?.status !== "active") {
+              throw new APIError("FORBIDDEN", {
+                message: "This account is not active.",
+              });
+            }
+            return { data: session };
+          },
+        },
+      },
     },
     user: {
       additionalFields: {

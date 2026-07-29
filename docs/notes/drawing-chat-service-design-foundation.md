@@ -133,7 +133,7 @@ kogeは、複数人が同じ固定サイズのキャンバスへほぼリアル�
 MVP 対象外の将来像としてモックに含まれるもの:
 
 - 完成した合作の一覧
-- 新着、人気、今週のお題、フォロー中
+- 新着、人気、フォロー中
 - 参加者表示
 - いいね
 
@@ -171,8 +171,9 @@ MVP 対象外の将来像としてモックに含まれるもの:
 
 - ブラウザごとの一時的な guest ID を持つ。
 - ニックネームと参加カラーを持つ。
-- 公開ルームまたは有効な room token を持つルームへ参加できる。
-- 描画、チャット、スタンプを利用できる。
+- 公開ルームまたは有効な room token を持つルームをviewerとして閲覧できる。
+- 描く人は選択できず、描画とチャット送信は利用できない。
+- チャットは閲覧できる。
 - MVP ではルーム終了後の参加履歴を永続化しない。
 
 ゲスト識別子を IP アドレスそのものにしない。ランダムな guest session ID と、荒らし対策用の短期的な IP/UA hash は用途を分ける。
@@ -184,6 +185,8 @@ MVP からアカウント機能を導入する。ただし、初期段階で必�
 - ルーム作成
 - 自分が作成した開催中ルームの確認
 - ホスト権限の復元
+- participantとしての描画
+- roleを問わないチャット送信
 
 次の機能はアカウント基盤を利用するが、MVP の必須範囲には含めない。
 
@@ -214,12 +217,12 @@ MVP では undo / redo と論理的な stroke revert を持たないため、管
 
 | ロール | 主な権限 |
 | --- | --- |
-| host | ルーム設定、開始・終了、招待、参加者管理、公開範囲の変更 |
+| host | ルーム設定、終了、招待、参加者管理、公開範囲の変更。接続と描画準備の完了後にルームを自動開始する |
 | participant | 描画、チャット、スタンプ |
-| viewer | キャンバス・presence・チャットの閲覧。デフォルトではチャット・スタンプを送信できない |
+| viewer | キャンバス・presence・チャットの閲覧。ログイン済みならチャットを送信できる |
 | moderator | kick、mute、通報対応など運営補助 |
 
-MVP では `host`、`participant`、`viewer` の 3 種類で開始し、複雑な共同管理権限は後回しにする。host は viewer に対するチャットとスタンプの送信許可をルーム設定で切り替えられる。
+MVP では `host`、`participant`、`viewer` の 3 種類で開始し、複雑な共同管理権限は後回しにする。認証状態とroom roleは分離し、guestはviewerだけ、activeなログインユーザーはparticipantを選択でき、roleを問わずチャットを送信できる。
 
 ## ルームのライフサイクル
 
@@ -228,7 +231,7 @@ MVP では `host`、`participant`、`viewer` の 3 種類で開始し、複雑�
 | 状態 | 内容 |
 | --- | --- |
 | draft | 作成途中。公開一覧へ出さない |
-| waiting | 開始前。参加者を待っている |
+| waiting | hostの接続・復元・描画準備が完了するまでの開始準備中 |
 | active | 描画中 |
 | idle | 接続者はいるが、描画・チャットが一定時間なく休止中 |
 | closing | 新規操作を止め、接続切断、必要な証跡保全、データ削除を行っている |
@@ -743,7 +746,6 @@ MVPではゲストsessionからユーザーへ昇格しても、過去の参加�
 
 - roomSlug
 - name
-- theme
 - status
 - visibility
 - participantCount
@@ -778,12 +780,13 @@ cursor は保存しない。送信頻度を制限し、最新値だけを配信�
 
 スタンプは許可済みの ID だけを送る。
 
-viewer はデフォルトでチャット・スタンプを送信できない。host はルーム設定で、それぞれの送信可否を切り替えられる。許可する場合も次の暫定制限を適用する。
+チャット送信はactiveなログインユーザーだけに許可し、host / participant / viewerの
+全roleで利用できる。guest viewerは受信だけ許可する。送信には次の暫定制限を適用する。
 
 - チャット: 10 秒あたり 5 件まで、1 分あたり 30 件まで
 - スタンプ: 1 秒あたり 1 件まで、1 分あたり 20 件まで
 - 最大文字数、message byte、Unicode正規化の検証
-- host による viewer 全体の送信停止と個別 mute
+- 管理者の緊急停止と個別 mute
 - actor/session/IP単位の段階的 rate limit
 - 違反の反復時は一時 mute、切断、BAN の順で強化
 
@@ -835,8 +838,10 @@ MVP ではギャラリーページ、完成画像のサーバー生成・保存�
 - 表示名・ルーム名・ルームテーマの長さ制限
 - chatは本文500 Unicode code points、2件/秒・burst 5の独立bucket、
   最新100件か24時間の早い方を暫定値とする。
-- host / participantは送信可、viewerはhost設定で明示的に許可した場合だけ
-  送信可とし、受信は全roleに許可する。
+- activeなログインユーザーはroleを問わず送信可、guestは送信不可とし、受信は
+  全roleに許可する。
+- 表示名とavatar URLはclient入力ではなく、activeなユーザープロフィールから
+  serverが接続ticketへ固定する。
 - chatはdrawing event logやsnapshotのroomSeqから分離し、room内の短期
   sequenceで順序付ける。
 - mute / kick / BAN
@@ -1178,8 +1183,8 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 4. drawing event log上限は100,000 events / wire payload 64MiB、最大開催時間は作成から2時間で開始し、負荷試験で調整する。soft close threshold以降は新しいstrokeを開始せず、予約領域で開始済みstrokeを完了してから終了する。
 5. `stroke.end` 欠落時は最後のappendから暫定2秒後に自動確定する。
 6. MVPではundo / redoを提供しない。将来追加する場合は「自分の直近1 stroke・10秒以内・redoなし」を候補とする。
-7. viewerはデフォルト閲覧のみ。host設定でチャット・スタンプを個別に許可でき、rate limit、mute、BANを適用する。
-8. ゲストはルームを作成できない。
+7. activeなログインユーザーはroom roleを問わずチャットを送信できる。guestはviewerとして閲覧とチャット受信だけを利用でき、rate limit、mute、BANを適用する。
+8. ゲストはルームを作成できず、描く人も選択できない。
 9. guest identityは暫定30日、roomごとにparticipant IDを分離する。MVPではゲストの過去の参加履歴や描画eventをアカウントへ移管しない。
 10. 内部ID、公開slug、招待token、短命な接続ticketを分離し、安全性を優先する。
 

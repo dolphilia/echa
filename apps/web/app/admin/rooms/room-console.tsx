@@ -10,7 +10,7 @@ import type { ServiceControls } from "../../server/service-controls";
 import type { AdminServiceBan } from "../../server/service-bans";
 
 const STATUS_LABELS: Record<AdminRoom["status"], string> = {
-  waiting: "参加待ち",
+  waiting: "準備中",
   active: "開催中",
   idle: "休止中",
   suspended: "管理停止中",

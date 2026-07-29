@@ -57,7 +57,6 @@ export default function AuthActions({
     const data = new FormData(event.currentTarget);
     const settings = {
       name: data.get("name"),
-      theme: data.get("theme"),
       visibility,
     };
     const fingerprint = JSON.stringify(settings);
@@ -84,7 +83,15 @@ export default function AuthActions({
     });
     if (response.ok) {
       createAttempt.current = null;
-      window.location.assign(response.headers.get("location") ?? "/");
+      const destination = response.headers.get("location") ?? "/";
+      const roomUrl = new URL(destination, window.location.origin);
+      const roomSlug = /^\/rooms\/([a-f0-9]{32})$/.exec(
+        roomUrl.pathname,
+      )?.[1];
+      if (roomSlug) {
+        sessionStorage.setItem(`koge-room-role:${roomSlug}`, "participant");
+      }
+      window.location.assign(destination);
       return;
     }
     const result: unknown = await response.json().catch(() => null);
@@ -159,14 +166,6 @@ export default function AuthActions({
                     name="name"
                     placeholder="みんなでお絵描き"
                     required
-                  />
-                </label>
-                <label>
-                  お題（任意）
-                  <input
-                    maxLength={80}
-                    name="theme"
-                    placeholder="自由に描こう"
                   />
                 </label>
                 <label>

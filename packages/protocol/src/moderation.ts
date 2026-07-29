@@ -152,7 +152,6 @@ export type ModerationEvidencePlan = {
   readonly targetRoomSeq: number;
   readonly metadata: {
     readonly name: string;
-    readonly theme: string | null;
     readonly visibility: "public" | "unlisted";
     readonly createdAt: number;
     readonly maxEndsAt: number;

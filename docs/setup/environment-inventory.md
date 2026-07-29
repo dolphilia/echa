@@ -63,13 +63,13 @@ moderation evidence Queue / DLQは作成済み。R2 bucket名とQueue名以外�
 | 3 Worker config | 実装済み | `env.production`、origin、bindingを追加 |
 | generated types | 検証済み | 3 Workerのproduction型を生成しcheck成功 |
 | production dry-run | 成功 | Web / Realtime / Snapshotの3 Worker |
-| D1 migration | 適用済み | `0001`〜`0017`、未適用0 |
-| Realtime Worker | 配備済み | version `476b45bf-73b8-4dad-85cd-054acdc3a63f` |
-| Snapshot Worker | 配備済み | version `7fb79a67-6c40-4227-a627-3b06d1e7ba07` |
-| Web Worker | 配備済み | version `011c5f1d-4d25-4dc5-b7c0-3cf9cdca7cf2` |
+| D1 migration | 適用済み | `0001`〜`0019`、未適用0 |
+| Realtime Worker | 配備済み | version `75f49cef-cd8b-4114-b5f1-7bbb14335693` |
+| Snapshot Worker | 配備済み | version `00da91cf-5665-416f-b9df-3da5c0ef6868` |
+| Web Worker | 配備済み | version `0eb82710-790d-4bcf-92b4-5c5a3a5e1c0f` |
 | Custom Domain | 有効 | `koge.app` / `realtime.koge.app` |
 | 自動smoke | pass | home / session / rooms / Realtime health / Access redirect |
-| 利用者E2E | pass | OAuth、room、別browser、描画/cursor/chat/reload、終了、Access |
+| 利用者E2E | pass | OAuth、room、別browser、描画/cursor/chat/reload、終了、Access。provisioning復旧後のroom作成・入室・描画もpass |
 | 終了後health | pass | D1 room 0、cleanup/evidence Queue・DLQ backlog 0、orphan inventory 0 |
 | Worker Analytics | pass | Realtime error 0、Snapshot未起動。Webの2 errorsは`05:32:19Z`の既知の配備時過渡エラー |
 

@@ -7,6 +7,7 @@ import inviteMigration from "../../../migrations/d1/0006_room_invites.sql?raw";
 import serviceControlsMigration from "../../../migrations/d1/0014_service_controls.sql?raw";
 import moderationMigration from "../../../migrations/d1/0008_moderation_evidence_fence.sql?raw";
 import serviceBansMigration from "../../../migrations/d1/0017_service_bans.sql?raw";
+import removeRoomThemesMigration from "../../../migrations/d1/0019_remove_room_themes.sql?raw";
 import { GET, POST } from "../app/api/rooms/route";
 import {
   RoomCreationConflictError,
@@ -70,7 +71,6 @@ beforeAll(async () => {
       public_slug,
       owner_user_id,
       name,
-      theme,
       visibility,
       status,
       participant_limit,
@@ -81,7 +81,7 @@ beforeAll(async () => {
       max_ends_at,
       updated_at,
       provisioning_status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   await env.DB.batch([
     insert.bind(
@@ -89,7 +89,6 @@ beforeAll(async () => {
       "public-ready-room",
       "user-room-fixture",
       "公開ルーム",
-      "青いもの",
       "public",
       "active",
       20,
@@ -106,7 +105,6 @@ beforeAll(async () => {
       "unlisted-room",
       "user-room-fixture",
       "限定ルーム",
-      null,
       "unlisted",
       "active",
       20,
@@ -123,7 +121,6 @@ beforeAll(async () => {
       "closing-room",
       "user-room-fixture",
       "終了処理中",
-      null,
       "public",
       "closing",
       20,
@@ -140,7 +137,6 @@ beforeAll(async () => {
       "pending-room",
       "user-room-fixture",
       "準備中",
-      null,
       "public",
       "waiting",
       20,
@@ -153,15 +149,26 @@ beforeAll(async () => {
       "pending",
     ),
   ]);
+  await env.DB.prepare(
+    "UPDATE rooms SET theme = '青いもの' WHERE id = 'room-public-ready'",
+  ).run();
+  await applySqlMigration(env.DB, removeRoomThemesMigration);
 });
 
 describe("public room projection", () => {
+  it("clears themes stored by the retired room schema", async () => {
+    await expect(
+      env.DB.prepare(
+        "SELECT theme FROM rooms WHERE id = 'room-public-ready'",
+      ).first<{ theme: string | null }>(),
+    ).resolves.toEqual({ theme: null });
+  });
+
   it("returns only ready, live, public rooms", async () => {
     await expect(listPublicRooms(env.DB)).resolves.toEqual([
       {
         publicSlug: "public-ready-room",
         name: "公開ルーム",
-        theme: "青いもの",
         status: "active",
         participantCount: 3,
         participantLimit: 20,
@@ -195,7 +202,6 @@ describe("public room projection", () => {
       },
       body: JSON.stringify({
         name: "guest room",
-        theme: "",
         visibility: "public",
       }),
     }));
@@ -209,20 +215,25 @@ describe("public room projection", () => {
   it("requires a 256-bit invite token for unlisted room creation", () => {
     expect(() => parseCreateRoomInput({
       name: "unlisted room",
-      theme: "",
       visibility: "unlisted",
     })).toThrow("invalid room creation input");
     expect(parseCreateRoomInput({
       name: "unlisted room",
-      theme: "",
       visibility: "unlisted",
       inviteToken: "a".repeat(64),
     })).toEqual({
       name: "unlisted room",
-      theme: null,
       visibility: "unlisted",
       inviteToken: "a".repeat(64),
     });
+  });
+
+  it("rejects the removed theme setting", () => {
+    expect(() => parseCreateRoomInput({
+      name: "room",
+      theme: "青いもの",
+      visibility: "public",
+    })).toThrow("invalid room creation input");
   });
 
   it("blocks only new create requests while emergency creation is paused", async () => {
@@ -237,7 +248,6 @@ describe("public room projection", () => {
       "create-request-paused",
       {
         name: "paused room",
-        theme: null,
         visibility: "public",
         inviteToken: null,
       },
@@ -264,7 +274,6 @@ describe("public room projection", () => {
     };
     const input = {
       name: "新しい公開ルーム",
-      theme: "みどり",
       visibility: "public" as const,
       inviteToken: null,
     };
@@ -333,7 +342,6 @@ describe("public room projection", () => {
     const inviteToken = "b".repeat(64);
     const input = {
       name: "招待リンク限定",
-      theme: null,
       visibility: "unlisted" as const,
       inviteToken,
     };
@@ -398,7 +406,6 @@ describe("public room projection", () => {
     };
     const input = {
       name: "再試行ルーム",
-      theme: null,
       visibility: "public" as const,
       inviteToken: null,
     };
@@ -467,7 +474,6 @@ describe("public room projection", () => {
     };
     const input = {
       name: "上限確認",
-      theme: null,
       visibility: "public" as const,
       inviteToken: null,
     };

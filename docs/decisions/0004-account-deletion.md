@@ -1,7 +1,7 @@
 # ADR 0004: account削除はsession失効、room終了、削除jobの順で処理する
 
 日付: 2026-07-27  
-状態: 採用
+状態: 採用・実装済み（migration `0018`は次回deploymentで適用）
 
 ## 判断
 
@@ -28,3 +28,14 @@ account削除requestを受けたら、次の順で処理する。
 - 法令・通報対応に必要な保持期間
 - backupからの削除反映期間
 - 削除完了通知を提供するか
+
+## 2026-07-29 実装
+
+- 設定画面で確認入力`delete`と確認dialogの二段階確認を必須にした。
+- 24時間以内に作成されたsessionをfresh sessionとして要求する。
+- request受付時に全sessionとprovider accountをD1から削除する。
+- 所有roomはroom DOの通常cleanupへ送り、失敗時はscheduled scanで再試行する。
+- 最後の所有room削除後にuserを物理削除する。
+- moderation上の保持対象はuser IDを不可逆digestへ置換してから保持する。
+- 利用者には削除requestを即時受理したことを表示し、完了通知はMVPでは
+  提供しない。

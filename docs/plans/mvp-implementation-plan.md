@@ -417,15 +417,16 @@ public room作成、room画面への移動、ownership表示、再login後の復
 previewへ反映した。同一actorは最新接続優先とする。participant / viewerの
 参加選択、role表示・切替、viewerのclient/server二重描画防止、reload時の
 role復元もpreviewでpassした。所有者アカウントによるhost表示・描画・reload
-復帰も利用者E2Eでpassし、host / guest participant / viewerの3 role経路が
-成立した。256-bit unlisted inviteのfragment受取、hash保存、短命ticket交換と
+復帰も利用者E2Eでpassした。その後、guestはviewer限定、activeなログイン
+ユーザーはparticipantを選択可能、ログインユーザーはroleを問わずchat送信可能
+という認可境界へ更新した。256-bit unlisted inviteのfragment受取、hash保存、短命ticket交換と
 短時間切断後の同一actor復帰もpreviewへ反映した。unlisted作成、一覧非掲載、
 別browser sessionからの招待入室、reload復帰も利用者E2Eでpassした。
 非永続presence、viewerを含むremote cursor、独立cursor rate bucketも
 preview自動スモークと別browser sessionによる利用者E2Eでpassした。
 chatは最新100件 / 24時間TTL、本文500文字、2件/秒・burst 5、
-viewer host設定、独立rate bucketをpreview製品経路へ反映し、自動スモークと
-viewerブラウザ検証でpassした。lifecycle UIは継続中。証跡は
+接続ticket由来の送信権限、server由来の表示名・avatar、独立rate bucketを
+製品経路へ反映した。guestは受信のみとする。lifecycle UIは継続中。証跡は
 [`../results/phase5-room-ticket-foundation.md`](../results/phase5-room-ticket-foundation.md)
 を参照。
 
@@ -739,6 +740,12 @@ Hibernation実行票: [`../spikes/websocket-hibernation.md`](../spikes/websocket
   Webの2 errorsは`05:32:19Z`の同一sampleに限られ、初回Custom Domain伝播直後の
   home / session一時500と一致し、`05:33Z`以降は再現しなかったため、
   既知の配備時過渡エラーとして初回Worker Analytics gateをpassとした。
+  その後のroom provisioning障害では`0018`、`0019`を適用し、Realtime、
+  Snapshot、Webを依存順に再配備した。実roomの作成・入室・描画をpassし、
+  障害中のfailed projection 7件も限定削除した。以後は共有protocol変更を
+  Web単独配備せず、consumer-firstの協調配備と実room smokeを必須とする。
+  証跡は
+  [`../results/production-room-provisioning-incident-2026-07-29.md`](../results/production-room-provisioning-incident-2026-07-29.md)。
 - backup/restore試験で、終了済みroomを復活させないことを確認する。
 - 小規模closed betaでshadow metricと利用者feedbackを得る。
 
@@ -811,8 +818,8 @@ fallbackは計画上の正規経路であり、場当たり的な代替実装に
 
 ### E2E
 
-- host作成 -> guest参加 -> 同時描画 -> reconnect -> host終了
-- viewer参加 -> 権限拒否 -> host設定変更
+- host作成 -> ログイン済みparticipant参加 -> 同時描画 -> reconnect -> host終了
+- guest viewerの描画・chat拒否 -> ログイン済みviewerのchat送受信
 - unlisted invite交換 -> ticket消費
 - event logまたはsnapshotからcold recovery
 - 自動終了 -> list除外 -> data削除

@@ -7,7 +7,7 @@
 
 更新日: 2026-07-29
 
-MVPの主要実装、preview検証、production初回配備まで完了しています。
+MVPの主要実装、preview検証、production配備と直近の復旧検証まで完了しています。
 `https://koge.app`と`https://realtime.koge.app`は稼働し、Google OAuth、
 ルーム作成・入室、描画、remote cursor、chat、reload復帰、room終了、
 Cloudflare Access配下の管理操作を利用者E2Eで確認済みです。
@@ -15,14 +15,16 @@ Cloudflare Access配下の管理操作を利用者E2Eで確認済みです。
 一般公開完了ではありません。規約、retention、alert、backup/restore試験、
 closed betaを含む公開運用gateが残っています。現在の正確な進捗は
 [`docs/plans/mvp-implementation-plan.md`](./docs/plans/mvp-implementation-plan.md)と
-[`docs/results/production-initial-deployment-2026-07-29.md`](./docs/results/production-initial-deployment-2026-07-29.md)
+[`docs/results/README.md`](./docs/results/README.md)
 を参照してください。
 
 ## 実装済みの主要機能
 
 - Google OAuthとBetter Authによるアカウント・session
-- public / unlisted room、guest session、single-use room ticket
-- host / participant / viewer、presence、remote cursor
+- 設定画面での表示名・avatar URL変更と非同期account削除
+- public / unlisted room、guest viewer session、single-use room ticket
+- ログインユーザーの描画・role横断chat、host / participant / viewer
+- server由来の表示名・avatar付き短期chat、presence、remote cursor
 - MessagePack stroke protocolとWebSocket Hibernation
 - 960 x 640の白いCanvas、brush / eraser / eyedropper、pan / zoom
 - stroke単位の低opacity描画とWASM canonical renderer
@@ -137,28 +139,53 @@ npm run build
 [`docs/setup/environment-inventory.md`](./docs/setup/environment-inventory.md)
 のproduction台帳と照合します。いずれかの検証が失敗した場合は配備しません。
 
+### 配備範囲を判定する
+
+Webだけを配備できるのは、変更が`apps/web`内のUIまたはWeb APIに閉じ、
+次のどれにも触れていない場合だけです。
+
+- `migrations/d1`
+- `apps/realtime`、`apps/snapshot`
+- `packages/protocol`、`packages/renderer-core`
+- Worker間のService Binding、Queue、R2、D1、Durable Object設定
+- room provisioning、ticket、WebSocket、snapshotのrequest / response
+
+上記に該当する、または判断できない場合はWeb単独配備にせず、D1 → Realtime →
+Snapshot → Webの全体手順を使います。特に`packages/protocol`を変更した配備を
+Webだけで行ってはいけません。
+
 ### Webだけを更新する場合
 
-UIやWeb APIだけの変更で、D1 schema、Realtime、Snapshotに変更がない場合は、
-dry-run後にWeb Workerだけを配備します。
+配備前後のWeb versionを記録し、dry-run後に配備します。
 
 ```sh
+npm exec wrangler -- deployments status \
+  --config apps/web/wrangler.jsonc --env production
 npm run dry-run:production --workspace @koge/web
 npm run deploy:production --workspace @koge/web
+npm exec wrangler -- deployments status \
+  --config apps/web/wrangler.jsonc --env production
 ```
 
 WebはVinext adapterのscriptを通して配備します。生成された
 `dist/server/wrangler.json`へ別commandで直接deployしないでください。
 
-### D1 / Realtime / Snapshotを含む場合
+### D1 / Realtime / Snapshot / 共有protocolを含む場合
 
 全体配備は次の順序を変えず、各段階の確認に成功してから先へ進みます。
 
-1. production D1へ未適用migrationを適用する。
-2. Realtime Workerを配備し、`https://realtime.koge.app/health`のHTTP 200を確認する。
-3. Snapshot Workerを配備し、Queue consumerを確認する。
-4. Web Workerを配備する。
-5. OAuth、room作成・入室、描画、chat、復帰、終了、管理操作をsmoke testする。
+1. 3 Workerの現行versionとD1の未適用migrationを記録する。
+2. production D1へ未適用migrationを適用し、未適用0件を確認する。
+3. Realtimeをdry-run、配備し、versionと`/health`を確認する。
+4. Snapshotをdry-run、配備し、versionとQueue consumerを確認する。
+5. Webをdry-run、配備し、versionを確認する。
+6. HTTP healthに加え、ログイン済み利用者が実際にroomを作成し、自動開始・入室・
+   描画・chat・復帰できることを確認する。
+7. provisioning失敗、Worker error、Queue / DLQ backlogが増えていないことを確認する。
+
+共有protocolはconsumer側を旧・新payloadの両方に対応させて先に配備し、その後に
+producerを切り替えるexpand / contractを基本とします。必須fieldを削除しながら
+protocol versionを据え置き、producerだけを先に配備してはいけません。
 
 具体的なcommand、resource照合、停止条件、rollbackは
 [`docs/setup/production-deployment.md`](./docs/setup/production-deployment.md)
@@ -173,8 +200,9 @@ curl -fsS https://koge.app/api/rooms
 curl -fsS https://realtime.koge.app/health
 ```
 
-HTTP応答に加え、変更した利用者経路をブラウザで確認します。異常時は新しい配備を
-重ねず、Cloudflare Workersの直前の正常versionへrollbackします。
+HTTP healthはbindingの存在確認であり、Web → Realtime Service Bindingのpayload互換性
+までは検証しません。必ず認証済みの実room作成を行い、異常時は新しい配備を重ねず、
+room作成を停止してCloudflare Workersの直前の正常versionへrollbackします。
 
 ## Documentation
 

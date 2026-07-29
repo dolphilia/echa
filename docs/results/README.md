@@ -10,6 +10,7 @@
 - Phase 0〜6: 基盤、protocol、snapshot、認証、room、lifecycle、moderationを完了
 - Phase 7: realtime / snapshot / browser recoveryの性能測定基盤を実装・検証
 - production: 初回配備、利用者E2E、cleanup health、Worker Analyticsをpass
+- production room provisioning障害: 復旧、実room E2E、failed projection 7件削除を完了
 - 残作業: 公開運用gateとclosed beta
 
 ## 主要結果
@@ -23,5 +24,6 @@
 - [`phase6-lifecycle-foundation.md`](./phase6-lifecycle-foundation.md)
 - [`phase7-performance-foundation.md`](./phase7-performance-foundation.md)
 - [`production-initial-deployment-2026-07-29.md`](./production-initial-deployment-2026-07-29.md)
+- [`production-room-provisioning-incident-2026-07-29.md`](./production-room-provisioning-incident-2026-07-29.md)
 
 JSONのraw結果と`reports/`の生成物は、対応するMarkdownから参照する。

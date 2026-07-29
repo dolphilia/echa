@@ -70,6 +70,9 @@ type ConnectionAttachment = {
   connectionId: string;
   role: RoomRole;
   roomId: string;
+  canChat?: boolean;
+  displayName?: string | null;
+  avatarUrl?: string | null;
 };
 
 type ReplayFrameCacheEntry = {
@@ -84,6 +87,9 @@ type RoomTicketRow = {
   actor_id: string;
   connection_id: string;
   role: RoomRole;
+  can_chat: number;
+  display_name: string | null;
+  avatar_url: string | null;
   session_binding_hash: string;
   expires_at: number;
   consumed_at: number | null;
@@ -109,6 +115,8 @@ type StoredChatMessageRow = {
   message_id: string;
   actor: string;
   role: RoomRole;
+  display_name: string | null;
+  avatar_url: string | null;
   text: string;
   created_at: number;
 };
@@ -198,7 +206,6 @@ type RoomMetadataRow = {
   public_slug: string;
   owner_user_id: string;
   name: string;
-  theme: string | null;
   visibility: RoomProvisioningRequest["visibility"];
   participant_limit: number;
   viewer_limit: number;
@@ -299,7 +306,7 @@ const SNAPSHOT_READ_TOKEN_PATTERN = /^[a-f0-9]{64}$/;
 const MAX_EXCLUDED_SNAPSHOT_JOBS = 2;
 const MAX_REPLAY_FRAME_CACHE_BYTES = 8 * 1024 * 1024;
 const MINUTE_MS = 60 * 1_000;
-const LATEST_SCHEMA_VERSION = 26;
+const LATEST_SCHEMA_VERSION = 28;
 
 function roomTimeWarningForStage(
   stage: number,
@@ -347,6 +354,20 @@ function isConnectionAttachment(value: unknown): value is ConnectionAttachment {
     )
     && typeof record.roomId === "string"
     && IDENTIFIER_PATTERN.test(record.roomId)
+    && (
+      record.canChat === undefined
+      || typeof record.canChat === "boolean"
+    )
+    && (
+      record.displayName === undefined
+      || record.displayName === null
+      || typeof record.displayName === "string"
+    )
+    && (
+      record.avatarUrl === undefined
+      || record.avatarUrl === null
+      || typeof record.avatarUrl === "string"
+    )
   );
 }
 
@@ -972,6 +993,61 @@ export class DrawingRoom extends DurableObject<Env> {
         INSERT INTO _sql_schema_migrations (id) VALUES (26);
       `);
     }
+    if (currentVersion < 27) {
+      this.ctx.storage.sql.exec(`
+        ALTER TABLE room_metadata RENAME TO room_metadata_v16;
+        CREATE TABLE room_metadata (
+          singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+          room_id TEXT NOT NULL UNIQUE,
+          public_slug TEXT NOT NULL,
+          owner_user_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          visibility TEXT NOT NULL
+            CHECK (visibility IN ('public', 'unlisted')),
+          participant_limit INTEGER NOT NULL,
+          viewer_limit INTEGER NOT NULL,
+          viewer_chat_enabled INTEGER NOT NULL,
+          viewer_stamp_enabled INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          max_ends_at INTEGER NOT NULL
+        );
+        INSERT INTO room_metadata (
+          singleton, room_id, public_slug, owner_user_id, name, visibility,
+          participant_limit, viewer_limit, viewer_chat_enabled,
+          viewer_stamp_enabled, created_at, max_ends_at
+        )
+        SELECT
+          singleton, room_id, public_slug, owner_user_id, name, visibility,
+          participant_limit, viewer_limit, viewer_chat_enabled,
+          viewer_stamp_enabled, created_at, max_ends_at
+        FROM room_metadata_v16;
+        DROP TABLE room_metadata_v16;
+        INSERT INTO _sql_schema_migrations (id) VALUES (27);
+      `);
+    }
+    if (currentVersion < 28) {
+      this.ctx.storage.sql.exec(`
+        ALTER TABLE room_tickets
+          ADD COLUMN can_chat INTEGER NOT NULL DEFAULT 1
+          CHECK (can_chat IN (0, 1));
+        ALTER TABLE room_tickets
+          ADD COLUMN display_name TEXT;
+        ALTER TABLE room_tickets
+          ADD COLUMN avatar_url TEXT;
+        ALTER TABLE connections
+          ADD COLUMN can_chat INTEGER NOT NULL DEFAULT 1
+          CHECK (can_chat IN (0, 1));
+        ALTER TABLE connections
+          ADD COLUMN display_name TEXT;
+        ALTER TABLE connections
+          ADD COLUMN avatar_url TEXT;
+        ALTER TABLE chat_messages
+          ADD COLUMN display_name TEXT;
+        ALTER TABLE chat_messages
+          ADD COLUMN avatar_url TEXT;
+        INSERT INTO _sql_schema_migrations (id) VALUES (28);
+      `);
+    }
     return currentVersion < LATEST_SCHEMA_VERSION;
   }
 
@@ -1000,12 +1076,18 @@ export class DrawingRoom extends DurableObject<Env> {
         connectionId: consumed.connection_id,
         role: consumed.role,
         roomId,
+        canChat: consumed.can_chat === 1,
+        displayName: consumed.display_name,
+        avatarUrl: consumed.avatar_url,
       };
       sessionBindingHash = consumed.session_binding_hash;
     } else {
       const actor = request.headers.get("x-koge-actor");
       const connectionId = request.headers.get("x-koge-connection");
       const role = request.headers.get("x-koge-role") ?? "participant";
+      const directCanChat = request.headers.get("x-koge-can-chat");
+      const displayName = request.headers.get("x-koge-display-name");
+      const avatarUrl = request.headers.get("x-koge-avatar-url");
       if (
         !actor
         || !IDENTIFIER_PATTERN.test(actor)
@@ -1019,7 +1101,17 @@ export class DrawingRoom extends DurableObject<Env> {
           { status: 400 },
         );
       }
-      identity = { actor, connectionId, role, roomId };
+      identity = {
+        actor,
+        connectionId,
+        role,
+        roomId,
+        canChat: directCanChat === "1" || (
+          directCanChat === null && role !== "viewer"
+        ),
+        displayName,
+        avatarUrl,
+      };
     }
     const resumeAfterRoomSeq = Number(
       request.headers.get("x-koge-last-room-seq") ?? "0",
@@ -1126,13 +1218,17 @@ export class DrawingRoom extends DurableObject<Env> {
     this.ctx.storage.sql.exec(
       `INSERT INTO connections (
         connection_id, actor, last_client_seq, connected_at,
-        rate_tokens, rate_updated_at, role, session_binding_hash
-      ) VALUES (?, ?, 0, ?, ?, ?, ?, ?)
+        rate_tokens, rate_updated_at, role, session_binding_hash,
+        can_chat, display_name, avatar_url
+      ) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(connection_id) DO UPDATE SET
         actor = excluded.actor,
         connected_at = excluded.connected_at,
         role = excluded.role,
-        session_binding_hash = excluded.session_binding_hash`,
+        session_binding_hash = excluded.session_binding_hash,
+        can_chat = excluded.can_chat,
+        display_name = excluded.display_name,
+        avatar_url = excluded.avatar_url`,
       identity.connectionId,
       identity.actor,
       Date.now(),
@@ -1140,6 +1236,9 @@ export class DrawingRoom extends DurableObject<Env> {
       Date.now(),
       identity.role,
       sessionBindingHash,
+      identity.canChat === false ? 0 : 1,
+      identity.displayName ?? null,
+      identity.avatarUrl ?? null,
     );
 
     const metadata = this.ctx.storage.sql
@@ -1909,15 +2008,14 @@ export class DrawingRoom extends DurableObject<Env> {
       this.ensureRoomIdentity(request.roomId);
       this.ctx.storage.sql.exec(
         `INSERT INTO room_metadata (
-          singleton, room_id, public_slug, owner_user_id, name, theme,
-          visibility, participant_limit, viewer_limit, viewer_chat_enabled,
+          singleton, room_id, public_slug, owner_user_id, name, visibility,
+          participant_limit, viewer_limit, viewer_chat_enabled,
           viewer_stamp_enabled, created_at, max_ends_at
-        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         request.roomId,
         request.publicSlug,
         request.ownerUserId,
         request.name,
-        request.theme,
         request.visibility,
         request.participantLimit,
         request.viewerLimit,
@@ -1983,8 +2081,8 @@ export class DrawingRoom extends DurableObject<Env> {
     this.ctx.storage.sql.exec(
       `INSERT INTO room_tickets (
          token_hash, actor_id, connection_id, role, session_binding_hash,
-         issued_at, expires_at, consumed_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+         issued_at, expires_at, consumed_at, can_chat, display_name, avatar_url
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
       tokenHash,
       request.actorId,
       request.connectionId,
@@ -1992,6 +2090,11 @@ export class DrawingRoom extends DurableObject<Env> {
       request.sessionBindingHash,
       request.issuedAt,
       request.expiresAt,
+      request.canChat === undefined
+        ? (request.role === "viewer" ? 0 : 1)
+        : (request.canChat ? 1 : 0),
+      request.displayName ?? null,
+      request.avatarUrl ?? null,
     );
   }
 
@@ -2013,7 +2116,7 @@ export class DrawingRoom extends DurableObject<Env> {
         .exec<RoomTicketRow>(
           `SELECT
              actor_id, connection_id, role, session_binding_hash,
-             expires_at, consumed_at
+             expires_at, consumed_at, can_chat, display_name, avatar_url
            FROM room_tickets
            WHERE token_hash = ?`,
           tokenHash,
@@ -2645,7 +2748,6 @@ export class DrawingRoom extends DurableObject<Env> {
       targetRoomSeq,
       metadata: {
         name: metadata.name,
-        theme: metadata.theme,
         visibility: metadata.visibility,
         createdAt: metadata.created_at,
         maxEndsAt: metadata.max_ends_at,
@@ -3519,7 +3621,6 @@ export class DrawingRoom extends DurableObject<Env> {
       && stored.public_slug === request.publicSlug
       && stored.owner_user_id === request.ownerUserId
       && stored.name === request.name
-      && stored.theme === request.theme
       && stored.visibility === request.visibility
       && stored.participant_limit === request.participantLimit
       && stored.viewer_limit === request.viewerLimit
@@ -4320,10 +4421,14 @@ export class DrawingRoom extends DurableObject<Env> {
         .exec<{
           actor: string;
           role: RoomRole;
+          can_chat: number;
+          display_name: string | null;
+          avatar_url: string | null;
           chat_rate_tokens: number;
           chat_rate_updated_at: number;
         }>(
-          `SELECT actor, role, chat_rate_tokens, chat_rate_updated_at
+          `SELECT actor, role, can_chat, display_name, avatar_url,
+                  chat_rate_tokens, chat_rate_updated_at
            FROM connections
            WHERE connection_id = ?`,
           attachment.connectionId,
@@ -4336,16 +4441,8 @@ export class DrawingRoom extends DurableObject<Env> {
       ) {
         return reject("UNAUTHORIZED", "connection is not registered");
       }
-      if (attachment.role === "viewer") {
-        const metadata = this.ctx.storage.sql
-          .exec<{ viewer_chat_enabled: number }>(
-            `SELECT viewer_chat_enabled
-             FROM room_metadata WHERE singleton = 1`,
-          )
-          .toArray()[0];
-        if (metadata?.viewer_chat_enabled !== 1) {
-          return reject("ROLE_FORBIDDEN", "viewer chat is disabled");
-        }
+      if (connection.can_chat !== 1) {
+        return reject("ROLE_FORBIDDEN", "chat requires an authenticated user");
       }
       const duplicate = this.ctx.storage.sql
         .exec<{ seq: number }>(
@@ -4385,14 +4482,17 @@ export class DrawingRoom extends DurableObject<Env> {
       );
       this.pruneChatMessages(now);
       const row = this.ctx.storage.sql
-        .exec<StoredChatMessageRow>(
-          `INSERT INTO chat_messages (
-             message_id, actor, role, text, created_at
-           ) VALUES (?, ?, ?, ?, ?)
-           RETURNING seq, message_id, actor, role, text, created_at`,
+          .exec<StoredChatMessageRow>(
+            `INSERT INTO chat_messages (
+             message_id, actor, role, display_name, avatar_url, text, created_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?)
+           RETURNING seq, message_id, actor, role, display_name, avatar_url,
+                     text, created_at`,
           clientMessage.id,
           attachment.actor,
           attachment.role,
+          connection.display_name,
+          connection.avatar_url,
           clientMessage.text,
           now,
         )
@@ -4407,7 +4507,8 @@ export class DrawingRoom extends DurableObject<Env> {
     this.pruneChatMessages(now);
     return this.ctx.storage.sql
       .exec<StoredChatMessageRow>(
-        `SELECT seq, message_id, actor, role, text, created_at
+        `SELECT seq, message_id, actor, role, display_name, avatar_url,
+                text, created_at
          FROM chat_messages
          ORDER BY seq DESC
          LIMIT ?`,
@@ -4440,6 +4541,12 @@ export class DrawingRoom extends DurableObject<Env> {
       seq: row.seq,
       actor: row.actor,
       role: row.role,
+      ...(row.display_name !== null || row.avatar_url !== null
+        ? {
+            displayName: row.display_name,
+            avatarUrl: row.avatar_url,
+          }
+        : {}),
       text: row.text,
       createdAt: row.created_at,
     };

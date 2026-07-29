@@ -1,7 +1,6 @@
 export const ROOM_PROVISIONING_VERSION = 1;
 export const ROOM_MAX_DURATION_MS = 2 * 60 * 60 * 1_000;
 export const ROOM_NAME_MAX_LENGTH = 60;
-export const ROOM_THEME_MAX_LENGTH = 80;
 export const ROOM_PARTICIPANT_LIMIT = 20;
 export const ROOM_VIEWER_LIMIT = 100;
 
@@ -13,7 +12,6 @@ export type RoomProvisioningRequest = {
   publicSlug: string;
   ownerUserId: string;
   name: string;
-  theme: string | null;
   visibility: RoomVisibility;
   participantLimit: number;
   viewerLimit: number;
@@ -52,7 +50,6 @@ export function validateRoomProvisioningRequest(
     publicSlug,
     ownerUserId,
     name,
-    theme,
     visibility,
     createdAt,
     maxEndsAt,
@@ -69,15 +66,6 @@ export function validateRoomProvisioningRequest(
     || name !== name.trim()
     || codePointLength(name) < 1
     || codePointLength(name) > ROOM_NAME_MAX_LENGTH
-    || (
-      theme !== null
-      && (
-        typeof theme !== "string"
-        || theme !== theme.trim()
-        || codePointLength(theme) < 1
-        || codePointLength(theme) > ROOM_THEME_MAX_LENGTH
-      )
-    )
     || (visibility !== "public" && visibility !== "unlisted")
     || value.participantLimit !== ROOM_PARTICIPANT_LIMIT
     || value.viewerLimit !== ROOM_VIEWER_LIMIT

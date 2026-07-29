@@ -1,7 +1,7 @@
 # Data model
 
 更新日: 2026-07-29
-状態: migration `0001`〜`0017`、DO SQLite、R2、Queue境界をproductionへ反映
+状態: migration `0001`〜`0019`をproductionへ反映済み、未適用0。
 
 ## 原則
 
@@ -37,13 +37,18 @@
 - `created_at`, `updated_at`
 
 詳細プロフィールは別機能導入時に`user_profiles`を追加する。
+表示名とHTTPS avatar URLはBetter Authの`name`、`image`を利用する。
+account削除request後は`deleting`へ遷移して全sessionとprovider accountを
+失効し、所有roomのcleanup完了後にuserを物理削除する。通報・BANなど
+保持根拠がある参照は`deleted_<digest>`へ匿名化し、通常accountとの対応を
+切り離す。`0018_account_deletion.sql`は削除再試行scan用indexを追加する。
 
 ### `rooms`
 
 - `id`
 - `public_slug` unique
 - `owner_user_id`
-- `name`, `theme`, `visibility`
+- `name`, `visibility`
 - `status`
 - participant/viewer limits
 - viewer chat/stamp settings
@@ -82,8 +87,9 @@ cookieには生tokenだけをHttpOnlyで保存する。D1へ生tokenを保存し
 - `created_at`, `last_seen_at`
 
 `room_id + subject_kind + subject_id`をprimary keyとし、再接続時も同じ
-actor IDを使う。非ownerの`participant | viewer`はticket再発行時に更新できる。
-owner membershipは常に`host`へ補正する。
+actor IDを使う。activeなログインユーザーだけが非ownerの
+`participant | viewer`をticket再発行時に選択できる。guest membershipは
+`viewer`だけに制限し、owner membershipは常に`host`へ補正する。
 
 guestのservice横断IDを公開しない。終了時削除。
 
@@ -409,6 +415,9 @@ CREATE TABLE room_tickets (
   actor_id TEXT NOT NULL,
   connection_id TEXT NOT NULL UNIQUE,
   role TEXT NOT NULL,
+  can_chat INTEGER NOT NULL,
+  display_name TEXT,
+  avatar_url TEXT,
   session_binding_hash TEXT NOT NULL,
   issued_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL,
@@ -426,10 +435,13 @@ single useで消費する。期限切れticketは新規登録時に削除し、r
 cursor用`cursor_rate_tokens / cursor_rate_updated_at`とchat用
 `chat_rate_tokens / chat_rate_updated_at`を持つ。これはHibernation後も
 rate limitを安全側へ継続するための値で、cursor座標やpresence一覧は保存しない。
+また`can_chat`、`display_name`、`avatar_url`を接続ticketから固定し、roleだけや
+client入力からchat権限・プロフィールを決めない。
 chatの`seq`はchat内だけの順序であり、drawing `roomSeq`、event log、
 snapshot baseRoomSeqへ含めない。
 
-DO SQLite schema v26では`actor_abuse_state`を追加する。
+DO SQLite schema v28ではticket、connection、chat messageへchat権限と
+server由来プロフィールを追加する。schema v26では`actor_abuse_state`を追加する。
 
 - `actor_id` primary key
 - `violation_count`

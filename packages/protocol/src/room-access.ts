@@ -1,3 +1,5 @@
+import { PROTOCOL_LIMITS } from "./types";
+
 export const ROOM_TICKET_VERSION = 1;
 export const ROOM_TICKET_TTL_MS = 60_000;
 
@@ -9,6 +11,9 @@ export type RoomTicketRegistrationRequest = {
   actorId: string;
   connectionId: string;
   role: RoomRole;
+  canChat?: boolean;
+  displayName?: string | null;
+  avatarUrl?: string | null;
   sessionBindingHash: string;
   issuedAt: number;
   expiresAt: number;
@@ -24,6 +29,23 @@ export type RoomTicketRegistrationResult = {
 
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
+
+function codePointLength(value: string): number {
+  return [...value].length;
+}
+
+function isSafeAvatarUrl(value: string): boolean {
+  if (value.length > PROTOCOL_LIMITS.maxChatAvatarUrlCharacters) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && !url.username
+      && !url.password
+      && url.href === value;
+  } catch {
+    return false;
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -47,6 +69,29 @@ export function validateRoomTicketRegistrationRequest(
       value.role !== "host"
       && value.role !== "participant"
       && value.role !== "viewer"
+    )
+    || (
+      value.canChat !== undefined
+      && typeof value.canChat !== "boolean"
+    )
+    || (
+      value.displayName !== undefined
+      && value.displayName !== null
+      && (
+        typeof value.displayName !== "string"
+        || value.displayName !== value.displayName.trim()
+        || codePointLength(value.displayName) < 1
+        || codePointLength(value.displayName)
+          > PROTOCOL_LIMITS.maxChatDisplayNameCharacters
+      )
+    )
+    || (
+      value.avatarUrl !== undefined
+      && value.avatarUrl !== null
+      && (
+        typeof value.avatarUrl !== "string"
+        || !isSafeAvatarUrl(value.avatarUrl)
+      )
     )
     || typeof value.sessionBindingHash !== "string"
     || !HASH_PATTERN.test(value.sessionBindingHash)

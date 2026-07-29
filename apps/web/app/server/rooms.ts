@@ -3,7 +3,6 @@ import {
   ROOM_NAME_MAX_LENGTH,
   ROOM_PARTICIPANT_LIMIT,
   ROOM_PROVISIONING_VERSION,
-  ROOM_THEME_MAX_LENGTH,
   ROOM_VIEWER_LIMIT,
   validateRoomProvisioningRequest,
   validateRoomProvisioningResult,
@@ -18,7 +17,6 @@ export const OWNER_LIVE_ROOM_LIMIT = 3;
 export type PublicRoom = {
   publicSlug: string;
   name: string;
-  theme: string | null;
   status: "waiting" | "active" | "idle";
   participantCount: number;
   participantLimit: number;
@@ -30,13 +28,11 @@ export type PublicRoom = {
 
 export type RoomDisplayInfo = {
   name: string;
-  theme: string | null;
 };
 
 type PublicRoomRow = {
   public_slug: string;
   name: string;
-  theme: string | null;
   status: PublicRoom["status"];
   participant_count: number;
   participant_limit: number;
@@ -48,7 +44,6 @@ type PublicRoomRow = {
 
 export type CreateRoomInput = {
   name: string;
-  theme: string | null;
   visibility: RoomVisibility;
   inviteToken: string | null;
 };
@@ -57,7 +52,6 @@ export type CreatedRoom = {
   roomId: string;
   publicSlug: string;
   name: string;
-  theme: string | null;
   visibility: RoomVisibility;
   status: "waiting";
   createdAt: number;
@@ -70,7 +64,6 @@ type ProvisioningRoomRow = {
   public_slug: string;
   owner_user_id: string;
   name: string;
-  theme: string | null;
   visibility: RoomVisibility;
   status: "waiting";
   participant_limit: number;
@@ -118,13 +111,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parseCreateRoomInput(value: unknown): CreateRoomInput {
   if (!isRecord(value)) throw new TypeError("request body must be an object");
   const name = typeof value.name === "string" ? value.name.trim() : "";
-  const themeValue = typeof value.theme === "string" ? value.theme.trim() : "";
   const visibility = value.visibility;
   const inviteToken = value.inviteToken;
   if (
     codePointLength(name) < 1
     || codePointLength(name) > ROOM_NAME_MAX_LENGTH
-    || codePointLength(themeValue) > ROOM_THEME_MAX_LENGTH
+    || "theme" in value
     || (visibility !== "public" && visibility !== "unlisted")
     || (
       visibility === "public"
@@ -143,7 +135,6 @@ export function parseCreateRoomInput(value: unknown): CreateRoomInput {
   }
   return {
     name,
-    theme: themeValue || null,
     visibility,
     inviteToken: visibility === "unlisted" ? inviteToken as string : null,
   };
@@ -158,7 +149,6 @@ function provisioningRequestFromRow(
     publicSlug: room.public_slug,
     ownerUserId: room.owner_user_id,
     name: room.name,
-    theme: room.theme,
     visibility: room.visibility,
     participantLimit: room.participant_limit,
     viewerLimit: room.viewer_limit,
@@ -179,7 +169,6 @@ function createdRoomFromRow(
     roomId: room.id,
     publicSlug: room.public_slug,
     name: room.name,
-    theme: room.theme,
     visibility: room.visibility,
     status: room.status,
     createdAt: room.created_at,
@@ -195,7 +184,7 @@ async function findRoomByCreateRequest(
 ): Promise<ProvisioningRoomRow | null> {
   return await database.prepare(
     `SELECT
-       id, public_slug, owner_user_id, name, theme, visibility, status,
+       id, public_slug, owner_user_id, name, visibility, status,
        participant_limit, viewer_limit, viewer_chat_enabled,
        viewer_stamp_enabled, created_at, max_ends_at, provisioning_status
      FROM rooms
@@ -230,7 +219,6 @@ function assertIdempotentInput(
 ): void {
   if (
     room.name !== input.name
-    || room.theme !== input.theme
     || room.visibility !== input.visibility
   ) {
     throw new RoomCreationConflictError(
@@ -283,14 +271,14 @@ export async function createRoom(
     try {
       const roomInsert = database.prepare(
         `INSERT INTO rooms (
-          id, public_slug, owner_user_id, name, theme, visibility, status,
+          id, public_slug, owner_user_id, name, visibility, status,
           participant_limit, viewer_limit, participant_count, viewer_count,
           viewer_chat_enabled, viewer_stamp_enabled, created_at, max_ends_at,
           updated_at, provisioning_status, create_request_id,
           provisioning_attempts, provisioning_updated_at
         )
         SELECT
-          ?, ?, ?, ?, ?, ?, 'waiting', ?, ?, 0, 0, 0, 0, ?, ?, ?,
+          ?, ?, ?, ?, ?, 'waiting', ?, ?, 0, 0, 0, 0, ?, ?, ?,
           'pending', ?, 0, ?
         WHERE (
           SELECT COUNT(*)
@@ -308,7 +296,6 @@ export async function createRoom(
         publicSlug,
         ownerUserId,
         input.name,
-        input.theme,
         input.visibility,
         ROOM_PARTICIPANT_LIMIT,
         ROOM_VIEWER_LIMIT,
@@ -440,7 +427,6 @@ export async function listPublicRooms(
       `SELECT
          public_slug,
          name,
-         theme,
          status,
          participant_count,
          participant_limit,
@@ -467,7 +453,6 @@ export async function listPublicRooms(
   return result.results.map((room) => ({
     publicSlug: room.public_slug,
     name: room.name,
-    theme: room.theme,
     status: room.status,
     participantCount: room.participant_count,
     participantLimit: room.participant_limit,
@@ -483,7 +468,7 @@ export async function getLiveRoomDisplayInfo(
   publicSlug: string,
 ): Promise<RoomDisplayInfo | null> {
   return await database.prepare(
-    `SELECT name, theme
+    `SELECT name
      FROM rooms
      WHERE public_slug = ?
        AND provisioning_status = 'ready'

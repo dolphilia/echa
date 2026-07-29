@@ -78,7 +78,6 @@ it("physically removes a room across R2, DO SQLite, and D1", async () => {
     publicSlug,
     ownerUserId: ownerId,
     name: "Cleanup integration",
-    theme: null,
     visibility: "unlisted",
     participantLimit: ROOM_PARTICIPANT_LIMIT,
     viewerLimit: ROOM_VIEWER_LIMIT,

@@ -269,12 +269,21 @@ function parseRemoteCursor(
 }
 
 function parseChatMessage(value: unknown): ChatMessage {
+  const oldKeys = ["id", "seq", "actor", "role", "text", "createdAt"];
+  const profileKeys = [
+    "id",
+    "seq",
+    "actor",
+    "role",
+    "displayName",
+    "avatarUrl",
+    "text",
+    "createdAt",
+  ];
+  const hasProfile = isRecord(value) && hasExactKeys(value, profileKeys);
   if (
     !isRecord(value)
-    || !hasExactKeys(
-      value,
-      ["id", "seq", "actor", "role", "text", "createdAt"],
-    )
+    || (!hasExactKeys(value, oldKeys) && !hasProfile)
     || typeof value.id !== "string"
     || !/^[A-Za-z0-9_-]{8,128}$/.test(value.id)
     || !isNonNegativeInteger(value.seq)
@@ -286,6 +295,26 @@ function parseChatMessage(value: unknown): ChatMessage {
       value.role !== "host"
       && value.role !== "participant"
       && value.role !== "viewer"
+    )
+    || (
+      hasProfile
+      && value.displayName !== null
+      && (
+        typeof value.displayName !== "string"
+        || value.displayName !== value.displayName.trim()
+        || codePointLength(value.displayName) < 1
+        || codePointLength(value.displayName)
+          > PROTOCOL_LIMITS.maxChatDisplayNameCharacters
+      )
+    )
+    || (
+      hasProfile
+      && value.avatarUrl !== null
+      && (
+        typeof value.avatarUrl !== "string"
+        || value.avatarUrl.length > PROTOCOL_LIMITS.maxChatAvatarUrlCharacters
+        || !value.avatarUrl.startsWith("https://")
+      )
     )
     || typeof value.text !== "string"
     || codePointLength(value.text) < 1
@@ -299,6 +328,12 @@ function parseChatMessage(value: unknown): ChatMessage {
     seq: value.seq,
     actor: value.actor,
     role: value.role,
+    ...(hasProfile
+      ? {
+          displayName: value.displayName as string | null,
+          avatarUrl: value.avatarUrl as string | null,
+        }
+      : {}),
     text: value.text,
     createdAt: value.createdAt,
   };

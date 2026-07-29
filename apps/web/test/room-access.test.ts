@@ -66,6 +66,20 @@ beforeAll(async () => {
     NOW,
     "active",
   ).run();
+  await env.DB.prepare(
+    `INSERT INTO user (
+       id, name, email, emailVerified, image, createdAt, updatedAt, status
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(
+    "user-access-member",
+    "Access member",
+    "access-member@example.test",
+    1,
+    "https://example.test/member.png",
+    NOW,
+    NOW,
+    "active",
+  ).run();
   const insertRoom = env.DB.prepare(
     `INSERT INTO rooms (
        id, public_slug, owner_user_id, name, theme, visibility, status,
@@ -172,7 +186,7 @@ describe("phase 5 guest identity and room tickets", () => {
     expect(cookie).not.toContain(stored!.token_hash);
   });
 
-  it("keeps a stable room actor and applies the latest requested guest role", async () => {
+  it("keeps a stable viewer actor and disables guest chat", async () => {
     const registrations: unknown[] = [];
     const realtime = fakeRealtime(registrations);
     const subject = await resolveRoomAccessSubject(env.DB, {
@@ -188,16 +202,45 @@ describe("phase 5 guest identity and room tickets", () => {
     });
     const second = await issueRoomTicket(env.DB, realtime, {
       publicSlug: PUBLIC_SLUG,
-      requestedRole: "participant",
+      requestedRole: "viewer",
       subject,
       now: NOW + 20,
     });
     expect(second.actorId).toBe(first.actorId);
     expect(second.connectionId).not.toBe(first.connectionId);
-    expect(second.role).toBe("participant");
+    expect(second.role).toBe("viewer");
     expect(first.canChat).toBe(false);
-    expect(second.canChat).toBe(true);
+    expect(second.canChat).toBe(false);
     expect(registrations).toHaveLength(2);
+  });
+
+  it("requires login for drawing and allows logged-in viewers to chat", async () => {
+    const guest = await resolveRoomAccessSubject(env.DB, {
+      appEnvironment: "local",
+      cookieHeader: null,
+      now: NOW + 25,
+    });
+    await expect(issueRoomTicket(env.DB, fakeRealtime([]), {
+      publicSlug: PUBLIC_SLUG,
+      requestedRole: "participant",
+      subject: guest,
+      now: NOW + 25,
+    })).rejects.toBeInstanceOf(RoomAccessForbiddenError);
+
+    const registrations: unknown[] = [];
+    const viewer = await issueRoomTicket(env.DB, fakeRealtime(registrations), {
+      publicSlug: PUBLIC_SLUG,
+      requestedRole: "viewer",
+      subject: { kind: "user", id: "user-access-member" },
+      now: NOW + 26,
+    });
+    expect(viewer.role).toBe("viewer");
+    expect(viewer.canChat).toBe(true);
+    expect(registrations).toContainEqual(expect.objectContaining({
+      canChat: true,
+      displayName: "Access member",
+      avatarUrl: "https://example.test/member.png",
+    }));
   });
 
   it("derives host role from account ownership", async () => {
@@ -257,7 +300,7 @@ describe("phase 5 guest identity and room tickets", () => {
     });
     const ticket = await issueRoomTicket(env.DB, fakeRealtime([]), {
       publicSlug: PUBLIC_SLUG,
-      requestedRole: "participant",
+      requestedRole: "viewer",
       subject,
       now: NOW + 50,
     });

@@ -29,8 +29,11 @@ import {
 } from "@koge/renderer-core";
 import {
   Brush,
+  Download,
   Ellipsis,
   Eraser,
+  House,
+  Keyboard,
   MessageSquare,
   PanelRightClose,
   Pipette,
@@ -58,12 +61,31 @@ import {
   type VerifiedSnapshot,
 } from "./snapshot-recovery";
 import { shouldSendChatOnKeyDown } from "./chat-input";
+import {
+  canvasDownloadFilename,
+  canvasPngBlob,
+  downloadBlob,
+} from "./canvas-download";
+import {
+  alternateModifierLabel,
+  primaryModifierLabel,
+  resolveDrawingShortcut,
+} from "./drawing-shortcuts";
+import { shouldAutoStartRoom } from "./room-auto-start";
 
 type SelectedTool = DrawingTool | "eyedropper" | "zoom";
 type ColorPickerView = "circle" | "square" | "sliders";
 type ColorSliderMode = "hsb" | "rgb";
 type HsvColor = { h: number; s: number; v: number };
 type RgbColor = { r: number; g: number; b: number };
+type RealtimeNoticeTone = "success" | "info" | "warning" | "error";
+type RealtimeNoticePauseReason = "pointer" | "focus";
+type RealtimeNotice = {
+  id: number;
+  message: string;
+  tone: RealtimeNoticeTone;
+  durationMs: number;
+};
 type ActiveDrawing = {
   id: string;
   style: StrokeStyle;
@@ -122,6 +144,13 @@ type RoomTicketResponse = {
   realtimeOrigin: string;
 };
 type RequestedRoomRole = Exclude<RoomRole, "host">;
+
+const REALTIME_NOTICE_DURATION: Record<RealtimeNoticeTone, number> = {
+  success: 3_000,
+  info: 4_000,
+  warning: 6_000,
+  error: 7_000,
+};
 type RemoteCursor = {
   x: number;
   y: number;
@@ -324,10 +353,36 @@ function ToolIcon({ tool }: { tool: SelectedTool }) {
   return <Icon aria-hidden="true" />;
 }
 
+const TOOL_LABELS: Record<SelectedTool, string> = {
+  brush: "ブラシ",
+  eraser: "消しゴム",
+  eyedropper: "スポイト",
+  zoom: "ズーム",
+};
+
+const TOOL_SHORTCUTS: Record<SelectedTool, string> = {
+  brush: "B",
+  eraser: "E",
+  eyedropper: "I",
+  zoom: "Z",
+};
+
+function isShortcutTypingTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement
+    && (
+      target.isContentEditable
+      || target instanceof HTMLInputElement
+      || target instanceof HTMLTextAreaElement
+      || target instanceof HTMLSelectElement
+    );
+}
+
 export default function DrawingRoom({
+  isAuthenticated = false,
   roomSlug,
   roomName = "お絵描きルーム",
 }: {
+  isAuthenticated?: boolean;
   roomSlug?: string;
   roomName?: string;
 }) {
@@ -350,6 +405,12 @@ export default function DrawingRoom({
   >(undefined);
   const lastDrawingToolRef = useRef<DrawingTool>("brush");
   const zoomHudTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const realtimeNoticeTimerRef = useRef<number | undefined>(undefined);
+  const realtimeNoticeSequenceRef = useRef(0);
+  const realtimeNoticeStartedAtRef = useRef(0);
+  const realtimeNoticeRemainingRef = useRef(0);
+  const realtimeNoticePauseRef = useRef({ pointer: false, focus: false });
+  const autoStartRequestedRef = useRef(false);
   const socketRef = useRef<WebSocket | undefined>(undefined);
   const ownConnectionIdsRef = useRef(new Set<string>());
   const lastRoomSeqRef = useRef(0);
@@ -373,6 +434,8 @@ export default function DrawingRoom({
     new Map<string, ReturnType<typeof setTimeout>>(),
   );
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const temporaryToolRef = useRef<SelectedTool | undefined>(undefined);
   const [tool, setTool] = useState<SelectedTool>("brush");
   const [color, setColor] = useState("#574f43");
   const [pickerHsv, setPickerHsv] = useState<HsvColor>(() =>
@@ -407,9 +470,12 @@ export default function DrawingRoom({
     RequestedRoomRole | undefined
   >(roomSlug ? undefined : "participant");
   const [assignedRole, setAssignedRole] = useState<RoomRole | undefined>();
-  const [realtimeNotice, setRealtimeNotice] = useState<string | undefined>();
-  const [inviteCopied, setInviteCopied] = useState(false);
+  const [realtimeNotice, setRealtimeNotice] =
+    useState<RealtimeNotice | undefined>();
+  const [downloadPending, setDownloadPending] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const [isApplePlatform, setIsApplePlatform] = useState(false);
   const [presenceMembers, setPresenceMembers] = useState<
     readonly PresenceMember[]
   >([]);
@@ -445,6 +511,95 @@ export default function DrawingRoom({
     | "connected"
     | "disconnected"
   >(roomSlug ? "choosing" : "local");
+
+  useEffect(() => {
+    setIsApplePlatform(
+      /Mac|iPhone|iPad|iPod/.test(
+        navigator.platform || navigator.userAgent,
+      ),
+    );
+  }, []);
+
+  const clearRealtimeNoticeTimer = useCallback(() => {
+    if (realtimeNoticeTimerRef.current !== undefined) {
+      window.clearTimeout(realtimeNoticeTimerRef.current);
+      realtimeNoticeTimerRef.current = undefined;
+    }
+  }, []);
+
+  const dismissRealtimeNotice = useCallback(() => {
+    clearRealtimeNoticeTimer();
+    realtimeNoticePauseRef.current = { pointer: false, focus: false };
+    setRealtimeNotice(undefined);
+  }, [clearRealtimeNoticeTimer]);
+
+  const scheduleRealtimeNoticeDismiss = useCallback((durationMs: number) => {
+    clearRealtimeNoticeTimer();
+    realtimeNoticeRemainingRef.current = durationMs;
+    realtimeNoticeStartedAtRef.current = performance.now();
+    realtimeNoticeTimerRef.current = window.setTimeout(() => {
+      realtimeNoticeTimerRef.current = undefined;
+      setRealtimeNotice(undefined);
+    }, durationMs);
+  }, [clearRealtimeNoticeTimer]);
+
+  const showRealtimeNotice = useCallback((
+    message: string | undefined,
+    tone: RealtimeNoticeTone = "info",
+    durationMs = REALTIME_NOTICE_DURATION[tone],
+  ) => {
+    clearRealtimeNoticeTimer();
+    realtimeNoticePauseRef.current = { pointer: false, focus: false };
+    if (!message) {
+      setRealtimeNotice(undefined);
+      return;
+    }
+    setRealtimeNotice({
+      id: ++realtimeNoticeSequenceRef.current,
+      message,
+      tone,
+      durationMs,
+    });
+  }, [clearRealtimeNoticeTimer]);
+
+  const pauseRealtimeNotice = useCallback((
+    reason: RealtimeNoticePauseReason,
+  ) => {
+    realtimeNoticePauseRef.current[reason] = true;
+    if (realtimeNoticeTimerRef.current === undefined) return;
+    realtimeNoticeRemainingRef.current = Math.max(
+      0,
+      realtimeNoticeRemainingRef.current
+        - (performance.now() - realtimeNoticeStartedAtRef.current),
+    );
+    clearRealtimeNoticeTimer();
+  }, [clearRealtimeNoticeTimer]);
+
+  const resumeRealtimeNotice = useCallback((
+    reason: RealtimeNoticePauseReason,
+  ) => {
+    realtimeNoticePauseRef.current[reason] = false;
+    if (
+      realtimeNoticePauseRef.current.pointer
+      || realtimeNoticePauseRef.current.focus
+      || realtimeNoticeTimerRef.current !== undefined
+    ) return;
+    if (realtimeNoticeRemainingRef.current <= 0) {
+      dismissRealtimeNotice();
+      return;
+    }
+    scheduleRealtimeNoticeDismiss(realtimeNoticeRemainingRef.current);
+  }, [dismissRealtimeNotice, scheduleRealtimeNoticeDismiss]);
+
+  useEffect(() => {
+    if (!realtimeNotice) return;
+    scheduleRealtimeNoticeDismiss(realtimeNotice.durationMs);
+    return clearRealtimeNoticeTimer;
+  }, [
+    clearRealtimeNoticeTimer,
+    realtimeNotice?.id,
+    scheduleRealtimeNoticeDismiss,
+  ]);
   const canDraw = !roomSlug
     || (
       roomLifecycleStatus !== "waiting"
@@ -970,9 +1125,15 @@ export default function DrawingRoom({
         );
       }
       const storedRole = sessionStorage.getItem(`koge-room-role:${roomSlug}`);
-      if (storedRole === "participant" || storedRole === "viewer") {
+      if (
+        storedRole === "viewer"
+        || (isAuthenticated && storedRole === "participant")
+      ) {
         setRequestedRole(storedRole);
       } else {
+        if (storedRole === "participant") {
+          sessionStorage.removeItem(`koge-room-role:${roomSlug}`);
+        }
         setConnectionStatus("choosing");
       }
       return;
@@ -980,7 +1141,7 @@ export default function DrawingRoom({
     const parameters = new URLSearchParams(window.location.search);
     if (parameters.get("sync") !== "1") return;
     setSyncEnabled(true);
-  }, [roomSlug]);
+  }, [isAuthenticated, roomSlug]);
 
   useEffect(() => {
     if (
@@ -992,7 +1153,7 @@ export default function DrawingRoom({
     let terminal = false;
     setAssignedRole(undefined);
     setRoomLifecycleStatus(undefined);
-    setRealtimeNotice(undefined);
+    showRealtimeNotice(undefined);
     const parameters = new URLSearchParams(window.location.search);
     const roomId = roomSlug
       ?? parameters.get("room")
@@ -1040,16 +1201,20 @@ export default function DrawingRoom({
             if (response.status === 403) {
               terminal = true;
               setConnectionStatus("disconnected");
-              setRealtimeNotice(
+              showRealtimeNotice(
                 errorBody?.error === "SERVICE_BANNED"
                   ? "現在、このサービスのルームには入室できません。"
                   : "このルームには入室できません。招待リンクまたは参加権限を確認してください。",
+                "error",
               );
               return;
             }
             if (response.status === 404) {
               setConnectionStatus("disconnected");
-              setRealtimeNotice("このルームは終了したか、見つかりません。");
+              showRealtimeNotice(
+                "このルームは終了したか、見つかりません。",
+                "error",
+              );
               return;
             }
             if (
@@ -1057,8 +1222,9 @@ export default function DrawingRoom({
               && errorBody?.error === "ROOM_ENTRY_PAUSED"
             ) {
               setConnectionStatus("disconnected");
-              setRealtimeNotice(
+              showRealtimeNotice(
                 "現在、緊急対応のため新しい入室を一時停止しています。自動的に再試行します。",
+                "warning",
               );
             }
             throw new Error(`room ticket request failed: ${response.status}`);
@@ -1300,15 +1466,17 @@ export default function DrawingRoom({
             }
           } else if (serverMessage.type === "room.activity") {
             setRoomActivity(serverMessage);
-            setRealtimeNotice(
+            showRealtimeNotice(
               serverMessage.acceptingNewStrokes
                 ? `このルームで描ける量は残り約${100 - serverMessage.level}%です。`
                 : "描画量の上限に達しました。今の線を描き終えるとルームが終了します。",
+              "warning",
             );
           } else if (serverMessage.type === "room.time") {
             setRoomTime(serverMessage);
-            setRealtimeNotice(
+            showRealtimeNotice(
               `ルーム終了まで約${serverMessage.warningMinutes}分です。`,
+              "warning",
             );
           } else if (serverMessage.type === "reject") {
             if (
@@ -1334,38 +1502,42 @@ export default function DrawingRoom({
                   : serverMessage.code === "SERVICE_EMERGENCY_STOP"
                     ? "現在、緊急対応のため描画を一時停止しています。"
                   : "操作を受け付けられませんでした。";
-            setRealtimeNotice(notice);
+            showRealtimeNotice(notice, "warning");
           } else if (serverMessage.type === "room.removed") {
             terminal = true;
-            setRealtimeNotice(
+            showRealtimeNotice(
               serverMessage.reason === "service_banned"
                 ? "管理者によりサービスから退出となりました。現在は再入室できません。"
                 : serverMessage.reason === "room_banned"
                 ? "このルームから退出となり、ルーム終了まで再入室できません。"
                 : "このルームから退出となりました。必要であれば再入室できます。",
+              "error",
             );
           } else if (serverMessage.type === "room.closed") {
             terminal = true;
             setRoomLifecycleStatus("closing");
-            setRealtimeNotice(
+            showRealtimeNotice(
               "ルームは終了しました。このルームには再入室できません。",
+              "warning",
             );
           } else if (serverMessage.status === "closing") {
             setRoomLifecycleStatus("closing");
-            setRealtimeNotice(
+            showRealtimeNotice(
               "ルームが終了処理に入りました。新しい描画はできません。",
+              "warning",
             );
           } else if (serverMessage.status === "suspended") {
             terminal = true;
             setRoomLifecycleStatus("suspended");
-            setRealtimeNotice(
+            showRealtimeNotice(
               "このルームは管理者により停止されました。描画やチャットはできません。",
+              "error",
             );
           } else {
             setRoomLifecycleStatus(serverMessage.status);
-            setRealtimeNotice(
+            showRealtimeNotice(
               serverMessage.status === "waiting"
-                ? "ホストがルームを開始するまでお待ちください。"
+                ? "ルームを開始する準備をしています。"
                 : serverMessage.status === "idle"
                   ? "しばらく活動がなかったため休止中です。描画やチャットですぐ再開できます。"
                   : undefined,
@@ -1413,8 +1585,7 @@ export default function DrawingRoom({
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.code === "Space"
-        && !(event.target instanceof HTMLInputElement)
-        && !(event.target instanceof HTMLTextAreaElement)
+        && !isShortcutTypingTarget(event.target)
       ) {
         event.preventDefault();
         setSpacePressed(true);
@@ -1669,7 +1840,7 @@ export default function DrawingRoom({
       sessionStorage.setItem(`koge-room-role:${roomSlug}`, role);
     }
     setAssignedRole(undefined);
-    setRealtimeNotice(undefined);
+    showRealtimeNotice(undefined);
     setRequestedRole(role);
   };
 
@@ -1692,23 +1863,97 @@ export default function DrawingRoom({
     }
     try {
       await navigator.clipboard.writeText(inviteUrl.toString());
-      setInviteCopied(true);
-      window.setTimeout(() => setInviteCopied(false), 1_500);
+      showRealtimeNotice("招待リンクをコピーしました。", "success");
     } catch (error) {
       console.error("koge invite link copy failed", error);
-      setRealtimeNotice("招待リンクをコピーできませんでした。");
+      showRealtimeNotice("招待リンクをコピーできませんでした。", "error");
     }
   };
 
-  const startRoom = () => {
+  const downloadCanvasImage = async () => {
+    const source = baseCanvasRef.current;
+    const hasPendingStroke = Boolean(
+      drawingRef.current
+      || outboxRef.current.activeStrokeId
+      || outboxRef.current.eventsToRetry().length > 0
+    );
+    if (!rendererReady || rendererError || !source) {
+      showRealtimeNotice(
+        "描画の準備が完了してからもう一度お試しください。",
+        "warning",
+      );
+      return;
+    }
+    if (roomSlug && connectionStatus !== "connected") {
+      showRealtimeNotice(
+        "ルームへ再接続してから画像をダウンロードしてください。",
+        "warning",
+      );
+      return;
+    }
+    if (hasPendingStroke) {
+      showRealtimeNotice(
+        "描画の同期が完了してからもう一度お試しください。",
+        "warning",
+      );
+      return;
+    }
+    if (downloadPending) return;
+    setDownloadPending(true);
+    try {
+      const blob = await canvasPngBlob(source);
+      downloadBlob(blob, canvasDownloadFilename(roomName));
+      showRealtimeNotice("画像をダウンロードしました。", "success");
+    } catch (error) {
+      console.error("koge canvas download failed", error);
+      showRealtimeNotice(
+        "画像を作成できませんでした。時間をおいてもう一度お試しください。",
+        "error",
+      );
+    } finally {
+      setDownloadPending(false);
+    }
+  };
+
+  const startRoom = useCallback((): boolean => {
     const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
     socket.send(encodeClientRoomStartMessage({
       v: 1,
       type: "room.start",
       requestId: `start_${crypto.randomUUID().replaceAll("-", "")}`,
     }));
-  };
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (
+      roomLifecycleStatus !== "waiting"
+      || connectionStatus !== "connected"
+    ) {
+      autoStartRequestedRef.current = false;
+    }
+    if (
+      autoStartRequestedRef.current
+      || !shouldAutoStartRoom({
+        roomSlug,
+        assignedRole,
+        lifecycleStatus: roomLifecycleStatus,
+        connectionStatus,
+        rendererReady,
+        rendererFailed: Boolean(rendererError),
+      })
+    ) return;
+    if (startRoom()) autoStartRequestedRef.current = true;
+  }, [
+    assignedRole,
+    connectionStatus,
+    rendererError,
+    rendererReady,
+    roomLifecycleStatus,
+    roomSlug,
+    startRoom,
+  ]);
 
   const closeRoom = () => {
     const socket = socketRef.current;
@@ -1754,11 +1999,15 @@ export default function DrawingRoom({
         throw new Error(`room report failed: ${response.status}`);
       }
       setReportOpen(false);
-      setRealtimeNotice("通報を受け付けました。確認用データを安全に保存しています。");
+      showRealtimeNotice(
+        "通報を受け付けました。確認用データを安全に保存しています。",
+        "success",
+      );
     } catch (error) {
       console.error("koge room report failed", error);
-      setRealtimeNotice(
+      showRealtimeNotice(
         "通報を送信できませんでした。時間をおいてもう一度お試しください。",
+        "error",
       );
     } finally {
       setReportSubmitting(false);
@@ -1790,134 +2039,263 @@ export default function DrawingRoom({
   } else if (connectionStatus === "disconnected") {
     connectionNotice = "再接続中";
   } else if (roomLifecycleStatus === "waiting") {
-    connectionNotice = "開始待ち";
+    connectionNotice = "開始準備中";
   }
   const connectionNoticeLevel = rendererError ? "error" : "progress";
+  const hasPendingLocalStroke = Boolean(
+    drawingRef.current
+    || outboxRef.current.activeStrokeId
+    || outboxRef.current.eventsToRetry().length > 0
+  );
+  const canDownloadCanvas = rendererReady
+    && !rendererError
+    && !downloadPending
+    && !hasPendingLocalStroke
+    && (!roomSlug || connectionStatus === "connected");
+  const primaryShortcut = primaryModifierLabel(isApplePlatform);
+  const alternateShortcut = alternateModifierLabel(isApplePlatform);
+  const shortcutGroups = [
+    {
+      title: "ツール",
+      items: [
+        { keys: ["B"], label: "ブラシ" },
+        { keys: ["E"], label: "消しゴム" },
+        { keys: ["I"], label: "スポイト" },
+        {
+          keys: [alternateShortcut],
+          label: "押している間だけスポイト",
+        },
+        { keys: ["Z"], label: "スクラブズーム" },
+        { keys: ["Space"], label: "押している間だけ手のひら" },
+      ],
+    },
+    {
+      title: "ブラシ",
+      items: [
+        { keys: ["["], label: "サイズを1px小さくする" },
+        { keys: ["]"], label: "サイズを1px大きくする" },
+        { keys: ["0–9"], label: "濃度（0は100%）" },
+      ],
+    },
+    {
+      title: "表示・パネル",
+      items: [
+        { keys: [`${primaryShortcut} + +`], label: "拡大" },
+        { keys: [`${primaryShortcut} + −`], label: "縮小" },
+        { keys: [`${primaryShortcut} + 0`], label: "キャンバス全体を表示" },
+        { keys: [`${primaryShortcut} + 1`], label: "100%表示" },
+        { keys: ["F6"], label: "カラーを開く・閉じる" },
+        { keys: ["T"], label: "チャットを開いて入力" },
+        { keys: ["Esc"], label: "開いているパネルを閉じる" },
+      ],
+    },
+    {
+      title: "その他",
+      items: [
+        { keys: [`${primaryShortcut} + S`], label: "画像をダウンロード" },
+        { keys: ["?"], label: "ショートカット一覧" },
+      ],
+    },
+  ] as const;
+
+  useEffect(() => {
+    const handleShortcut = (
+      event: KeyboardEvent,
+      eventType: "keydown" | "keyup",
+    ) => {
+      const action = resolveDrawingShortcut({
+        altKey: event.altKey,
+        code: event.code,
+        ctrlKey: event.ctrlKey,
+        eventType,
+        key: event.key,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+      }, isApplePlatform);
+      if (!action) return;
+
+      if (action.type === "temporary-eyedropper") {
+        if (isShortcutTypingTarget(event.target)) return;
+        event.preventDefault();
+        if (action.active) {
+          if (event.repeat || temporaryToolRef.current !== undefined) return;
+          temporaryToolRef.current = tool;
+          selectTool("eyedropper");
+        } else {
+          const previousTool = temporaryToolRef.current;
+          temporaryToolRef.current = undefined;
+          if (previousTool) selectTool(previousTool);
+        }
+        return;
+      }
+      if (eventType !== "keydown") return;
+
+      if (action.type === "escape") {
+        if (shortcutHelpOpen) {
+          event.preventDefault();
+          setShortcutHelpOpen(false);
+        } else if (reportOpen) {
+          event.preventDefault();
+          setReportOpen(false);
+        } else if (colorPickerOpen) {
+          event.preventDefault();
+          setColorPickerOpen(false);
+        } else if (headerMenuOpen) {
+          event.preventDefault();
+          setHeaderMenuOpen(false);
+        } else if (chatOpen && roomSlug) {
+          event.preventDefault();
+          setChatOpen(false);
+        }
+        return;
+      }
+
+      if (
+        isShortcutTypingTarget(event.target)
+        && action.type !== "download"
+        && action.type !== "zoom"
+      ) return;
+      if (
+        reportOpen
+        || shortcutHelpOpen
+        || (roomSlug && requestedRole === undefined)
+      ) {
+        if (action.type === "help") {
+          event.preventDefault();
+          setShortcutHelpOpen((open) => !open);
+        }
+        return;
+      }
+
+      if (action.type === "tool") {
+        if (
+          (action.tool === "brush" || action.tool === "eraser")
+          && !canDraw
+        ) return;
+        event.preventDefault();
+        selectTool(action.tool);
+        return;
+      }
+      if (action.type === "brush-size") {
+        if (!canDraw) return;
+        event.preventDefault();
+        const updateSize = (current: number) => clamp(
+          current + action.direction,
+          PROTOCOL_LIMITS.minBrushSize,
+          PROTOCOL_LIMITS.maxBrushSize,
+        );
+        if (sizeTool === "eraser") {
+          setEraserSize(updateSize);
+        } else {
+          setBrushSize(updateSize);
+        }
+        return;
+      }
+      if (action.type === "opacity") {
+        if (!canDraw) return;
+        event.preventDefault();
+        setOpacity(action.value);
+        return;
+      }
+      if (action.type === "zoom") {
+        event.preventDefault();
+        if (action.mode === "fit") {
+          const workspace = workspaceRef.current?.getBoundingClientRect();
+          if (!workspace) return;
+          const chatWidth = roomSlug && chatOpen
+            ? Math.min(286, Math.max(0, workspace.width - 58))
+            : 0;
+          const availableWidth = Math.max(
+            240,
+            workspace.width - chatWidth - 96,
+          );
+          const availableHeight = Math.max(160, workspace.height - 48);
+          setZoom(clampZoom(Math.min(
+            availableWidth / PROTOCOL_LIMITS.canvasWidth,
+            availableHeight / PROTOCOL_LIMITS.canvasHeight,
+          )));
+          setPan({ x: 0, y: 0 });
+        } else if (action.mode === "actual") {
+          setZoom(1);
+          setPan({ x: 0, y: 0 });
+        } else {
+          setZoom((current) => clampZoom(
+            current * (action.mode === "in" ? 1.25 : 0.8),
+          ));
+        }
+        showZoomHud();
+        return;
+      }
+      if (action.type === "color") {
+        if (!canDraw) return;
+        event.preventDefault();
+        setColorPickerOpen((open) => !open);
+        return;
+      }
+      if (action.type === "chat") {
+        if (!roomSlug || requestedRole === undefined || !canChat) return;
+        event.preventDefault();
+        setChatOpen(true);
+        requestAnimationFrame(() => chatInputRef.current?.focus());
+        return;
+      }
+      if (action.type === "download") {
+        event.preventDefault();
+        void downloadCanvasImage();
+        return;
+      }
+      if (action.type === "help") {
+        event.preventDefault();
+        setShortcutHelpOpen((open) => !open);
+      }
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      handleShortcut(event, "keydown");
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      handleShortcut(event, "keyup");
+    };
+    const onBlur = () => {
+      const previousTool = temporaryToolRef.current;
+      temporaryToolRef.current = undefined;
+      if (previousTool) selectTool(previousTool);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [
+    canChat,
+    canDraw,
+    chatOpen,
+    colorPickerOpen,
+    downloadCanvasImage,
+    headerMenuOpen,
+    isApplePlatform,
+    reportOpen,
+    requestedRole,
+    roomSlug,
+    selectTool,
+    shortcutHelpOpen,
+    showZoomHud,
+    sizeTool,
+    tool,
+  ]);
 
   return (
     <main className="drawing-app" data-recovery-source={recoverySource}>
-      <header className="app-header">
-        <a className="brand" href="/" aria-label="koge ホーム">koge</a>
-        <div className="room-title-group">
-          <strong title={roomName}>{roomName}</strong>
-          {connectionNotice ? (
-            <span
-              className={`header-connection is-${connectionNoticeLevel}`}
-              role={rendererError ? "alert" : "status"}
-            >
-              {connectionNotice}
-            </span>
-          ) : null}
-        </div>
-        <div className="room-header-actions">
-          {assignedRole === "host" && roomLifecycleStatus === "waiting" ? (
-            <button
-              className="room-start-button"
-              type="button"
-              onClick={startRoom}
-            >
-              ルームを開始
-            </button>
-          ) : null}
-          {roomSlug && assignedRole ? (
-            <span className="header-presence" aria-label="接続中の人数">
-              <Users aria-hidden="true" />
-              <span>{presenceMembers.length}</span>
-            </span>
-          ) : null}
-          {roomSlug && assignedRole ? (
-            <button
-              className="header-icon-button"
-              type="button"
-              onClick={() => void copyInviteLink()}
-              aria-label={inviteCopied ? "招待リンクをコピーしました" : "招待リンクをコピー"}
-              title={inviteCopied ? "コピーしました" : "招待リンクをコピー"}
-            >
-              <Share2 aria-hidden="true" />
-            </button>
-          ) : null}
-          {roomSlug && assignedRole ? (
-            <div className="header-menu" ref={headerMenuRef}>
-              <button
-                className="header-icon-button"
-                type="button"
-                aria-label="ルームメニュー"
-                aria-haspopup="menu"
-                aria-expanded={headerMenuOpen}
-                onClick={() => setHeaderMenuOpen((open) => !open)}
-              >
-                <Ellipsis aria-hidden="true" />
-              </button>
-              {headerMenuOpen ? (
-                <div className="header-menu-popover" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setHeaderMenuOpen(false);
-                      reopenRolePicker();
-                    }}
-                  >
-                    <span>参加方法を変更</span>
-                    <strong>{assignedRoleLabel}</strong>
-                  </button>
-                  {roomSlug ? (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setHeaderMenuOpen(false);
-                        void copyInviteLink();
-                      }}
-                    >
-                      招待リンクをコピー
-                    </button>
-                  ) : null}
-                  {connectionStatus === "connected" ? (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setHeaderMenuOpen(false);
-                        setReportOpen(true);
-                      }}
-                    >
-                      通報する
-                    </button>
-                  ) : null}
-                  {assignedRole === "host"
-                    && connectionStatus === "connected"
-                    && roomLifecycleStatus !== undefined
-                    && roomLifecycleStatus !== "closing" ? (
-                    <>
-                      <span className="header-menu-separator" />
-                      <button
-                        className="is-destructive"
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setHeaderMenuOpen(false);
-                          closeRoom();
-                        }}
-                      >
-                        ルームを終了
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </header>
-
       <section
         ref={workspaceRef}
         className={`drawing-workspace${spacePressed ? " is-hand" : ""}${
           roomSlug && requestedRole !== undefined && chatOpen
             ? " is-chat-open"
             : ""
-        }`}
+        }${connectionNotice ? " has-status-hud" : ""}`}
         aria-label="お絵描きエリア"
         onPointerDown={beginWorkspaceDrag}
         onPointerMove={moveWorkspaceDrag}
@@ -1925,14 +2303,26 @@ export default function DrawingRoom({
         onPointerCancel={endWorkspaceDrag}
         onWheel={onWheel}
       >
+        <a
+          className="workspace-home-link"
+          href="/"
+          aria-label="ルーム一覧へ戻る"
+          title="ルーム一覧へ戻る"
+        >
+          <House aria-hidden="true" />
+        </a>
         <nav className="tool-switcher" aria-label="描画ツール">
           {(["brush", "eraser", "eyedropper", "zoom"] as const).map((candidate) => (
             <button
               key={candidate}
               className={tool === candidate ? "is-selected" : ""}
               type="button"
-              aria-label={candidate}
+              aria-label={TOOL_LABELS[candidate]}
               aria-pressed={tool === candidate}
+              aria-keyshortcuts={TOOL_SHORTCUTS[candidate]}
+              title={candidate === "eyedropper"
+                ? `スポイト (I / ${alternateShortcut}長押し)`
+                : `${TOOL_LABELS[candidate]} (${TOOL_SHORTCUTS[candidate]})`}
               disabled={
                 (candidate === "brush" || candidate === "eraser")
                 && !canDraw
@@ -1949,6 +2339,8 @@ export default function DrawingRoom({
             }`}
             type="button"
             aria-label="カラー"
+            aria-keyshortcuts="F6"
+            title="カラー (F6)"
             aria-expanded={colorPickerOpen}
             aria-controls="drawing-color-picker"
             disabled={!canDraw}
@@ -1956,7 +2348,126 @@ export default function DrawingRoom({
           >
             <span style={{ background: color }} />
           </button>
+          {roomSlug && assignedRole ? (
+            <>
+              <span className="tool-switcher-separator" aria-hidden="true" />
+              <div className="header-menu" ref={headerMenuRef}>
+                <button
+                  className="header-icon-button"
+                  type="button"
+                  aria-label="ルームメニュー"
+                  aria-haspopup="menu"
+                  aria-expanded={headerMenuOpen}
+                  onClick={() => setHeaderMenuOpen((open) => !open)}
+                >
+                  <Ellipsis aria-hidden="true" />
+                </button>
+                {headerMenuOpen ? (
+                  <div className="header-menu-popover" role="menu">
+                    <button
+                      disabled={!canDownloadCanvas}
+                      type="button"
+                      role="menuitem"
+                      title={!canDownloadCanvas
+                        ? "描画の同期または再接続が完了すると保存できます"
+                        : undefined}
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        void downloadCanvasImage();
+                      }}
+                    >
+                      <span>
+                        <Download aria-hidden="true" />
+                        {downloadPending ? "PNGを準備中…" : "画像をダウンロード"}
+                      </span>
+                      <strong>{primaryShortcut}+S</strong>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        setShortcutHelpOpen(true);
+                      }}
+                    >
+                      <span>
+                        <Keyboard aria-hidden="true" />
+                        ショートカット一覧
+                      </span>
+                      <strong>?</strong>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        reopenRolePicker();
+                      }}
+                    >
+                      <span>参加方法を変更</span>
+                      <strong>{assignedRoleLabel}</strong>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        void copyInviteLink();
+                      }}
+                    >
+                      <span>
+                        <Share2 aria-hidden="true" />
+                        招待リンクをコピー
+                      </span>
+                    </button>
+                    {connectionStatus === "connected" ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          setReportOpen(true);
+                        }}
+                      >
+                        通報する
+                      </button>
+                    ) : null}
+                    {assignedRole === "host"
+                      && connectionStatus === "connected"
+                      && roomLifecycleStatus !== undefined
+                      && roomLifecycleStatus !== "closing" ? (
+                      <>
+                        <span className="header-menu-separator" />
+                        <button
+                          className="is-destructive"
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setHeaderMenuOpen(false);
+                            closeRoom();
+                          }}
+                        >
+                          ルームを終了
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
         </nav>
+
+        {connectionNotice ? (
+          <div
+            className={`workspace-status-hud is-${connectionNoticeLevel}`}
+            role={rendererError ? "alert" : "status"}
+            aria-live={rendererError ? "assertive" : "polite"}
+          >
+            <span aria-hidden="true" />
+            {connectionNotice}
+          </div>
+        ) : null}
 
         <aside className="brush-rail" aria-label="描画調整">
           <label>
@@ -1969,6 +2480,10 @@ export default function DrawingRoom({
               max={PROTOCOL_LIMITS.maxBrushSize}
               value={size}
               disabled={!canDraw}
+              aria-keyshortcuts="[ ]"
+              title={`${
+                sizeTool === "eraser" ? "消しゴム" : "ブラシ"
+              }サイズ ([ / ])`}
               onInput={(event) => {
                 const nextSize = Number(event.currentTarget.value);
                 if (sizeTool === "eraser") {
@@ -1983,6 +2498,7 @@ export default function DrawingRoom({
             type="button"
             className={tool === "eyedropper" ? "is-selected" : ""}
             aria-label="スポイト"
+            title="スポイト (I)"
             onClick={() => selectTool("eyedropper")}
           >
             <Square aria-hidden="true" />
@@ -1995,6 +2511,8 @@ export default function DrawingRoom({
               max={100}
               value={Math.round(opacity * 100)}
               disabled={!canDraw}
+              aria-keyshortcuts="0 1 2 3 4 5 6 7 8 9"
+              title="濃度 (0–9)"
               onInput={(event) => setOpacity(Number(event.currentTarget.value) / 100)}
             />
           </label>
@@ -2347,7 +2865,8 @@ export default function DrawingRoom({
             aria-label={unreadChatCount > 0
               ? `チャットを開く（未読${unreadChatCount}件）`
               : "チャットを開く"}
-            title="チャットを開く"
+            aria-keyshortcuts="T"
+            title="チャットを開いて入力 (T)"
             onClick={() => setChatOpen(true)}
           >
             <MessageSquare aria-hidden="true" />
@@ -2362,12 +2881,16 @@ export default function DrawingRoom({
         {roomSlug && requestedRole !== undefined && chatOpen ? (
           <aside className="room-chat" aria-label="チャット">
             <header>
-              <strong>チャット</strong>
-              <span>{presenceMembers.length}人</span>
+              <strong title={roomName}>{roomName}</strong>
+              <span className="room-chat-presence" aria-label="入室人数">
+                <Users aria-hidden="true" />
+                <span>{presenceMembers.length}人</span>
+              </span>
               <button
                 type="button"
                 aria-label="チャットを閉じる"
-                title="チャットを閉じる"
+                aria-keyshortcuts="Escape"
+                title="チャットを閉じる (Esc)"
                 onClick={() => setChatOpen(false)}
               >
                 <PanelRightClose aria-hidden="true" />
@@ -2378,28 +2901,47 @@ export default function DrawingRoom({
                 <p className="room-chat-empty">まだメッセージはありません</p>
               ) : chatMessages.map((message) => {
                 const mine = message.actor === currentActorRef.current;
-                const label = mine
+                const fallbackLabel = mine
                   ? "あなた"
                   : message.role === "host"
                     ? "ホスト"
                     : message.role === "viewer"
                       ? "見る人"
                       : "描く人";
+                const label = message.displayName ?? fallbackLabel;
+                const initials = [...label].slice(0, 2).join("").toUpperCase();
                 return (
                   <article
                     className={`room-chat-message${mine ? " is-mine" : ""}`}
                     key={message.id}
                   >
-                    <div>
-                      <strong>{label}</strong>
-                      <time dateTime={new Date(message.createdAt).toISOString()}>
-                        {new Date(message.createdAt).toLocaleTimeString(
-                          "ja-JP",
-                          { hour: "2-digit", minute: "2-digit" },
-                        )}
-                      </time>
+                    <span className="room-chat-avatar" aria-hidden="true">
+                      <span>{initials}</span>
+                      {message.avatarUrl ? (
+                        <img
+                          alt=""
+                          decoding="async"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          src={message.avatarUrl}
+                          onError={(event) => {
+                            event.currentTarget.hidden = true;
+                          }}
+                        />
+                      ) : null}
+                    </span>
+                    <div className="room-chat-message-content">
+                      <div className="room-chat-message-meta">
+                        <strong>{label}</strong>
+                        <time dateTime={new Date(message.createdAt).toISOString()}>
+                          {new Date(message.createdAt).toLocaleTimeString(
+                            "ja-JP",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )}
+                        </time>
+                      </div>
+                      <p>{message.text}</p>
                     </div>
-                    <p>{message.text}</p>
                   </article>
                 );
               })}
@@ -2412,13 +2954,16 @@ export default function DrawingRoom({
               }}
             >
               <textarea
+                ref={chatInputRef}
                 aria-label="チャットメッセージ"
                 disabled={!canSendChat || connectionStatus !== "connected"}
                 placeholder={roomLifecycleStatus === "waiting"
-                  ? "ルーム開始後に送信できます"
+                  ? "準備完了後に送信できます"
                   : canChat
                   ? "メッセージを送る…"
-                  : "見る人のチャットは無効です"}
+                  : isAuthenticated
+                    ? "チャットを利用できません"
+                    : "チャットにはログインが必要です"}
                 rows={1}
                 value={chatText}
                 onChange={(event) => setChatText(event.currentTarget.value)}
@@ -2462,27 +3007,87 @@ export default function DrawingRoom({
               <p className="room-entry-kicker">ルームに入る</p>
               <h1 id="room-entry-title">どのように参加しますか？</h1>
               <p id="room-entry-description">
-                描く人はキャンバスに参加できます。見る人は安全な閲覧専用です。
+                {isAuthenticated
+                  ? "描く人はキャンバスに参加できます。見る人は閲覧しながらチャットにも参加できます。"
+                  : "ゲストは見る人として参加できます。描画とチャットにはログインが必要です。"}
               </p>
               <div className="room-entry-actions">
-                <button
-                  className="room-entry-choice is-drawing"
-                  type="button"
-                  onClick={() => chooseRole("participant")}
-                >
-                  <strong>描く人として参加</strong>
-                  <span>ブラシと消しゴムを使う</span>
-                </button>
+                {isAuthenticated ? (
+                  <button
+                    className="room-entry-choice is-drawing"
+                    type="button"
+                    onClick={() => chooseRole("participant")}
+                  >
+                    <strong>描く人として参加</strong>
+                    <span>ブラシと消しゴム、チャットを使う</span>
+                  </button>
+                ) : null}
                 <button
                   className="room-entry-choice"
                   type="button"
                   onClick={() => chooseRole("viewer")}
                 >
                   <strong>見る人として参加</strong>
-                  <span>閲覧のみ・あとから変更できます</span>
+                  <span>
+                    {isAuthenticated
+                      ? "閲覧とチャット・あとから変更できます"
+                      : "閲覧のみ"}
+                  </span>
                 </button>
               </div>
               <a href="/">ルーム一覧へ戻る</a>
+            </section>
+          </div>
+        ) : null}
+
+        {shortcutHelpOpen ? (
+          <div
+            className="room-entry-backdrop"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              if (event.target === event.currentTarget) {
+                setShortcutHelpOpen(false);
+              }
+            }}
+          >
+            <section
+              className="drawing-shortcuts-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="drawing-shortcuts-title"
+            >
+              <header>
+                <div>
+                  <p className="room-entry-kicker">
+                    {isApplePlatform ? "macOS" : "Windows・Linux"}
+                  </p>
+                  <h1 id="drawing-shortcuts-title">キーボードショートカット</h1>
+                </div>
+                <button
+                  type="button"
+                  aria-label="ショートカット一覧を閉じる"
+                  onClick={() => setShortcutHelpOpen(false)}
+                >
+                  <X aria-hidden="true" />
+                </button>
+              </header>
+              <div className="drawing-shortcuts-groups">
+                {shortcutGroups.map((group) => (
+                  <section key={group.title}>
+                    <h2>{group.title}</h2>
+                    <dl>
+                      {group.items.map((item) => (
+                        <div key={item.label}>
+                          <dt>
+                            {item.keys.map((key) => <kbd key={key}>{key}</kbd>)}
+                          </dt>
+                          <dd>{item.label}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </section>
+                ))}
+              </div>
             </section>
           </div>
         ) : null}
@@ -2548,9 +3153,32 @@ export default function DrawingRoom({
         ) : null}
 
         {realtimeNotice ? (
-          <p className="realtime-notice" role="status">
-            {realtimeNotice}
-          </p>
+          <div
+            className={`realtime-notice is-${realtimeNotice.tone}`}
+            role={
+              realtimeNotice.tone === "warning"
+                || realtimeNotice.tone === "error"
+                ? "alert"
+                : "status"
+            }
+            aria-atomic="true"
+            onPointerEnter={() => pauseRealtimeNotice("pointer")}
+            onPointerLeave={() => resumeRealtimeNotice("pointer")}
+            onFocusCapture={() => pauseRealtimeNotice("focus")}
+            onBlurCapture={() => resumeRealtimeNotice("focus")}
+          >
+            <span>{realtimeNotice.message}</span>
+            {realtimeNotice.tone === "warning"
+                || realtimeNotice.tone === "error" ? (
+              <button
+                type="button"
+                aria-label="通知を閉じる"
+                onClick={dismissRealtimeNotice}
+              >
+                <X aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {(tool === "zoom" || zooming) && (

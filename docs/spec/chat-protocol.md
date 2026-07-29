@@ -1,7 +1,8 @@
 # Chat protocol
 
 更新日: 2026-07-29  
-状態: production製品経路を実装し、別browser利用者E2E済み
+状態: production製品経路を実装済み。ログインユーザー全role送信とavatar表示は
+local自動テスト済み、preview利用者E2E待ち
 
 ## 境界
 
@@ -37,6 +38,8 @@
     seq: number;
     actor: string;
     role: "host" | "participant" | "viewer";
+    displayName?: string | null;
+    avatarUrl?: string | null;
     text: string;
     createdAt: number;
   };
@@ -46,16 +49,23 @@
 接続復帰時は、有効な履歴が1件以上ある場合だけ`chat.history`を`ready`より前に
 送信する。`messages`は`seq`昇順、最大100件とする。
 
+`displayName`と`avatarUrl`はclientの`chat.send`から受け取らない。接続ticketを
+発行するWeb serverがactiveなログインユーザーのプロフィールから設定し、room DOが
+接続identityとして固定する。旧messageとのrolling deploy互換性のため両fieldは
+optionalとし、ない場合はclientがrole名へfallbackする。
+
 ## 権限
 
-| role | receive | send |
+| 認証状態 / role | receive | send |
 | --- | --- | --- |
-| host | allow | allow |
-| participant | allow | allow |
-| viewer | allow | `viewer_chat_enabled = true`の場合だけallow |
+| activeなログインユーザー / host | allow | allow |
+| activeなログインユーザー / participant | allow | allow |
+| activeなログインユーザー / viewer | allow | allow |
+| guest / viewer | allow | deny |
 
-権限はclient表示だけに依存せず、room DOの`room_metadata`で検証する。
-無効なviewer送信は`ROLE_FORBIDDEN`を返す。
+描画roleとチャット送信権限は分離する。権限はclient表示だけに依存せず、Web serverが
+発行する接続ticketの`canChat`をroom DOが接続identityへ固定して検証する。無効な
+送信は`ROLE_FORBIDDEN`を返す。guestはviewerとしてチャットを受信できるが送信できない。
 
 ## 保持
 

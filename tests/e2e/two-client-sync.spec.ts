@@ -26,9 +26,14 @@ async function baseCanvasHash(page: Page): Promise<string> {
 }
 
 async function waitUntilConnected(page: Page): Promise<void> {
-  await expect(page.locator(".room-status")).toContainText("同期中", {
-    timeout: 15_000,
-  });
+  await expect.poll(
+    () => page.evaluate(() => (
+      window as Window & {
+        kogeBrowserRecoveryMetrics?: { status?: string };
+      }
+    ).kogeBrowserRecoveryMetrics?.status),
+    { timeout: 15_000 },
+  ).toBe("painted");
 }
 
 async function captureVisibleCanvas(page: Page): Promise<void> {

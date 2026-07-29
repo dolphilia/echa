@@ -102,11 +102,11 @@ describe("phase 0 health", () => {
 
     await expect(firstRoom.health()).resolves.toEqual({
       ok: true,
-      schemaVersion: 26,
+      schemaVersion: 28,
     });
     await expect(secondRoom.health()).resolves.toEqual({
       ok: true,
-      schemaVersion: 26,
+      schemaVersion: 28,
     });
   });
 
@@ -118,7 +118,6 @@ describe("phase 0 health", () => {
       publicSlug: "0123456789abcdef0123456789abcdef",
       ownerUserId: "owner-provisioning-test",
       name: "RPC room",
-      theme: "idempotency",
       visibility: "public",
       participantLimit: ROOM_PARTICIPANT_LIMIT,
       viewerLimit: ROOM_VIEWER_LIMIT,

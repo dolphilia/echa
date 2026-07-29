@@ -43,9 +43,11 @@ snapshot read ticket、期限task、snapshot自動処理を停止してから
 管理者closeはwaiting / active / idleに加えてsuspendedからもclosingへ進め、
 既存の証跡fenceと通常cleanupを再利用する。
 
-`waiting -> active`はhostの明示開始で遷移する。入室、presence、cursorでは
-開始しない。waiting中は入室とpresence/cursorを許可する一方、drawing/chatは
-`ROOM_NOT_ACTIVE`で拒否する。
+`waiting -> active`は、hostのWebSocket接続、room復元、client rendererの準備が
+すべて完了した後に、host clientが自動送信する冪等なstart commandで遷移する。
+participantまたはviewerの入室、presence、cursorでは開始しない。waiting中は
+入室とpresence/cursorを許可する一方、drawing/chatは`ROOM_NOT_ACTIVE`で拒否する。
+start command送信前後に接続が切れた場合は、hostの再接続と復元完了後に再試行する。
 
 ## 終了条件
 
@@ -198,7 +200,8 @@ roomごとに次を持つ。
 
 - room name
 - visibility
-- viewer chat/stamp settings
+- viewer stamp settings（`viewer_chat_enabled`は互換用のlegacy fieldで、
+  chat送信権限には使用しない）
 
 hostはログインsessionで新しいroomを作る。旧room IDやeventは引き継がず、canvasは白紙。
 

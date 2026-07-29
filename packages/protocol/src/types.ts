@@ -22,6 +22,8 @@ export const PROTOCOL_LIMITS = {
   chatRatePerSecond: 2,
   chatRateBurst: 5,
   maxChatMessageCharacters: 500,
+  maxChatDisplayNameCharacters: 40,
+  maxChatAvatarUrlCharacters: 2_048,
   maxChatMessages: 100,
   chatMessageTtlMs: 24 * 60 * 60 * 1000,
   minBrushSize: 1,
@@ -224,6 +226,8 @@ export type ChatMessage = {
   readonly seq: number;
   readonly actor: string;
   readonly role: "host" | "participant" | "viewer";
+  readonly displayName?: string | null;
+  readonly avatarUrl?: string | null;
   readonly text: string;
   readonly createdAt: number;
 };
