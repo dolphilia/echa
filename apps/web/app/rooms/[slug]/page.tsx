@@ -1,4 +1,6 @@
+import { env } from "cloudflare:workers";
 import DrawingRoom from "../../drawing-room";
+import { getLiveRoomDisplayInfo } from "../../server/rooms";
 
 export default async function RoomPage({
   params,
@@ -6,5 +8,11 @@ export default async function RoomPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  return <DrawingRoom roomSlug={slug} />;
+  const room = await getLiveRoomDisplayInfo(env.DB, slug);
+  return (
+    <DrawingRoom
+      roomSlug={slug}
+      roomName={room?.name ?? "お絵描きルーム"}
+    />
+  );
 }

@@ -28,6 +28,11 @@ export type PublicRoom = {
   maxEndsAt: number;
 };
 
+export type RoomDisplayInfo = {
+  name: string;
+  theme: string | null;
+};
+
 type PublicRoomRow = {
   public_slug: string;
   name: string;
@@ -471,6 +476,20 @@ export async function listPublicRooms(
     createdAt: room.created_at,
     maxEndsAt: room.max_ends_at,
   }));
+}
+
+export async function getLiveRoomDisplayInfo(
+  database: D1Database,
+  publicSlug: string,
+): Promise<RoomDisplayInfo | null> {
+  return await database.prepare(
+    `SELECT name, theme
+     FROM rooms
+     WHERE public_slug = ?
+       AND provisioning_status = 'ready'
+       AND status IN ('waiting', 'active', 'idle')
+     LIMIT 1`,
+  ).bind(publicSlug).first<RoomDisplayInfo>();
 }
 
 export async function listOwnedLiveRoomSlugs(

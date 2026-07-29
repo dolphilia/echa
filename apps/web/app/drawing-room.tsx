@@ -28,6 +28,23 @@ import {
   type RendererFixture,
 } from "@koge/renderer-core";
 import {
+  Brush,
+  Ellipsis,
+  Eraser,
+  MessageSquare,
+  PanelRightClose,
+  Pipette,
+  Search,
+  SendHorizontal,
+  Share2,
+  SlidersHorizontal,
+  Square,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
   useCallback,
@@ -40,8 +57,13 @@ import {
   recoverSnapshotOrFallback,
   type VerifiedSnapshot,
 } from "./snapshot-recovery";
+import { shouldSendChatOnKeyDown } from "./chat-input";
 
 type SelectedTool = DrawingTool | "eyedropper" | "zoom";
+type ColorPickerView = "circle" | "square" | "sliders";
+type ColorSliderMode = "hsb" | "rgb";
+type HsvColor = { h: number; s: number; v: number };
+type RgbColor = { r: number; g: number; b: number };
 type ActiveDrawing = {
   id: string;
   style: StrokeStyle;
@@ -121,6 +143,73 @@ const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 function clampZoom(value: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function hsvToRgb({ h, s, v }: HsvColor): RgbColor {
+  const hue = ((h % 360) + 360) % 360;
+  const saturation = s / 100;
+  const brightness = v / 100;
+  const chroma = brightness * saturation;
+  const x = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
+  const offset = brightness - chroma;
+  let channels: [number, number, number];
+
+  if (hue < 60) channels = [chroma, x, 0];
+  else if (hue < 120) channels = [x, chroma, 0];
+  else if (hue < 180) channels = [0, chroma, x];
+  else if (hue < 240) channels = [0, x, chroma];
+  else if (hue < 300) channels = [x, 0, chroma];
+  else channels = [chroma, 0, x];
+
+  return {
+    r: Math.round((channels[0] + offset) * 255),
+    g: Math.round((channels[1] + offset) * 255),
+    b: Math.round((channels[2] + offset) * 255),
+  };
+}
+
+function rgbToHsv({ r, g, b }: RgbColor): HsvColor {
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const maximum = Math.max(red, green, blue);
+  const minimum = Math.min(red, green, blue);
+  const delta = maximum - minimum;
+  let hue = 0;
+
+  if (delta !== 0) {
+    if (maximum === red) hue = 60 * (((green - blue) / delta) % 6);
+    else if (maximum === green) hue = 60 * ((blue - red) / delta + 2);
+    else hue = 60 * ((red - green) / delta + 4);
+  }
+  if (hue < 0) hue += 360;
+
+  return {
+    h: hue,
+    s: maximum === 0 ? 0 : (delta / maximum) * 100,
+    v: maximum * 100,
+  };
+}
+
+function rgbToHex({ r, g, b }: RgbColor): string {
+  return `#${[r, g, b]
+    .map((value) => Math.round(value).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+function hexToRgb(value: string): RgbColor | undefined {
+  const match = /^#?([0-9a-f]{6})$/i.exec(value.trim());
+  const hex = match?.[1];
+  if (!hex) return undefined;
+  return {
+    r: Number.parseInt(hex.slice(0, 2), 16),
+    g: Number.parseInt(hex.slice(2, 4), 16),
+    b: Number.parseInt(hex.slice(4, 6), 16),
+  };
 }
 
 function cursorColor(actor: string): string {
@@ -225,27 +314,41 @@ function parseRoomTicketResponse(value: unknown): RoomTicketResponse {
 }
 
 function ToolIcon({ tool }: { tool: SelectedTool }) {
-  const paths: Record<SelectedTool, string> = {
-    brush: "M5 19c4 0 6-2 6-6l8-8-4-4-8 8c-4 0-6 2-6 6 0 2 1 4 4 4Z",
-    eraser: "m4 14 8-8 6 6-7 7H7l-3-3a1.4 1.4 0 0 1 0-2Z",
-    eyedropper: "m7 17 9-9m-6-3 9 9M5 19l4-1-3-3-1 4Z",
-    zoom: "m15 15 5 5m-3-11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
+  const icons: Record<SelectedTool, LucideIcon> = {
+    brush: Brush,
+    eraser: Eraser,
+    eyedropper: Pipette,
+    zoom: Search,
   };
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d={paths[tool]} />
-    </svg>
-  );
+  const Icon = icons[tool];
+  return <Icon aria-hidden="true" />;
 }
 
-export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
+export default function DrawingRoom({
+  roomSlug,
+  roomName = "お絵描きルーム",
+}: {
+  roomSlug?: string;
+  roomName?: string;
+}) {
   const baseCanvasRef = useRef<HTMLCanvasElement>(null);
   const remoteCanvasRef = useRef<HTMLCanvasElement>(null);
   const provisionalCanvasRef = useRef<HTMLCanvasElement>(null);
+  const eyedropperPreviewRef = useRef<HTMLCanvasElement>(null);
+  const colorDialogRef = useRef<HTMLDivElement>(null);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const outboxRef = useRef(new StrokeOutbox());
   const drawingRef = useRef<ActiveDrawing | undefined>(undefined);
   const dragRef = useRef<DragState | undefined>(undefined);
+  const colorDragRef = useRef<
+    { pointerId: number; offsetX: number; offsetY: number } | undefined
+  >(undefined);
+  const pickerDragRef = useRef<
+    { pointerId: number; target: "circle-hue" | "circle-sv" | "square-sv" }
+    | undefined
+  >(undefined);
+  const lastDrawingToolRef = useRef<DrawingTool>("brush");
   const zoomHudTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const socketRef = useRef<WebSocket | undefined>(undefined);
   const ownConnectionIdsRef = useRef(new Set<string>());
@@ -263,27 +366,50 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
   const reportRequestIdRef = useRef<string | undefined>(undefined);
   const currentActorRef = useRef<string | undefined>(undefined);
   const lastCursorSentAtRef = useRef(0);
+  const chatComposingRef = useRef(false);
+  const chatOpenRef = useRef(Boolean(roomSlug));
+  const chatMessageIdsRef = useRef(new Set<string>());
   const remoteCursorTimersRef = useRef(
     new Map<string, ReturnType<typeof setTimeout>>(),
   );
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const [tool, setTool] = useState<SelectedTool>("brush");
   const [color, setColor] = useState("#574f43");
-  const [size, setSize] = useState(8);
+  const [pickerHsv, setPickerHsv] = useState<HsvColor>(() =>
+    rgbToHsv(hexToRgb("#574f43")!)
+  );
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [colorPickerView, setColorPickerView] =
+    useState<ColorPickerView>("circle");
+  const [colorSliderMode, setColorSliderMode] =
+    useState<ColorSliderMode>("hsb");
+  const [hexInput, setHexInput] = useState("#574F43");
+  const [colorDialogPosition, setColorDialogPosition] = useState({
+    left: 76,
+    top: 92,
+  });
+  const [eyedropperCursor, setEyedropperCursor] = useState({
+    visible: false,
+    left: 0,
+    top: 0,
+    sampledColor: "#ffffff",
+  });
+  const [brushSize, setBrushSize] = useState(3);
+  const [eraserSize, setEraserSize] = useState(6);
   const [opacity, setOpacity] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [spacePressed, setSpacePressed] = useState(false);
   const [zooming, setZooming] = useState(false);
-  const [eventCount, setEventCount] = useState(0);
+  const [, setEventCount] = useState(0);
   const [syncEnabled, setSyncEnabled] = useState(Boolean(roomSlug));
   const [requestedRole, setRequestedRole] = useState<
     RequestedRoomRole | undefined
   >(roomSlug ? undefined : "participant");
   const [assignedRole, setAssignedRole] = useState<RoomRole | undefined>();
   const [realtimeNotice, setRealtimeNotice] = useState<string | undefined>();
-  const [hasInviteLink, setHasInviteLink] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [presenceMembers, setPresenceMembers] = useState<
     readonly PresenceMember[]
   >([]);
@@ -292,6 +418,8 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
   >(new Map());
   const [chatMessages, setChatMessages] = useState<readonly ChatMessage[]>([]);
   const [chatText, setChatText] = useState("");
+  const [chatOpen, setChatOpen] = useState(Boolean(roomSlug));
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [canChat, setCanChat] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportCategory, setReportCategory] = useState("other");
@@ -303,7 +431,7 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
   const [roomActivity, setRoomActivity] = useState<
     RoomActivityMessage | undefined
   >();
-  const [roomTime, setRoomTime] = useState<RoomTimeMessage | undefined>();
+  const [, setRoomTime] = useState<RoomTimeMessage | undefined>();
   const [rendererReady, setRendererReady] = useState(false);
   const [rendererError, setRendererError] = useState(false);
   const [recoverySource, setRecoverySource] = useState<"event-log" | "snapshot">(
@@ -332,11 +460,286 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
     && roomLifecycleStatus !== "waiting"
     && roomLifecycleStatus !== "closing"
     && roomLifecycleStatus !== "suspended";
+  const sizeTool = tool === "brush" || tool === "eraser"
+    ? tool
+    : lastDrawingToolRef.current;
+  const size = sizeTool === "eraser" ? eraserSize : brushSize;
+
+  const canvasPoint = useCallback((
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ): Point => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return [
+      Math.round(
+        ((event.clientX - rect.left) / rect.width)
+        * PROTOCOL_LIMITS.canvasWidth
+        * 100,
+      ) / 100,
+      Math.round(
+        ((event.clientY - rect.top) / rect.height)
+        * PROTOCOL_LIMITS.canvasHeight
+        * 100,
+      ) / 100,
+      0,
+    ];
+  }, []);
+
+  const applyPickerHsv = useCallback((next: HsvColor) => {
+    const normalized = {
+      h: clamp(next.h, 0, 360),
+      s: clamp(next.s, 0, 100),
+      v: clamp(next.v, 0, 100),
+    };
+    const nextColor = rgbToHex(hsvToRgb(normalized));
+    setPickerHsv(normalized);
+    setColor(nextColor);
+    setHexInput(nextColor.toUpperCase());
+  }, []);
+
+  const applyRgbColor = useCallback((next: RgbColor) => {
+    applyPickerHsv(rgbToHsv({
+      r: clamp(Math.round(next.r), 0, 255),
+      g: clamp(Math.round(next.g), 0, 255),
+      b: clamp(Math.round(next.b), 0, 255),
+    }));
+  }, [applyPickerHsv]);
+
+  const applyHexColor = useCallback((next: string): boolean => {
+    const rgb = hexToRgb(next);
+    if (!rgb) return false;
+    applyRgbColor(rgb);
+    return true;
+  }, [applyRgbColor]);
+
+  const selectTool = useCallback((next: SelectedTool) => {
+    if (next === "brush" || next === "eraser") {
+      lastDrawingToolRef.current = next;
+    }
+    setTool(next);
+    if (next !== "eyedropper") {
+      setEyedropperCursor((current) => ({ ...current, visible: false }));
+    }
+  }, []);
+
+  const updateEyedropperPreview = useCallback((
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ): string | undefined => {
+    const preview = eyedropperPreviewRef.current;
+    const previewContext = preview?.getContext("2d", {
+      willReadFrequently: true,
+    });
+    const base = baseCanvasRef.current;
+    if (!preview || !previewContext || !base) return undefined;
+
+    const point = canvasPoint(event);
+    const x = clamp(Math.floor(point[0]), 0, base.width - 1);
+    const y = clamp(Math.floor(point[1]), 0, base.height - 1);
+    const layers = [
+      { canvas: base, opacity: 1 },
+      { canvas: remoteCanvasRef.current, opacity: 1 },
+      {
+        canvas: provisionalCanvasRef.current,
+        opacity: Number(provisionalCanvasRef.current?.style.opacity || 1),
+      },
+    ] as const;
+
+    const basePixel = base
+      .getContext("2d", { willReadFrequently: true })
+      ?.getImageData(x, y, 1, 1).data;
+    if (!basePixel) return undefined;
+    let red = basePixel[0] ?? 255;
+    let green = basePixel[1] ?? 255;
+    let blue = basePixel[2] ?? 255;
+    for (const layer of layers.slice(1)) {
+      const context = layer.canvas?.getContext("2d", {
+        willReadFrequently: true,
+      });
+      const pixel = context?.getImageData(x, y, 1, 1).data;
+      if (!pixel) continue;
+      const alpha = ((pixel[3] ?? 0) / 255) * layer.opacity;
+      red = (pixel[0] ?? 0) * alpha + red * (1 - alpha);
+      green = (pixel[1] ?? 0) * alpha + green * (1 - alpha);
+      blue = (pixel[2] ?? 0) * alpha + blue * (1 - alpha);
+    }
+    const sampledColor = rgbToHex({ r: red, g: green, b: blue });
+
+    const sampleSize = 11;
+    const sourceX = clamp(
+      Math.floor(point[0]) - Math.floor(sampleSize / 2),
+      0,
+      base.width - sampleSize,
+    );
+    const sourceY = clamp(
+      Math.floor(point[1]) - Math.floor(sampleSize / 2),
+      0,
+      base.height - sampleSize,
+    );
+    previewContext.clearRect(0, 0, preview.width, preview.height);
+    previewContext.imageSmoothingEnabled = false;
+    for (const layer of layers) {
+      if (!layer.canvas) continue;
+      previewContext.save();
+      previewContext.globalAlpha = layer.opacity;
+      previewContext.drawImage(
+        layer.canvas,
+        sourceX,
+        sourceY,
+        sampleSize,
+        sampleSize,
+        0,
+        0,
+        preview.width,
+        preview.height,
+      );
+      previewContext.restore();
+    }
+
+    const workspaceRect = workspaceRef.current?.getBoundingClientRect();
+    if (workspaceRect) {
+      setEyedropperCursor({
+        visible: true,
+        left: event.clientX - workspaceRect.left,
+        top: event.clientY - workspaceRect.top,
+        sampledColor,
+      });
+    }
+    return sampledColor;
+  }, [canvasPoint]);
+
+  const updateSvFromPointer = useCallback((
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    applyPickerHsv({
+      h: pickerHsv.h,
+      s: clamp((event.clientX - rect.left) / rect.width, 0, 1) * 100,
+      v: (1 - clamp((event.clientY - rect.top) / rect.height, 0, 1)) * 100,
+    });
+  }, [applyPickerHsv, pickerHsv.h]);
+
+  const updateCircleHueFromPointer = useCallback((
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - (rect.left + rect.width / 2);
+    const y = event.clientY - (rect.top + rect.height / 2);
+    applyPickerHsv({
+      ...pickerHsv,
+      h: (Math.atan2(y, x) * 180 / Math.PI + 360) % 360,
+    });
+  }, [applyPickerHsv, pickerHsv]);
+
+  const beginPickerDrag = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    target: "circle-hue" | "circle-sv" | "square-sv",
+  ) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pickerDragRef.current = { pointerId: event.pointerId, target };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (target === "circle-hue") updateCircleHueFromPointer(event);
+    else updateSvFromPointer(event);
+  };
+
+  const movePickerDrag = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    target: "circle-hue" | "circle-sv" | "square-sv",
+  ) => {
+    const drag = pickerDragRef.current;
+    if (drag?.pointerId !== event.pointerId || drag.target !== target) return;
+    if (target === "circle-hue") updateCircleHueFromPointer(event);
+    else updateSvFromPointer(event);
+  };
+
+  const endPickerDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (pickerDragRef.current?.pointerId !== event.pointerId) return;
+    pickerDragRef.current = undefined;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const beginColorDialogDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (
+      event.button !== 0
+      || (event.target instanceof Element && event.target.closest("button"))
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = colorDialogRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    colorDragRef.current = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveColorDialog = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = colorDragRef.current;
+    const dialog = colorDialogRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !dialog) return;
+    const rect = dialog.getBoundingClientRect();
+    const margin = 8;
+    setColorDialogPosition({
+      left: clamp(
+        event.clientX - drag.offsetX,
+        margin,
+        Math.max(margin, window.innerWidth - rect.width - margin),
+      ),
+      top: clamp(
+        event.clientY - drag.offsetY,
+        margin,
+        Math.max(margin, window.innerHeight - rect.height - margin),
+      ),
+    });
+  };
+
+  const endColorDialogDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (colorDragRef.current?.pointerId !== event.pointerId) return;
+    colorDragRef.current = undefined;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  useEffect(() => {
+    if (!colorPickerOpen) return;
+    const constrain = () => {
+      const rect = colorDialogRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const margin = 8;
+      setColorDialogPosition((current) => ({
+        left: clamp(
+          current.left,
+          margin,
+          Math.max(margin, window.innerWidth - rect.width - margin),
+        ),
+        top: clamp(
+          current.top,
+          margin,
+          Math.max(margin, window.innerHeight - rect.height - margin),
+        ),
+      }));
+    };
+    constrain();
+    window.addEventListener("resize", constrain);
+    return () => window.removeEventListener("resize", constrain);
+  }, [colorPickerOpen, colorPickerView]);
 
   useEffect(() => {
     const element = chatMessagesRef.current;
     if (element) element.scrollTop = element.scrollHeight;
-  }, [chatMessages]);
+  }, [chatMessages, chatOpen]);
+
+  useEffect(() => {
+    chatOpenRef.current = chatOpen;
+    if (chatOpen) setUnreadChatCount(0);
+  }, [chatOpen]);
 
   useEffect(() => {
     const canvas = baseCanvasRef.current;
@@ -549,7 +952,6 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
       const fragmentInvite = fragment.get("invite");
       if (fragmentInvite && /^[a-f0-9]{64}$/.test(fragmentInvite)) {
         inviteTokenRef.current = fragmentInvite;
-        setHasInviteLink(true);
         sessionStorage.setItem(`koge-room-invite:${roomSlug}`, fragmentInvite);
       } else {
         const storedInvite = sessionStorage.getItem(
@@ -559,7 +961,6 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
           && /^[a-f0-9]{64}$/.test(storedInvite)
           ? storedInvite
           : undefined;
-        setHasInviteLink(Boolean(inviteTokenRef.current));
       }
       if (fragment.has("invite")) {
         history.replaceState(
@@ -793,17 +1194,24 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
               }, 2_000),
             );
           } else if (serverMessage.type === "chat.history") {
+            chatMessageIdsRef.current = new Set(
+              serverMessage.messages.map(({ id }) => id),
+            );
             setChatMessages(serverMessage.messages);
           } else if (serverMessage.type === "chat.message") {
-            setChatMessages((current) => {
-              if (current.some(({ id }) => id === serverMessage.message.id)) {
-                return current;
-              }
-              return [
+            if (!chatMessageIdsRef.current.has(serverMessage.message.id)) {
+              chatMessageIdsRef.current.add(serverMessage.message.id);
+              setChatMessages((current) => [
                 ...current,
                 serverMessage.message,
-              ].slice(-PROTOCOL_LIMITS.maxChatMessages);
-            });
+              ].slice(-PROTOCOL_LIMITS.maxChatMessages));
+              if (
+                !chatOpenRef.current
+                && serverMessage.message.actor !== currentActorRef.current
+              ) {
+                setUnreadChatCount((current) => current + 1);
+              }
+            }
           } else if (serverMessage.type === "snapshot") {
             setConnectionStatus("recovering");
             recoveryMetrics.source = "snapshot";
@@ -1026,6 +1434,27 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!headerMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node
+        && !headerMenuRef.current?.contains(event.target)
+      ) {
+        setHeaderMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setHeaderMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [headerMenuOpen]);
+
   const showZoomHud = useCallback(() => {
     setZooming(true);
     if (zoomHudTimerRef.current) clearTimeout(zoomHudTimerRef.current);
@@ -1034,15 +1463,6 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
 
   useEffect(() => () => {
     if (zoomHudTimerRef.current) clearTimeout(zoomHudTimerRef.current);
-  }, []);
-
-  const canvasPoint = useCallback((event: ReactPointerEvent<HTMLCanvasElement>): Point => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    return [
-      Math.round(((event.clientX - rect.left) / rect.width) * PROTOCOL_LIMITS.canvasWidth * 100) / 100,
-      Math.round(((event.clientY - rect.top) / rect.height) * PROTOCOL_LIMITS.canvasHeight * 100) / 100,
-      0,
-    ];
   }, []);
 
   const sendCursor = useCallback((
@@ -1112,17 +1532,9 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
     }
     const point = canvasPoint(event);
     if (tool === "eyedropper") {
-      const context = baseCanvasRef.current?.getContext("2d", { willReadFrequently: true });
-      if (!context) return;
-      const [red, green, blue] = context.getImageData(
-        Math.floor(point[0]),
-        Math.floor(point[1]),
-        1,
-        1,
-      ).data;
-      if (red === undefined || green === undefined || blue === undefined) return;
-      setColor(`#${[red, green, blue].map((value) => value.toString(16).padStart(2, "0")).join("")}`);
-      setTool("brush");
+      const sampledColor = updateEyedropperPreview(event);
+      if (sampledColor) applyHexColor(sampledColor);
+      selectTool(lastDrawingToolRef.current);
       return;
     }
     if (!rendererReady || !canDraw) return;
@@ -1148,6 +1560,9 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
 
   const moveDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     sendCursorPosition(event);
+    if (tool === "eyedropper" && !spacePressed) {
+      updateEyedropperPreview(event);
+    }
     const drag = dragRef.current;
     if (drag?.mode === "zoom" && drag.pointerId === event.pointerId) {
       setZoom(clampZoom(drag.zoom * 2 ** ((event.clientX - drag.x) / 160)));
@@ -1267,12 +1682,14 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
   };
 
   const copyInviteLink = async () => {
-    if (!roomSlug || !inviteTokenRef.current) return;
+    if (!roomSlug) return;
     const inviteUrl = new URL(
       `/rooms/${encodeURIComponent(roomSlug)}`,
       window.location.origin,
     );
-    inviteUrl.hash = `invite=${inviteTokenRef.current}`;
+    if (inviteTokenRef.current) {
+      inviteUrl.hash = `invite=${inviteTokenRef.current}`;
+    }
     try {
       await navigator.clipboard.writeText(inviteUrl.toString());
       setInviteCopied(true);
@@ -1348,67 +1765,47 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
     }
   };
 
+  const pickerRgb = hsvToRgb(pickerHsv);
+  const hueRadians = pickerHsv.h * Math.PI / 180;
+  const assignedRoleLabel = assignedRole === "host"
+    ? "ホスト"
+    : assignedRole === "participant"
+      ? "描く人"
+      : assignedRole === "viewer"
+        ? "見る人"
+        : undefined;
+  let connectionNotice: string | undefined;
+  if (rendererError) {
+    connectionNotice = "描画を準備できません";
+  } else if (!rendererReady) {
+    connectionNotice = "描画を準備中";
+  } else if (roomLifecycleStatus === "suspended") {
+    connectionNotice = "管理対応中";
+  } else if (roomLifecycleStatus === "closing") {
+    connectionNotice = "終了処理中";
+  } else if (connectionStatus === "recovering") {
+    connectionNotice = "描画を復元中";
+  } else if (connectionStatus === "connecting") {
+    connectionNotice = "接続中";
+  } else if (connectionStatus === "disconnected") {
+    connectionNotice = "再接続中";
+  } else if (roomLifecycleStatus === "waiting") {
+    connectionNotice = "開始待ち";
+  }
+  const connectionNoticeLevel = rendererError ? "error" : "progress";
+
   return (
     <main className="drawing-app" data-recovery-source={recoverySource}>
       <header className="app-header">
         <a className="brand" href="/" aria-label="koge ホーム">koge</a>
-        <div className="room-status-group">
-          <div className="room-status">
-            <span className="status-dot" />
-            {rendererError
-              ? "描画準備エラー"
-              : !rendererReady
-                ? "描画準備中"
-                : roomLifecycleStatus === "suspended"
-                  ? "管理停止中"
-                : connectionStatus === "local"
-                  ? "ローカル描画"
-                  : connectionStatus === "choosing"
-                    ? "参加方法を選択"
-                  : connectionStatus === "connected"
-                      ? roomLifecycleStatus === "waiting"
-                        ? "開始待ち"
-                        : roomLifecycleStatus === "idle"
-                          ? "ひと休み中"
-                          : "同期中"
-                      : connectionStatus === "recovering"
-                        ? "復元中"
-                        : connectionStatus === "connecting"
-                          ? "接続中"
-                          : "再接続中"}
-          </div>
-          {assignedRole ? (
-            <button
-              className={`room-role role-${assignedRole}`}
-              type="button"
-              onClick={reopenRolePicker}
-              title={roomSlug ? "参加方法を変更" : undefined}
-            >
-              {assignedRole === "host"
-                ? "ホスト"
-                : assignedRole === "participant"
-                  ? "描く人"
-                  : "見る人"}
-            </button>
-          ) : null}
-          {roomSlug && presenceMembers.length > 0 ? (
-            <span className="room-presence" aria-label="接続中の人数">
-              {presenceMembers.length}人
-            </span>
-          ) : null}
-          {roomActivity ? (
+        <div className="room-title-group">
+          <strong title={roomName}>{roomName}</strong>
+          {connectionNotice ? (
             <span
-              className={`room-activity level-${roomActivity.level}`}
-              aria-label="ルームの描画可能量"
+              className={`header-connection is-${connectionNoticeLevel}`}
+              role={rendererError ? "alert" : "status"}
             >
-              {roomActivity.acceptingNewStrokes
-                ? `残り約${100 - roomActivity.level}%`
-                : "終了準備中"}
-            </span>
-          ) : null}
-          {roomTime ? (
-            <span className="room-time" aria-label="ルーム終了までの時間">
-              終了まで{roomTime.warningMinutes}分以内
+              {connectionNotice}
             </span>
           ) : null}
         </div>
@@ -1422,43 +1819,105 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
               ルームを開始
             </button>
           ) : null}
-          {hasInviteLink ? (
+          {roomSlug && assignedRole ? (
+            <span className="header-presence" aria-label="接続中の人数">
+              <Users aria-hidden="true" />
+              <span>{presenceMembers.length}</span>
+            </span>
+          ) : null}
+          {roomSlug && assignedRole ? (
             <button
-              className="room-invite-button"
+              className="header-icon-button"
               type="button"
               onClick={() => void copyInviteLink()}
+              aria-label={inviteCopied ? "招待リンクをコピーしました" : "招待リンクをコピー"}
+              title={inviteCopied ? "コピーしました" : "招待リンクをコピー"}
             >
-              {inviteCopied ? "コピーしました" : "招待リンクをコピー"}
+              <Share2 aria-hidden="true" />
             </button>
           ) : null}
-          {assignedRole === "host"
-            && connectionStatus === "connected"
-            && roomLifecycleStatus !== undefined
-            && roomLifecycleStatus !== "closing" ? (
-            <button
-              className="room-close-button"
-              type="button"
-              onClick={closeRoom}
-            >
-              ルームを終了
-            </button>
+          {roomSlug && assignedRole ? (
+            <div className="header-menu" ref={headerMenuRef}>
+              <button
+                className="header-icon-button"
+                type="button"
+                aria-label="ルームメニュー"
+                aria-haspopup="menu"
+                aria-expanded={headerMenuOpen}
+                onClick={() => setHeaderMenuOpen((open) => !open)}
+              >
+                <Ellipsis aria-hidden="true" />
+              </button>
+              {headerMenuOpen ? (
+                <div className="header-menu-popover" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setHeaderMenuOpen(false);
+                      reopenRolePicker();
+                    }}
+                  >
+                    <span>参加方法を変更</span>
+                    <strong>{assignedRoleLabel}</strong>
+                  </button>
+                  {roomSlug ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        void copyInviteLink();
+                      }}
+                    >
+                      招待リンクをコピー
+                    </button>
+                  ) : null}
+                  {connectionStatus === "connected" ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        setReportOpen(true);
+                      }}
+                    >
+                      通報する
+                    </button>
+                  ) : null}
+                  {assignedRole === "host"
+                    && connectionStatus === "connected"
+                    && roomLifecycleStatus !== undefined
+                    && roomLifecycleStatus !== "closing" ? (
+                    <>
+                      <span className="header-menu-separator" />
+                      <button
+                        className="is-destructive"
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          closeRoom();
+                        }}
+                      >
+                        ルームを終了
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           ) : null}
-          {roomSlug && assignedRole && connectionStatus === "connected" ? (
-            <button
-              className="room-report-button"
-              type="button"
-              onClick={() => setReportOpen(true)}
-            >
-              通報
-            </button>
-          ) : null}
-          <span className="event-counter">{eventCount} events</span>
         </div>
       </header>
 
       <section
         ref={workspaceRef}
-        className={`drawing-workspace${spacePressed ? " is-hand" : ""}`}
+        className={`drawing-workspace${spacePressed ? " is-hand" : ""}${
+          roomSlug && requestedRole !== undefined && chatOpen
+            ? " is-chat-open"
+            : ""
+        }`}
         aria-label="お絵描きエリア"
         onPointerDown={beginWorkspaceDrag}
         onPointerMove={moveWorkspaceDrag}
@@ -1478,32 +1937,55 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
                 (candidate === "brush" || candidate === "eraser")
                 && !canDraw
               }
-              onClick={() => setTool(candidate)}
+              onClick={() => selectTool(candidate)}
             >
               <ToolIcon tool={candidate} />
             </button>
           ))}
+          <span className="tool-switcher-separator" aria-hidden="true" />
+          <button
+            className={`tool-color-control${
+              colorPickerOpen ? " is-selected" : ""
+            }`}
+            type="button"
+            aria-label="カラー"
+            aria-expanded={colorPickerOpen}
+            aria-controls="drawing-color-picker"
+            disabled={!canDraw}
+            onClick={() => setColorPickerOpen((current) => !current)}
+          >
+            <span style={{ background: color }} />
+          </button>
         </nav>
 
-        <aside className="brush-rail" aria-label="ブラシ調整">
+        <aside className="brush-rail" aria-label="描画調整">
           <label>
-            <span className="sr-only">ブラシサイズ</span>
+            <span className="sr-only">
+              {sizeTool === "eraser" ? "消しゴムサイズ" : "ブラシサイズ"}
+            </span>
             <input
               type="range"
               min={PROTOCOL_LIMITS.minBrushSize}
               max={PROTOCOL_LIMITS.maxBrushSize}
               value={size}
               disabled={!canDraw}
-              onInput={(event) => setSize(Number(event.currentTarget.value))}
+              onInput={(event) => {
+                const nextSize = Number(event.currentTarget.value);
+                if (sizeTool === "eraser") {
+                  setEraserSize(nextSize);
+                } else {
+                  setBrushSize(nextSize);
+                }
+              }}
             />
           </label>
           <button
             type="button"
             className={tool === "eyedropper" ? "is-selected" : ""}
             aria-label="スポイト"
-            onClick={() => setTool("eyedropper")}
+            onClick={() => selectTool("eyedropper")}
           >
-            <ToolIcon tool="eyedropper" />
+            <Square aria-hidden="true" />
           </button>
           <label>
             <span className="sr-only">濃度</span>
@@ -1542,7 +2024,13 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
             onPointerMove={moveDrawing}
             onPointerUp={finishDrawing}
             onPointerCancel={cancelDrawing}
-            onPointerLeave={() => sendCursor({ visible: false })}
+            onPointerLeave={() => {
+              sendCursor({ visible: false });
+              setEyedropperCursor((current) => ({
+                ...current,
+                visible: false,
+              }));
+            }}
           />
           {Array.from(remoteCursors, ([actor, cursor]) => (
             <span
@@ -1559,20 +2047,331 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
           ))}
         </div>
 
-        <label className="color-control" aria-label="現在の色">
-          <input
-            type="color"
-            value={color}
-            disabled={!canDraw}
-            onChange={(event) => setColor(event.currentTarget.value)}
-          />
-        </label>
+        <div
+          className="eyedropper-preview"
+          aria-hidden="true"
+          hidden={!eyedropperCursor.visible || tool !== "eyedropper"}
+          style={{
+            left: eyedropperCursor.left,
+            top: eyedropperCursor.top,
+          } as CSSProperties}
+        >
+          <canvas ref={eyedropperPreviewRef} width={64} height={64} />
+          <svg className="eyedropper-preview-ring" viewBox="0 0 96 96">
+            <circle className="ring-outline" cx="48" cy="48" r="39" />
+            <path
+              className="sampled-half"
+              d="M9 48 A39 39 0 0 1 87 48"
+              style={{ stroke: eyedropperCursor.sampledColor }}
+            />
+            <path
+              className="current-half"
+              d="M87 48 A39 39 0 0 1 9 48"
+              style={{ stroke: color }}
+            />
+          </svg>
+          <span className="eyedropper-reticle" />
+        </div>
 
-        {roomSlug && requestedRole !== undefined ? (
+        {colorPickerOpen ? (
+          <div
+            ref={colorDialogRef}
+            id="drawing-color-picker"
+            className="drawing-color-picker"
+            role="dialog"
+            aria-label="カラー"
+            style={{
+              left: colorDialogPosition.left,
+              top: colorDialogPosition.top,
+              "--picker-hue": pickerHsv.h,
+              "--current-color": color,
+            } as CSSProperties}
+            onPointerDown={(event) => event.stopPropagation()}
+            onWheel={(event) => event.stopPropagation()}
+          >
+            <header
+              className="drawing-color-picker-header"
+              onPointerDown={beginColorDialogDrag}
+              onPointerMove={moveColorDialog}
+              onPointerUp={endColorDialogDrag}
+              onPointerCancel={endColorDialogDrag}
+            >
+              <strong>カラー</strong>
+              <span className="drawing-color-picker-current" />
+              <button
+                type="button"
+                aria-label="カラーダイアログを閉じる"
+                onClick={() => setColorPickerOpen(false)}
+              >
+                <X aria-hidden="true" />
+              </button>
+            </header>
+
+            <div className="drawing-color-picker-body">
+              {colorPickerView === "circle" ? (
+                <div className="color-picker-circle-panel">
+                  <div
+                    className="color-picker-wheel"
+                    aria-label="色相環"
+                    onPointerDown={(event) =>
+                      beginPickerDrag(event, "circle-hue")}
+                    onPointerMove={(event) =>
+                      movePickerDrag(event, "circle-hue")}
+                    onPointerUp={endPickerDrag}
+                    onPointerCancel={endPickerDrag}
+                  >
+                    <span
+                      className="color-picker-handle color-picker-hue-handle"
+                      style={{
+                        left: `${50 + Math.cos(hueRadians) * 43}%`,
+                        top: `${50 + Math.sin(hueRadians) * 43}%`,
+                      }}
+                    />
+                    <div
+                      className="color-picker-sv color-picker-circle-sv"
+                      aria-label="彩度と明度"
+                      onPointerDown={(event) =>
+                        beginPickerDrag(event, "circle-sv")}
+                      onPointerMove={(event) =>
+                        movePickerDrag(event, "circle-sv")}
+                      onPointerUp={endPickerDrag}
+                      onPointerCancel={endPickerDrag}
+                    >
+                      <span
+                        className="color-picker-handle"
+                        style={{
+                          left: `${pickerHsv.s}%`,
+                          top: `${100 - pickerHsv.v}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {colorPickerView === "square" ? (
+                <div className="color-picker-square-panel">
+                  <div
+                    className="color-picker-sv color-picker-square-sv"
+                    aria-label="彩度と明度"
+                    onPointerDown={(event) =>
+                      beginPickerDrag(event, "square-sv")}
+                    onPointerMove={(event) =>
+                      movePickerDrag(event, "square-sv")}
+                    onPointerUp={endPickerDrag}
+                    onPointerCancel={endPickerDrag}
+                  >
+                    <span
+                      className="color-picker-handle"
+                      style={{
+                        left: `${pickerHsv.s}%`,
+                        top: `${100 - pickerHsv.v}%`,
+                      }}
+                    />
+                  </div>
+                  <input
+                    className="color-picker-hue-range"
+                    type="range"
+                    min={0}
+                    max={360}
+                    value={pickerHsv.h}
+                    aria-label="色相"
+                    onInput={(event) => applyPickerHsv({
+                      ...pickerHsv,
+                      h: Number(event.currentTarget.value),
+                    })}
+                  />
+                </div>
+              ) : null}
+
+              {colorPickerView === "sliders" ? (
+                <div className="color-picker-sliders-panel">
+                  <div
+                    className="color-picker-mode-tabs"
+                    aria-label="カラーモード"
+                  >
+                    {(["hsb", "rgb"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        className={colorSliderMode === mode ? "is-selected" : ""}
+                        type="button"
+                        aria-pressed={colorSliderMode === mode}
+                        onClick={() => setColorSliderMode(mode)}
+                      >
+                        {mode.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                  {colorSliderMode === "hsb" ? (
+                    <div className="color-picker-channels">
+                      <label>
+                        <span>H</span>
+                        <input
+                          className="channel-hue"
+                          type="range"
+                          min={0}
+                          max={360}
+                          value={pickerHsv.h}
+                          onInput={(event) => applyPickerHsv({
+                            ...pickerHsv,
+                            h: Number(event.currentTarget.value),
+                          })}
+                        />
+                        <output>{Math.round(pickerHsv.h)}°</output>
+                      </label>
+                      <label>
+                        <span>S</span>
+                        <input
+                          className="channel-saturation"
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={pickerHsv.s}
+                          onInput={(event) => applyPickerHsv({
+                            ...pickerHsv,
+                            s: Number(event.currentTarget.value),
+                          })}
+                        />
+                        <output>{Math.round(pickerHsv.s)}%</output>
+                      </label>
+                      <label>
+                        <span>B</span>
+                        <input
+                          className="channel-brightness"
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={pickerHsv.v}
+                          onInput={(event) => applyPickerHsv({
+                            ...pickerHsv,
+                            v: Number(event.currentTarget.value),
+                          })}
+                        />
+                        <output>{Math.round(pickerHsv.v)}%</output>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="color-picker-channels">
+                      {([
+                        ["R", "red", pickerRgb.r],
+                        ["G", "green", pickerRgb.g],
+                        ["B", "blue", pickerRgb.b],
+                      ] as const).map(([label, channel, value]) => (
+                        <label key={channel}>
+                          <span>{label}</span>
+                          <input
+                            className={`channel-${channel}`}
+                            type="range"
+                            min={0}
+                            max={255}
+                            value={value}
+                            onInput={(event) => applyRgbColor({
+                              ...pickerRgb,
+                              [channel]: Number(event.currentTarget.value),
+                            })}
+                          />
+                          <output>{value}</output>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <label className="color-picker-hex">
+                    <span>HEX</span>
+                    <input
+                      value={hexInput}
+                      maxLength={7}
+                      spellCheck={false}
+                      aria-label="HEXカラー"
+                      onChange={(event) => setHexInput(event.currentTarget.value)}
+                      onBlur={() => {
+                        if (!applyHexColor(hexInput)) {
+                          setHexInput(color.toUpperCase());
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter") return;
+                        event.preventDefault();
+                        if (!applyHexColor(hexInput)) {
+                          setHexInput(color.toUpperCase());
+                        }
+                        event.currentTarget.blur();
+                      }}
+                    />
+                  </label>
+                </div>
+              ) : null}
+            </div>
+
+            <nav
+              className="drawing-color-picker-tabs"
+              aria-label="カラー選択方式"
+            >
+              <button
+                className={colorPickerView === "circle" ? "is-selected" : ""}
+                type="button"
+                title="サークル"
+                aria-label="サークル"
+                aria-pressed={colorPickerView === "circle"}
+                onClick={() => setColorPickerView("circle")}
+              >
+                <span className="color-picker-circle-icon" />
+              </button>
+              <button
+                className={colorPickerView === "square" ? "is-selected" : ""}
+                type="button"
+                title="スクエア"
+                aria-label="スクエア"
+                aria-pressed={colorPickerView === "square"}
+                onClick={() => setColorPickerView("square")}
+              >
+                <Square aria-hidden="true" />
+              </button>
+              <button
+                className={colorPickerView === "sliders" ? "is-selected" : ""}
+                type="button"
+                title="スライダー"
+                aria-label="スライダー"
+                aria-pressed={colorPickerView === "sliders"}
+                onClick={() => setColorPickerView("sliders")}
+              >
+                <SlidersHorizontal aria-hidden="true" />
+              </button>
+            </nav>
+          </div>
+        ) : null}
+
+        {roomSlug && requestedRole !== undefined && !chatOpen ? (
+          <button
+            className="room-chat-toggle"
+            type="button"
+            aria-label={unreadChatCount > 0
+              ? `チャットを開く（未読${unreadChatCount}件）`
+              : "チャットを開く"}
+            title="チャットを開く"
+            onClick={() => setChatOpen(true)}
+          >
+            <MessageSquare aria-hidden="true" />
+            {unreadChatCount > 0 ? (
+              <span className="room-chat-unread" aria-hidden="true">
+                {unreadChatCount > 99 ? "99+" : unreadChatCount}
+              </span>
+            ) : null}
+          </button>
+        ) : null}
+
+        {roomSlug && requestedRole !== undefined && chatOpen ? (
           <aside className="room-chat" aria-label="チャット">
             <header>
               <strong>チャット</strong>
               <span>{presenceMembers.length}人</span>
+              <button
+                type="button"
+                aria-label="チャットを閉じる"
+                title="チャットを閉じる"
+                onClick={() => setChatOpen(false)}
+              >
+                <PanelRightClose aria-hidden="true" />
+              </button>
             </header>
             <div className="room-chat-messages" ref={chatMessagesRef}>
               {chatMessages.length === 0 ? (
@@ -1620,11 +2419,23 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
                   : canChat
                   ? "メッセージを送る…"
                   : "見る人のチャットは無効です"}
-                rows={2}
+                rows={1}
                 value={chatText}
                 onChange={(event) => setChatText(event.currentTarget.value)}
+                onCompositionStart={() => {
+                  chatComposingRef.current = true;
+                }}
+                onCompositionEnd={() => {
+                  chatComposingRef.current = false;
+                }}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
+                  if (shouldSendChatOnKeyDown({
+                    key: event.key,
+                    shiftKey: event.shiftKey,
+                    isComposing: chatComposingRef.current
+                      || event.nativeEvent.isComposing,
+                    keyCode: event.keyCode,
+                  })) {
                     event.preventDefault();
                     sendChat();
                   }
@@ -1635,7 +2446,7 @@ export default function DrawingRoom({ roomSlug }: { roomSlug?: string }) {
                 disabled={!canSendChat || !chatText.trim()}
                 aria-label="送信"
               >
-                送信
+                <SendHorizontal aria-hidden="true" />
               </button>
             </form>
           </aside>
