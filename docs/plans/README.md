@@ -1,6 +1,6 @@
 # 実装計画
 
-更新日: 2026-07-29
+更新日: 2026-07-30
 
 このディレクトリには、設計判断、現行仕様、技術検証を実装順序と完了条件へ
 落とし込んだ計画書を置く。
@@ -8,11 +8,14 @@
 MVP計画はPhase 0〜6、Phase 7の主要性能検証、production初回配備まで進んでいる。
 機械的smoke、利用者E2E、終了後health、初回Worker Analyticsはpassした。
 現在は規約、retention、alert、backup/restore試験、closed betaを含む
-Release Gateを進める段階である。
+Release Gateを進める段階である。1000 x 1000 canvasと公開roomサムネイルは
+独立した計画書で進める。
 
 ## 現在の計画
 
 - [`mvp-implementation-plan.md`](./mvp-implementation-plan.md) — お絵描きチャットMVP実装計画
+- [`square-canvas-room-thumbnail-plan.md`](./square-canvas-room-thumbnail-plan.md) —
+  1000 x 1000キャンバス、snapshot由来サムネイル、開始5分後の初回生成計画
 - [`phase-0-execution.md`](./phase-0-execution.md) — Phase 0の決定、基盤、検証結果、残作業
 
 関連:

@@ -86,6 +86,7 @@ type RealtimeNotice = {
   tone: RealtimeNoticeTone;
   durationMs: number;
 };
+type SliderPreview = "size" | "opacity";
 type ActiveDrawing = {
   id: string;
   style: StrokeStyle;
@@ -436,6 +437,7 @@ export default function DrawingRoom({
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const temporaryToolRef = useRef<SelectedTool | undefined>(undefined);
+  const sliderPreviewPointerRef = useRef<number | undefined>(undefined);
   const [tool, setTool] = useState<SelectedTool>("brush");
   const [color, setColor] = useState("#574f43");
   const [pickerHsv, setPickerHsv] = useState<HsvColor>(() =>
@@ -460,6 +462,8 @@ export default function DrawingRoom({
   const [brushSize, setBrushSize] = useState(3);
   const [eraserSize, setEraserSize] = useState(6);
   const [opacity, setOpacity] = useState(1);
+  const [sliderPreview, setSliderPreview] =
+    useState<SliderPreview | undefined>();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [spacePressed, setSpacePressed] = useState(false);
@@ -518,6 +522,26 @@ export default function DrawingRoom({
         navigator.platform || navigator.userAgent,
       ),
     );
+  }, []);
+
+  useEffect(() => {
+    const finishSliderPreview = (event: PointerEvent) => {
+      if (event.pointerId !== sliderPreviewPointerRef.current) return;
+      sliderPreviewPointerRef.current = undefined;
+      setSliderPreview(undefined);
+    };
+    const hideSliderPreview = () => {
+      sliderPreviewPointerRef.current = undefined;
+      setSliderPreview(undefined);
+    };
+    window.addEventListener("pointerup", finishSliderPreview);
+    window.addEventListener("pointercancel", finishSliderPreview);
+    window.addEventListener("blur", hideSliderPreview);
+    return () => {
+      window.removeEventListener("pointerup", finishSliderPreview);
+      window.removeEventListener("pointercancel", finishSliderPreview);
+      window.removeEventListener("blur", hideSliderPreview);
+    };
   }, []);
 
   const clearRealtimeNoticeTimer = useCallback(() => {
@@ -619,6 +643,13 @@ export default function DrawingRoom({
     ? tool
     : lastDrawingToolRef.current;
   const size = sizeTool === "eraser" ? eraserSize : brushSize;
+  const beginSliderPreview = (
+    preview: SliderPreview,
+    event: ReactPointerEvent<HTMLInputElement>,
+  ) => {
+    sliderPreviewPointerRef.current = event.pointerId;
+    setSliderPreview(preview);
+  };
 
   const canvasPoint = useCallback((
     event: ReactPointerEvent<HTMLCanvasElement>,
@@ -2470,7 +2501,7 @@ export default function DrawingRoom({
         ) : null}
 
         <aside className="brush-rail" aria-label="描画調整">
-          <label>
+          <label className="brush-slider-control">
             <span className="sr-only">
               {sizeTool === "eraser" ? "消しゴムサイズ" : "ブラシサイズ"}
             </span>
@@ -2484,6 +2515,17 @@ export default function DrawingRoom({
               title={`${
                 sizeTool === "eraser" ? "消しゴム" : "ブラシ"
               }サイズ ([ / ])`}
+              onPointerDown={(event) => beginSliderPreview("size", event)}
+              onFocus={() => {
+                if (sliderPreviewPointerRef.current === undefined) {
+                  setSliderPreview("size");
+                }
+              }}
+              onBlur={() => {
+                if (sliderPreviewPointerRef.current === undefined) {
+                  setSliderPreview(undefined);
+                }
+              }}
               onInput={(event) => {
                 const nextSize = Number(event.currentTarget.value);
                 if (sizeTool === "eraser") {
@@ -2491,8 +2533,34 @@ export default function DrawingRoom({
                 } else {
                   setBrushSize(nextSize);
                 }
+                setSliderPreview("size");
               }}
             />
+            {sliderPreview === "size" ? (
+              <span
+                className="brush-slider-preview is-size"
+                aria-hidden="true"
+              >
+                <span className="brush-slider-preview-header">
+                  <strong>
+                    {sizeTool === "eraser" ? "消しゴムサイズ" : "サイズ"}
+                  </strong>
+                  <span>{Math.round(size)} px</span>
+                </span>
+                <span className="brush-slider-preview-stage">
+                  <span
+                    className={`brush-slider-preview-dot${
+                      sizeTool === "eraser" ? " is-eraser" : ""
+                    }`}
+                    style={{
+                      width: `${size}px`,
+                      height: `${size}px`,
+                      backgroundColor: sizeTool === "eraser" ? "#fff" : color,
+                    }}
+                  />
+                </span>
+              </span>
+            ) : null}
           </label>
           <button
             type="button"
@@ -2503,7 +2571,7 @@ export default function DrawingRoom({
           >
             <Square aria-hidden="true" />
           </button>
-          <label>
+          <label className="brush-slider-control">
             <span className="sr-only">濃度</span>
             <input
               type="range"
@@ -2513,8 +2581,42 @@ export default function DrawingRoom({
               disabled={!canDraw}
               aria-keyshortcuts="0 1 2 3 4 5 6 7 8 9"
               title="濃度 (0–9)"
-              onInput={(event) => setOpacity(Number(event.currentTarget.value) / 100)}
+              onPointerDown={(event) => beginSliderPreview("opacity", event)}
+              onFocus={() => {
+                if (sliderPreviewPointerRef.current === undefined) {
+                  setSliderPreview("opacity");
+                }
+              }}
+              onBlur={() => {
+                if (sliderPreviewPointerRef.current === undefined) {
+                  setSliderPreview(undefined);
+                }
+              }}
+              onInput={(event) => {
+                setOpacity(Number(event.currentTarget.value) / 100);
+                setSliderPreview("opacity");
+              }}
             />
+            {sliderPreview === "opacity" ? (
+              <span
+                className="brush-slider-preview is-opacity"
+                aria-hidden="true"
+              >
+                <span className="brush-slider-preview-header">
+                  <strong>濃度</strong>
+                  <span>{Math.round(opacity * 100)}%</span>
+                </span>
+                <span className="brush-slider-preview-stage is-opacity">
+                  <span
+                    className="brush-slider-preview-dot is-opacity"
+                    style={{
+                      backgroundColor: color,
+                      opacity,
+                    }}
+                  />
+                </span>
+              </span>
+            ) : null}
           </label>
         </aside>
 
@@ -2574,20 +2676,16 @@ export default function DrawingRoom({
             top: eyedropperCursor.top,
           } as CSSProperties}
         >
-          <canvas ref={eyedropperPreviewRef} width={64} height={64} />
-          <svg className="eyedropper-preview-ring" viewBox="0 0 96 96">
-            <circle className="ring-outline" cx="48" cy="48" r="39" />
-            <path
-              className="sampled-half"
-              d="M9 48 A39 39 0 0 1 87 48"
-              style={{ stroke: eyedropperCursor.sampledColor }}
-            />
-            <path
-              className="current-half"
-              d="M87 48 A39 39 0 0 1 9 48"
-              style={{ stroke: color }}
-            />
-          </svg>
+          <span className="eyedropper-preview-lens">
+            <canvas ref={eyedropperPreviewRef} width={64} height={64} />
+          </span>
+          <span
+            className="eyedropper-preview-ring"
+            style={{
+              "--eyedropper-sampled-color": eyedropperCursor.sampledColor,
+              "--eyedropper-current-color": color,
+            } as CSSProperties}
+          />
           <span className="eyedropper-reticle" />
         </div>
 
@@ -2694,7 +2792,7 @@ export default function DrawingRoom({
                     max={360}
                     value={pickerHsv.h}
                     aria-label="色相"
-                    onInput={(event) => applyPickerHsv({
+                    onChange={(event) => applyPickerHsv({
                       ...pickerHsv,
                       h: Number(event.currentTarget.value),
                     })}
@@ -2730,7 +2828,7 @@ export default function DrawingRoom({
                           min={0}
                           max={360}
                           value={pickerHsv.h}
-                          onInput={(event) => applyPickerHsv({
+                          onChange={(event) => applyPickerHsv({
                             ...pickerHsv,
                             h: Number(event.currentTarget.value),
                           })}
@@ -2745,7 +2843,7 @@ export default function DrawingRoom({
                           min={0}
                           max={100}
                           value={pickerHsv.s}
-                          onInput={(event) => applyPickerHsv({
+                          onChange={(event) => applyPickerHsv({
                             ...pickerHsv,
                             s: Number(event.currentTarget.value),
                           })}
@@ -2760,7 +2858,7 @@ export default function DrawingRoom({
                           min={0}
                           max={100}
                           value={pickerHsv.v}
-                          onInput={(event) => applyPickerHsv({
+                          onChange={(event) => applyPickerHsv({
                             ...pickerHsv,
                             v: Number(event.currentTarget.value),
                           })}
@@ -2779,14 +2877,15 @@ export default function DrawingRoom({
                           <span>{label}</span>
                           <input
                             className={`channel-${channel}`}
-                            type="range"
-                            min={0}
-                            max={255}
-                            value={value}
-                            onInput={(event) => applyRgbColor({
-                              ...pickerRgb,
-                              [channel]: Number(event.currentTarget.value),
-                            })}
+                          type="range"
+                          min={0}
+                          max={255}
+                          value={value}
+                          aria-label={`${label}値`}
+                          onChange={(event) => applyRgbColor({
+                            ...pickerRgb,
+                            [channel]: Number(event.currentTarget.value),
+                          })}
                           />
                           <output>{value}</output>
                         </label>
