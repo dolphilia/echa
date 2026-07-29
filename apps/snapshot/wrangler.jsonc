@@ -1,0 +1,113 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "koge-snapshot",
+  "account_id": "add7fa1a3932f0d7e81b8c668f42156f",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-27",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "APP_ENV": "local"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DRAWING_ROOM",
+        "class_name": "DrawingRoom",
+        "script_name": "koge-realtime"
+      }
+    ]
+  },
+  "r2_buckets": [
+    {
+      "binding": "RUNTIME_SNAPSHOTS",
+      "bucket_name": "koge-runtime-snapshots-local"
+    }
+  ],
+  "queues": {
+    "consumers": [
+      {
+        "queue": "koge-snapshot-local",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 3
+      }
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01
+    }
+  },
+  "env": {
+    "preview": {
+      "name": "koge-snapshot-preview",
+      "vars": {
+        "APP_ENV": "preview"
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "DRAWING_ROOM",
+            "class_name": "DrawingRoom",
+            "script_name": "koge-realtime-preview"
+          }
+        ]
+      },
+      "r2_buckets": [
+        {
+          "binding": "RUNTIME_SNAPSHOTS",
+          "bucket_name": "koge-runtime-snapshots-preview"
+        }
+      ],
+      "queues": {
+        "consumers": [
+          {
+            "queue": "koge-snapshot-preview",
+            "max_batch_size": 1,
+            "max_batch_timeout": 5,
+            "max_retries": 3
+          }
+        ]
+      }
+    },
+    "production": {
+      "name": "koge-snapshot",
+      "vars": {
+        "APP_ENV": "production"
+      },
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "DRAWING_ROOM",
+            "class_name": "DrawingRoom",
+            "script_name": "koge-realtime"
+          }
+        ]
+      },
+      "r2_buckets": [
+        {
+          "binding": "RUNTIME_SNAPSHOTS",
+          "bucket_name": "koge-runtime-snapshots-production"
+        }
+      ],
+      "queues": {
+        "consumers": [
+          {
+            "queue": "koge-snapshot-production",
+            "max_batch_size": 1,
+            "max_batch_timeout": 5,
+            "max_retries": 3
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+[package]
+name = "koge-renderer"
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
+

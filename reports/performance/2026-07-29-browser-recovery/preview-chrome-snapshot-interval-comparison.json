@@ -1,0 +1,118 @@
+{
+  "schema": "koge.browser-snapshot-interval-comparison.v1",
+  "measuredAt": "2026-07-29",
+  "target": "preview",
+  "browser": "Chrome",
+  "runsPerCondition": 3,
+  "canvas": {
+    "rgbaBytes": 2457600
+  },
+  "beforeIncrementalSnapshot": {
+    "snapshotBaseRoomSeq": 50002,
+    "readyRoomSeq": 55015,
+    "tailEventCount": 5013,
+    "tailFrameCount": 21,
+    "tailEncodedBytes": 1226425,
+    "conditions": {
+      "standard": {
+        "readyPaintMs": [2179.199999809265, 1915.5999999046326, 1800.3000001907349],
+        "readyPaintMsMedian": 1915.5999999046326,
+        "readyPaintMsMaximum": 2179.199999809265,
+        "snapshotVerificationMsMedian": 468.19999980926514,
+        "tailDecodeMsMedian": 17.800000190734863,
+        "tailApplyMsMedian": 1099.9000000953674
+      },
+      "cpu4x": {
+        "readyPaintMs": [5302.099999904633, 5138, 5220.900000095367],
+        "readyPaintMsMedian": 5220.900000095367,
+        "readyPaintMsMaximum": 5302.099999904633,
+        "snapshotVerificationMsMedian": 397.2000002861023,
+        "tailDecodeMsMedian": 75.90000200271606,
+        "tailApplyMsMedian": 4415.900000572205
+      },
+      "slow4g": {
+        "readyPaintMs": [8043.200000286102, 7849.5, 7839],
+        "readyPaintMsMedian": 7849.5,
+        "readyPaintMsMaximum": 8043.200000286102,
+        "snapshotVerificationMsMedian": 734.2000002861023,
+        "tailDecodeMsMedian": 28.199998378753662,
+        "tailApplyMsMedian": 1316.100001335144,
+        "firstTailToReadyMsMedian": 6422.699999809265
+      }
+    }
+  },
+  "afterIncrementalSnapshot": {
+    "snapshotBaseRoomSeq": 60007,
+    "readyRoomSeq": 60010,
+    "tailEventCount": 3,
+    "tailFrameCount": 1,
+    "tailEncodedBytes": 745,
+    "conditions": {
+      "standard": {
+        "readyPaintMs": [720, 562.8000001907349, 914.4000000953674],
+        "readyPaintMsMedian": 720,
+        "readyPaintMsMaximum": 914.4000000953674,
+        "snapshotVerificationMsMedian": 402,
+        "tailDecodeMsMedian": 0.7999997138977051,
+        "tailApplyMsMedian": 4
+      },
+      "cpu4x": {
+        "readyPaintMs": [681.5999999046326, 661.5999999046326, 673.5],
+        "readyPaintMsMedian": 673.5,
+        "readyPaintMsMaximum": 681.5999999046326,
+        "snapshotVerificationMsMedian": 370.2999997138977,
+        "tailDecodeMsMedian": 2.3999996185302734,
+        "tailApplyMsMedian": 11.5
+      },
+      "slow4g": {
+        "readyPaintMs": [1379.5999999046326, 1411.5999999046326, 1362],
+        "readyPaintMsMedian": 1379.5999999046326,
+        "readyPaintMsMaximum": 1411.5999999046326,
+        "snapshotVerificationMsMedian": 672.3000001907349,
+        "tailDecodeMsMedian": 0.6999998092651367,
+        "tailApplyMsMedian": 3.5
+      }
+    }
+  },
+  "readyPaintMedianReductionPercent": {
+    "standard": 62.4,
+    "cpu4x": 87.1,
+    "slow4g": 82.4
+  },
+  "workerCostComparison": {
+    "fiveThousandEventJob": {
+      "sampleCount": 1,
+      "cpuTimeApiValue": 1923344,
+      "memoryUsageBytesP999": 18327956,
+      "errors": 0
+    },
+    "tenThousandEventJobBaseline": {
+      "sampleCount": 2,
+      "cpuTimeApiValues": [3104652, 4135264],
+      "cpuTimeApiValueAverage": 3619958,
+      "memoryUsageBytesP999": 22860760
+    },
+    "projectedTwoFiveThousandEventJobs": {
+      "cpuTimeApiValue": 3846688,
+      "versusOneTenThousandEventJobAveragePercent": 6.3
+    },
+    "fiveThousandEventJobMemoryChangePercent": -19.8,
+    "fiveThousandEventJobMemoryHeadroomPercent": 86.3,
+    "lifecycleJobCountFrom50kThrough90k": {
+      "tenThousandEventInterval": 5,
+      "fiveThousandEventInterval": 9
+    }
+  },
+  "correctness": {
+    "snapshotSourceRuns": 18,
+    "snapshotBaseMismatchCount": 0,
+    "tailEventCountMismatchCount": 0,
+    "timeoutCount": 0
+  },
+  "notes": [
+    "Slow 4G is the Chrome DevTools preset, not an exact standalone RTT value.",
+    "The first 50k seed attempt at 40 events/s per connection hit the product rate limiter after 22996 accepted events.",
+    "Seeding resumed at 15 events/s per connection and reached the trigger without bypassing the limiter.",
+    "The room remained below the 90000-event test ceiling and was not ended."
+  ]
+}

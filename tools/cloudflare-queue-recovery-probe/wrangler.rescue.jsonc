@@ -1,0 +1,24 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "koge-queue-recovery-probe-preview",
+  "account_id": "add7fa1a3932f0d7e81b8c668f42156f",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-27",
+  "queues": {
+    "producers": [
+      {
+        "binding": "TARGET_QUEUE",
+        "queue": "koge-moderation-evidence-preview"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "koge-moderation-evidence-preview-dlq",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 100,
+        "retry_delay": 60
+      }
+    ]
+  }
+}

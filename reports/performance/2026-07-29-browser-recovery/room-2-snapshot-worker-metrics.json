@@ -1,0 +1,78 @@
+{
+  "schema": "koge.cloudflare-worker-metrics.v1",
+  "queriedAt": "2026-07-29T04:54:10.543Z",
+  "input": {
+    "account": "add7fa1a3932f0d7e81b8c668f42156f",
+    "script": "koge-snapshot-preview",
+    "from": "2026-07-29T04:39:00.000Z",
+    "to": "2026-07-29T04:47:00.000Z"
+  },
+  "sampleCount": 3,
+  "maximumMemoryBytes": {
+    "memoryUsageBytesP50": 31173652,
+    "memoryUsageBytesP90": 31173652,
+    "memoryUsageBytesP99": 31173652,
+    "memoryUsageBytesP999": 31173652
+  },
+  "workerMemoryLimitBytes": 134217728,
+  "targetMaximumBytesForThirtyPercentHeadroom": 93952409,
+  "samples": [
+    {
+      "dimensions": {
+        "datetime": "2026-07-29T04:46:12Z",
+        "scriptName": "koge-snapshot-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 1360536,
+        "cpuTimeP99": 1360536,
+        "memoryUsageBytesP50": 18327956,
+        "memoryUsageBytesP90": 18327956,
+        "memoryUsageBytesP99": 18327956,
+        "memoryUsageBytesP999": 18327956
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-29T04:42:27Z",
+        "scriptName": "koge-snapshot-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 11092688,
+        "cpuTimeP99": 11092688,
+        "memoryUsageBytesP50": 31173652,
+        "memoryUsageBytesP90": 31173652,
+        "memoryUsageBytesP99": 31173652,
+        "memoryUsageBytesP999": 31173652
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-29T04:44:57Z",
+        "scriptName": "koge-snapshot-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 1861915,
+        "cpuTimeP99": 1861915,
+        "memoryUsageBytesP50": 18327956,
+        "memoryUsageBytesP90": 18327956,
+        "memoryUsageBytesP99": 18327956,
+        "memoryUsageBytesP999": 18327956
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    }
+  ]
+}

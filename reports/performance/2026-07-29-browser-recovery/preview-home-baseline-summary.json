@@ -1,0 +1,19 @@
+{
+  "schema": "koge.browser-page-baseline.v1",
+  "measuredAt": "2026-07-29",
+  "target": "https://preview.koge.app",
+  "conditions": {
+    "browser": "Chrome",
+    "networkThrottling": "none",
+    "cpuThrottling": "none",
+    "navigation": "reload"
+  },
+  "metrics": {
+    "lcpMs": 466,
+    "cls": 0,
+    "ttfbMs": 204,
+    "lcpRenderDelayMs": 262
+  },
+  "scope": "Web delivery baseline only; no room recovery was included.",
+  "source": "Chrome DevTools MCP performance trace"
+}

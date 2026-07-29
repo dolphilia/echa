@@ -1,0 +1,83 @@
+{
+  "schema": "koge.cloudflare-worker-metrics-pair-summary.v1",
+  "input": {
+    "from": "2026-07-29T00:46:00.000Z",
+    "to": "2026-07-29T01:09:00.000Z"
+  },
+  "realtime": {
+    "script": "koge-realtime-preview",
+    "sampleCount": 32,
+    "requests": {
+      "total": 222,
+      "errors": 0,
+      "byStatus": {
+        "success": 145,
+        "clientDisconnected": 77
+      }
+    },
+    "maximumCpuTimeApiValue": {
+      "cpuTimeP50": 5859,
+      "cpuTimeP99": 9785,
+      "unit": "not annotated by the current query tool"
+    },
+    "maximumMemoryBytes": {
+      "memoryUsageBytesP50": 2482188,
+      "memoryUsageBytesP90": 2490380,
+      "memoryUsageBytesP99": 2490380,
+      "memoryUsageBytesP999": 2490380
+    },
+    "maximumMemoryPercentOfLimit": 1.8554776906967163
+  },
+  "snapshot": {
+    "script": "koge-snapshot-preview",
+    "sampleCount": 4,
+    "requests": {
+      "total": 4,
+      "errors": 0,
+      "byStatus": {
+        "success": 3,
+        "clientDisconnected": 1
+      }
+    },
+    "maximumCpuTimeApiValue": {
+      "cpuTimeP50": 24156322,
+      "cpuTimeP99": 24156322,
+      "unit": "not annotated by the current query tool"
+    },
+    "maximumMemoryBytes": {
+      "memoryUsageBytesP50": 36754824,
+      "memoryUsageBytesP90": 36754824,
+      "memoryUsageBytesP99": 36754824,
+      "memoryUsageBytesP999": 36754824
+    },
+    "maximumMemoryPercentOfLimit": 27.38492488861084,
+    "samples": [
+      {
+        "datetime": "2026-07-29T00:51:18Z",
+        "status": "clientDisconnected",
+        "cpuTimeApiValueP99": 23267690,
+        "memoryUsageBytesP999": 20471884
+      },
+      {
+        "datetime": "2026-07-29T00:52:16Z",
+        "status": "success",
+        "cpuTimeApiValueP99": 24156322,
+        "memoryUsageBytesP999": 36754824
+      },
+      {
+        "datetime": "2026-07-29T00:58:31Z",
+        "status": "success",
+        "cpuTimeApiValueP99": 3104652,
+        "memoryUsageBytesP999": 22860760
+      },
+      {
+        "datetime": "2026-07-29T01:03:13Z",
+        "status": "success",
+        "cpuTimeApiValueP99": 4135264,
+        "memoryUsageBytesP999": 22860760
+      }
+    ]
+  },
+  "workerMemoryLimitBytes": 134217728,
+  "targetMaximumBytesForThirtyPercentHeadroom": 93952409
+}

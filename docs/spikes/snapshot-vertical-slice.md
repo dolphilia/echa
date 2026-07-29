@@ -10,6 +10,9 @@ MVP blockerではないが、2 client sync直後の優先トラック。renderer
 
 ## Stages
 
+状態: 2026-07-28完了。Stage A-E、preview CPU/memory/live性能、
+70,020-event compaction canaryが成立し、Gate Bをpass。snapshot-firstを採用。
+
 ### A. Renderer
 
 - Rust renderer core
@@ -35,6 +38,8 @@ MVP blockerではないが、2 client sync直後の優先トラック。renderer
 - object byte hash / RGBA hash
 - DO manifest commit
 
+結果: [`../results/phase3-snapshot-worker-generation.md`](../results/phase3-snapshot-worker-generation.md)
+
 ### D. Recovery
 
 - manifest取得
@@ -44,6 +49,8 @@ MVP blockerではないが、2 client sync直後の優先トラック。renderer
 - tail replay
 - live catch-up
 
+結果: [`../results/phase3-snapshot-client-recovery.md`](../results/phase3-snapshot-client-recovery.md)
+
 ### E. Shadow and compaction
 
 - shadowではeventを削除しない
@@ -51,6 +58,19 @@ MVP blockerではないが、2 client sync直後の優先トラック。renderer
 - commit失敗を注入
 - pass後だけcompaction
 - previous snapshot fallback
+- current snapshotを固定sourceとして読み込み、tailだけで次世代を生成
+
+incremental generation結果:
+[`../results/phase3-snapshot-incremental-generation.md`](../results/phase3-snapshot-incremental-generation.md)
+
+compaction結果:
+[`../results/phase3-snapshot-compaction.md`](../results/phase3-snapshot-compaction.md)
+
+room close競合結果:
+[`../results/phase3-room-close-snapshot-fence.md`](../results/phase3-room-close-snapshot-fence.md)
+
+自動化結果:
+[`../results/phase3-snapshot-automation.md`](../results/phase3-snapshot-automation.md)
 
 ## Failure injection
 
@@ -64,6 +84,8 @@ MVP blockerではないが、2 client sync直後の優先トラック。renderer
 - room closes during generation
 
 ## Adoption gate
+
+判定: 2026-07-28 pass。ADR 0007を参照。
 
 `docs/spec/event-log-recovery.md`の全条件を満たすこと。特に:
 
@@ -103,4 +125,3 @@ compaction済みroomは途中でevent_log_onlyへ戻さない。
 - https://developers.cloudflare.com/queues/configuration/batching-retries/
 - https://developers.cloudflare.com/queues/configuration/dead-letter-queues/
 - https://developers.cloudflare.com/r2/
-

@@ -1,0 +1,24 @@
+{
+  "name": "@koge/snapshot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:wasm --workspace @koge/renderer-core && wrangler deploy --dry-run --env=\"\" --outdir dist",
+    "cf:types": "wrangler types worker-configuration.d.ts",
+    "cf:types:check": "wrangler types worker-configuration.d.ts --check",
+    "deploy:production": "npm run build:wasm --workspace @koge/renderer-core && wrangler deploy --env production",
+    "dry-run:production": "npm run build:wasm --workspace @koge/renderer-core && wrangler deploy --dry-run --env production --outdir dist-production",
+    "test": "npm run build:wasm --workspace @koge/renderer-core && vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@koge/protocol": "0.1.0",
+    "@koge/renderer-core": "0.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.18.8",
+    "vitest": "4.1.10",
+    "wrangler": "4.114.0"
+  }
+}

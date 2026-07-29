@@ -8,8 +8,9 @@
     "colorSpace": "srgb"
   },
   "protocolVersion": 1,
-  "rendererVersion": null,
-  "rgbaHash": null,
+  "rendererVersion": 1,
+  "rgbaHash": "3a4e5e43f7371312ba0f4512f84a297aeb8e9a7012c67eff4512bc1f302537cb",
+  "wasmHash": "7bab6445ddb282e655f6d0c3b950b50eb965ea498ae8250c476a0aac4184037b",
   "objectByteHash": null,
   "cases": [
     "single-dot",
@@ -21,4 +22,3 @@
     "cancelled-stroke"
   ]
 }
-

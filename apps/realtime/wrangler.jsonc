@@ -1,0 +1,283 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "koge-realtime",
+  "account_id": "add7fa1a3932f0d7e81b8c668f42156f",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-27",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "APP_ENV": "local",
+    "APP_ORIGIN": "http://localhost:3000",
+    "AUTH_BASE_URL": "http://localhost:3000",
+    "SNAPSHOT_AUTOMATION_MODE": "shadow",
+    "SNAPSHOT_TRIGGER_EVENT_COUNT": 50000,
+    "SNAPSHOT_TRIGGER_PAYLOAD_BYTES": 16777216,
+    "SNAPSHOT_MIN_EVENT_DELTA": 5000,
+    "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "koge-local",
+      "database_id": "local",
+      "migrations_dir": "../../migrations/d1"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DRAWING_ROOM",
+        "class_name": "DrawingRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "DrawingRoom"
+      ]
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "RUNTIME_SNAPSHOTS",
+      "bucket_name": "koge-runtime-snapshots-local"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "SNAPSHOT_QUEUE",
+        "queue": "koge-snapshot-local"
+      },
+      {
+        "binding": "ROOM_CLEANUP_QUEUE",
+        "queue": "koge-room-cleanup-local"
+      },
+      {
+        "binding": "ROOM_CLEANUP_DLQ",
+        "queue": "koge-room-cleanup-local-dlq"
+      },
+      {
+        "binding": "MODERATION_EVIDENCE_QUEUE",
+        "queue": "koge-moderation-evidence-local"
+      },
+      {
+        "binding": "MODERATION_EVIDENCE_DLQ",
+        "queue": "koge-moderation-evidence-local-dlq"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "koge-room-cleanup-local",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "koge-room-cleanup-local-dlq"
+      },
+      {
+        "queue": "koge-moderation-evidence-local",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "retry_delay": 30,
+        "dead_letter_queue": "koge-moderation-evidence-local-dlq"
+      }
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01
+    }
+  },
+  "triggers": {
+    "crons": [
+      "17 3 * * *"
+    ]
+  },
+  "env": {
+    "preview": {
+      "name": "koge-realtime-preview",
+      "vars": {
+        "APP_ENV": "preview",
+        "APP_ORIGIN": "https://preview.koge.app",
+        "AUTH_BASE_URL": "https://preview.koge.app",
+        "SNAPSHOT_AUTOMATION_MODE": "shadow",
+        "SNAPSHOT_TRIGGER_EVENT_COUNT": 50000,
+        "SNAPSHOT_TRIGGER_PAYLOAD_BYTES": 16777216,
+        "SNAPSHOT_MIN_EVENT_DELTA": 5000,
+        "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "koge-preview",
+          "database_id": "59b84520-bef3-456e-90ec-37f4e496e851",
+          "migrations_dir": "../../migrations/d1"
+        }
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "DRAWING_ROOM",
+            "class_name": "DrawingRoom"
+          }
+        ]
+      },
+      "r2_buckets": [
+        {
+          "binding": "RUNTIME_SNAPSHOTS",
+          "bucket_name": "koge-runtime-snapshots-preview"
+        }
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "SNAPSHOT_QUEUE",
+            "queue": "koge-snapshot-preview"
+          },
+          {
+            "binding": "ROOM_CLEANUP_QUEUE",
+            "queue": "koge-room-cleanup-preview"
+          },
+          {
+            "binding": "ROOM_CLEANUP_DLQ",
+            "queue": "koge-room-cleanup-preview-dlq"
+          },
+          {
+            "binding": "MODERATION_EVIDENCE_QUEUE",
+            "queue": "koge-moderation-evidence-preview"
+          },
+          {
+            "binding": "MODERATION_EVIDENCE_DLQ",
+            "queue": "koge-moderation-evidence-preview-dlq"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "koge-room-cleanup-preview",
+            "max_batch_size": 1,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "dead_letter_queue": "koge-room-cleanup-preview-dlq"
+          },
+          {
+            "queue": "koge-moderation-evidence-preview",
+            "max_batch_size": 1,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "retry_delay": 30,
+            "dead_letter_queue": "koge-moderation-evidence-preview-dlq"
+          }
+        ]
+      },
+      "triggers": {
+        "crons": [
+          "17 3 * * *"
+        ]
+      },
+      "routes": [
+        {
+          "pattern": "realtime-preview.koge.app",
+          "custom_domain": true
+        }
+      ]
+    },
+    "production": {
+      "name": "koge-realtime",
+      "vars": {
+        "APP_ENV": "production",
+        "APP_ORIGIN": "https://koge.app",
+        "AUTH_BASE_URL": "https://koge.app",
+        "SNAPSHOT_AUTOMATION_MODE": "shadow",
+        "SNAPSHOT_TRIGGER_EVENT_COUNT": 50000,
+        "SNAPSHOT_TRIGGER_PAYLOAD_BYTES": 16777216,
+        "SNAPSHOT_MIN_EVENT_DELTA": 5000,
+        "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "koge-production",
+          "database_id": "2071beb0-831b-40cf-9c7d-d068496766b3",
+          "migrations_dir": "../../migrations/d1"
+        }
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "DRAWING_ROOM",
+            "class_name": "DrawingRoom"
+          }
+        ]
+      },
+      "r2_buckets": [
+        {
+          "binding": "RUNTIME_SNAPSHOTS",
+          "bucket_name": "koge-runtime-snapshots-production"
+        }
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "SNAPSHOT_QUEUE",
+            "queue": "koge-snapshot-production"
+          },
+          {
+            "binding": "ROOM_CLEANUP_QUEUE",
+            "queue": "koge-room-cleanup-production"
+          },
+          {
+            "binding": "ROOM_CLEANUP_DLQ",
+            "queue": "koge-room-cleanup-production-dlq"
+          },
+          {
+            "binding": "MODERATION_EVIDENCE_QUEUE",
+            "queue": "koge-moderation-evidence-production"
+          },
+          {
+            "binding": "MODERATION_EVIDENCE_DLQ",
+            "queue": "koge-moderation-evidence-production-dlq"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "koge-room-cleanup-production",
+            "max_batch_size": 1,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "dead_letter_queue": "koge-room-cleanup-production-dlq"
+          },
+          {
+            "queue": "koge-moderation-evidence-production",
+            "max_batch_size": 1,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "retry_delay": 30,
+            "dead_letter_queue": "koge-moderation-evidence-production-dlq"
+          }
+        ]
+      },
+      "triggers": {
+        "crons": [
+          "17 3 * * *"
+        ]
+      },
+      "routes": [
+        {
+          "pattern": "realtime.koge.app",
+          "custom_domain": true
+        }
+      ]
+    }
+  }
+}

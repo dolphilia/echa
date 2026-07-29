@@ -10,3 +10,35 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+
+# JavaScript / TypeScript workspaces
+node_modules/
+dist/
+dist-production/
+target/
+apps/web/public/generated/
+.next/
+.vinext/
+.wrangler/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+!.dev.vars.*.example
+
+# Local test and coverage output
+coverage/
+.vitest/
+playwright-report/
+test-results/
+reports/private/
+
+# Local coding-agent instructions
+AGENTS.md
+CLAUDE.md

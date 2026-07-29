@@ -1,0 +1,26 @@
+{
+  "schema": "koge.codec-bundle-benchmark.v1",
+  "recordedAt": "2026-07-27T06:17:57.546Z",
+  "target": "browser-es2022",
+  "exports": [
+    "encode",
+    "decode"
+  ],
+  "results": [
+    {
+      "codec": "json",
+      "minifiedBytes": 167,
+      "gzipBytes": 136
+    },
+    {
+      "codec": "messagepack",
+      "minifiedBytes": 21212,
+      "gzipBytes": 5918
+    },
+    {
+      "codec": "cbor",
+      "minifiedBytes": 28848,
+      "gzipBytes": 10711
+    }
+  ]
+}

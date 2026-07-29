@@ -1,0 +1,33 @@
+{
+  "schema": "koge.codec-benchmark.v1",
+  "recordedAt": "2026-07-27T06:19:28.728Z",
+  "input": "tools/event-log-benchmark/fixtures/echa-raw-strokes-2026-07-26T16-06-54-108Z.json",
+  "iterations": 20,
+  "eventCount": 4112,
+  "results": [
+    {
+      "codec": "json",
+      "encodedBytes": 646781,
+      "averageEventBytes": 157.2910992217899,
+      "largestEventBytes": 325,
+      "encodeMilliseconds": 6.539756249999999,
+      "decodeMilliseconds": 5.673441649999998
+    },
+    {
+      "codec": "messagepack",
+      "encodedBytes": 507808,
+      "averageEventBytes": 123.49416342412451,
+      "largestEventBytes": 318,
+      "encodeMilliseconds": 7.000291650000003,
+      "decodeMilliseconds": 5.489793750000001
+    },
+    {
+      "codec": "cbor",
+      "encodedBytes": 525587,
+      "averageEventBytes": 127.81785019455253,
+      "largestEventBytes": 320,
+      "encodeMilliseconds": 5.320335400000005,
+      "decodeMilliseconds": 5.985725000000002
+    }
+  ]
+}

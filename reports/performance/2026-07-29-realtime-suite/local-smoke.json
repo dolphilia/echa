@@ -1,0 +1,1566 @@
+{
+  "schema": "koge.realtime-benchmark-suite.v1",
+  "recordedAt": "2026-07-28T17:13:32.347Z",
+  "commitSha": "8310025d87cf18db5be4f6818e58d63c547111b3",
+  "runtime": "v23.2.0",
+  "environment": {
+    "endpoint": "ws://localhost:8787",
+    "origin": "http://localhost:3000"
+  },
+  "protocol": "v1 MessagePack",
+  "fixture": {
+    "kind": "deterministic synthetic complete strokes",
+    "pointsPerAppend": 6
+  },
+  "input": {
+    "events": [
+      120
+    ],
+    "scenarios": [
+      "2-active",
+      "10+10",
+      "20-active",
+      "20-cold"
+    ],
+    "runs": 3,
+    "targetEventsPerSecondPerActiveConnection": 40
+  },
+  "groups": [
+    {
+      "scenario": "2-active",
+      "requestedEvents": 120,
+      "runCount": 3,
+      "actualEventCount": {
+        "minimum": 120,
+        "median": 120,
+        "p95": 120,
+        "maximum": 120
+      },
+      "effectiveEventsPerSecond": {
+        "minimum": 80.66414148692078,
+        "median": 80.66609810018896,
+        "p95": 80.71840277131354,
+        "maximum": 80.71840277131354
+      },
+      "ackP95Ms": {
+        "minimum": 5.05379199999993,
+        "median": 7.9477079999999205,
+        "p95": 8.244665999999938,
+        "maximum": 8.244665999999938
+      },
+      "ackMaximumMs": {
+        "minimum": 10.402667000000065,
+        "median": 16.500083000000018,
+        "p95": 18.084583000000066,
+        "maximum": 18.084583000000066
+      },
+      "replayFirstP95Ms": {
+        "minimum": 7.541291000000001,
+        "median": 8.040250000000015,
+        "p95": 10.213334000000032,
+        "maximum": 10.213334000000032
+      },
+      "replayCompleteP95Ms": {
+        "minimum": 8.970874999999978,
+        "median": 10.135334000000057,
+        "p95": 12.428459000000203,
+        "maximum": 12.428459000000203
+      },
+      "broadcastMissing": 0,
+      "recoveryEventCountMismatch": 0
+    },
+    {
+      "scenario": "10+10",
+      "requestedEvents": 120,
+      "runCount": 3,
+      "actualEventCount": {
+        "minimum": 120,
+        "median": 120,
+        "p95": 120,
+        "maximum": 120
+      },
+      "effectiveEventsPerSecond": {
+        "minimum": 416.4993322752121,
+        "median": 417.3234439269441,
+        "p95": 418.0355036020412,
+        "maximum": 418.0355036020412
+      },
+      "ackP95Ms": {
+        "minimum": 7.706874999999997,
+        "median": 7.933375000000012,
+        "p95": 78.12762500000002,
+        "maximum": 78.12762500000002
+      },
+      "ackMaximumMs": {
+        "minimum": 8.836082999999974,
+        "median": 9.410208999999952,
+        "p95": 101.12337500000001,
+        "maximum": 101.12337500000001
+      },
+      "replayFirstP95Ms": {
+        "minimum": 7.958041999999978,
+        "median": 8.096875000000182,
+        "p95": 10.270999999999958,
+        "maximum": 10.270999999999958
+      },
+      "replayCompleteP95Ms": {
+        "minimum": 8.526166999999987,
+        "median": 8.767542000000049,
+        "p95": 10.874667000000045,
+        "maximum": 10.874667000000045
+      },
+      "broadcastMissing": 0,
+      "recoveryEventCountMismatch": 0
+    },
+    {
+      "scenario": "20-active",
+      "requestedEvents": 120,
+      "runCount": 3,
+      "actualEventCount": {
+        "minimum": 120,
+        "median": 120,
+        "p95": 120,
+        "maximum": 120
+      },
+      "effectiveEventsPerSecond": {
+        "minimum": 864.0008640008641,
+        "median": 870.9665963334527,
+        "p95": 872.9727653666796,
+        "maximum": 872.9727653666796
+      },
+      "ackP95Ms": {
+        "minimum": 11.341542000000004,
+        "median": 12.200583999999992,
+        "p95": 19.954583000000014,
+        "maximum": 19.954583000000014
+      },
+      "ackMaximumMs": {
+        "minimum": 12.669375000000002,
+        "median": 13.462917000000004,
+        "p95": 28.018208000000016,
+        "maximum": 28.018208000000016
+      },
+      "replayFirstP95Ms": {
+        "minimum": 5.587582999999995,
+        "median": 6.056082999999944,
+        "p95": 6.267000000000053,
+        "maximum": 6.267000000000053
+      },
+      "replayCompleteP95Ms": {
+        "minimum": 6.014290999999957,
+        "median": 6.452833000000055,
+        "p95": 6.570457999999917,
+        "maximum": 6.570457999999917
+      },
+      "broadcastMissing": 0,
+      "recoveryEventCountMismatch": 0
+    },
+    {
+      "scenario": "20-cold",
+      "requestedEvents": 120,
+      "runCount": 3,
+      "actualEventCount": {
+        "minimum": 120,
+        "median": 120,
+        "p95": 120,
+        "maximum": 120
+      },
+      "effectiveEventsPerSecond": {
+        "minimum": 80.61110158302819,
+        "median": 80.6839330650986,
+        "p95": 80.71383992646297,
+        "maximum": 80.71383992646297
+      },
+      "ackP95Ms": {
+        "minimum": 5.300166999999874,
+        "median": 6.119999999999891,
+        "p95": 7.277624999999944,
+        "maximum": 7.277624999999944
+      },
+      "ackMaximumMs": {
+        "minimum": 6.361125000000129,
+        "median": 8.694124999999985,
+        "p95": 8.966207999999938,
+        "maximum": 8.966207999999938
+      },
+      "replayFirstP95Ms": {
+        "minimum": 57.05212500000016,
+        "median": 58.26708299999973,
+        "p95": 61.226750000000266,
+        "maximum": 61.226750000000266
+      },
+      "replayCompleteP95Ms": {
+        "minimum": 57.6904169999998,
+        "median": 58.59154199999966,
+        "p95": 61.486917000000176,
+        "maximum": 61.486917000000176
+      },
+      "broadcastMissing": 0,
+      "recoveryEventCountMismatch": 0
+    }
+  ],
+  "runs": [
+    {
+      "scenario": "2-active",
+      "requestedEvents": 120,
+      "run": 1,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:12:58.828Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 2,
+          "activeConnections": 2,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258775274",
+        "startedEpochMs": 1785258775322,
+        "completedEpochMs": 1785258776809,
+        "actualEventCount": 120,
+        "encodedBytes": 11530,
+        "sendDurationMs": 1486.649833,
+        "effectiveEventsPerSecond": 80.71840277131354,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 0.7796249999998963,
+          "p50": 2.7325000000000728,
+          "p95": 8.244665999999938,
+          "p99": 12.447792000000021,
+          "maximum": 16.500083000000018,
+          "average": 3.6328534250000017
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258775000,
+            "ackRttMs": {
+              "count": 54,
+              "minimum": 0.8631669999999758,
+              "p50": 2.495999999999981,
+              "p95": 9.068667000000005,
+              "p99": 16.500083000000018,
+              "maximum": 16.500083000000018,
+              "average": 3.692191259259248
+            }
+          },
+          {
+            "startedAt": 1785258776000,
+            "ackRttMs": {
+              "count": 66,
+              "minimum": 0.7796249999998963,
+              "p50": 2.8950829999999996,
+              "p95": 8.045125000000098,
+              "p99": 10.517000000000053,
+              "maximum": 10.517000000000053,
+              "average": 3.5843042878788
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 240,
+          "minimum": 0,
+          "p50": 1,
+          "p95": 4,
+          "p99": 5,
+          "maximum": 7,
+          "average": 1.5083333333333333
+        },
+        "broadcastDeliveries": {
+          "expected": 240,
+          "observed": 240,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 10.213334000000032,
+            "p50": 10.213334000000032,
+            "p95": 10.213334000000032,
+            "p99": 10.213334000000032,
+            "maximum": 10.213334000000032,
+            "average": 10.213334000000032
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 12.428459000000203,
+            "p50": 12.428459000000203,
+            "p95": 12.428459000000203,
+            "p99": 12.428459000000203,
+            "maximum": 12.428459000000203,
+            "average": 12.428459000000203
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "2-active",
+      "requestedEvents": 120,
+      "run": 2,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:02.527Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 2,
+          "activeConnections": 2,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258779003",
+        "startedEpochMs": 1785258779025,
+        "completedEpochMs": 1785258780513,
+        "actualEventCount": 120,
+        "encodedBytes": 11530,
+        "sendDurationMs": 1487.613791,
+        "effectiveEventsPerSecond": 80.66609810018896,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 0.9218329999999924,
+          "p50": 2.60366700000003,
+          "p95": 5.05379199999993,
+          "p99": 6.389875000000075,
+          "maximum": 18.084583000000066,
+          "average": 2.9514993666666736
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258779000,
+            "ackRttMs": {
+              "count": 78,
+              "minimum": 0.9218329999999924,
+              "p50": 2.643291999999974,
+              "p95": 5.090291999999977,
+              "p99": 6.389875000000075,
+              "maximum": 6.389875000000075,
+              "average": 2.8515102179487175
+            }
+          },
+          {
+            "startedAt": 1785258780000,
+            "ackRttMs": {
+              "count": 42,
+              "minimum": 1.2073340000001735,
+              "p50": 2.4831249999999727,
+              "p95": 4.953417000000172,
+              "p99": 18.084583000000066,
+              "maximum": 18.084583000000066,
+              "average": 3.137193500000021
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 240,
+          "minimum": 0,
+          "p50": 1,
+          "p95": 3,
+          "p99": 4,
+          "maximum": 4,
+          "average": 1.3791666666666667
+        },
+        "broadcastDeliveries": {
+          "expected": 240,
+          "observed": 240,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 8.040250000000015,
+            "p50": 8.040250000000015,
+            "p95": 8.040250000000015,
+            "p99": 8.040250000000015,
+            "maximum": 8.040250000000015,
+            "average": 8.040250000000015
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 10.135334000000057,
+            "p50": 10.135334000000057,
+            "p95": 10.135334000000057,
+            "p99": 10.135334000000057,
+            "maximum": 10.135334000000057,
+            "average": 10.135334000000057
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "2-active",
+      "requestedEvents": 120,
+      "run": 3,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:06.240Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 2,
+          "activeConnections": 2,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258782715",
+        "startedEpochMs": 1785258782738,
+        "completedEpochMs": 1785258784226,
+        "actualEventCount": 120,
+        "encodedBytes": 11530,
+        "sendDurationMs": 1487.6498749999998,
+        "effectiveEventsPerSecond": 80.66414148692078,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 0.7800410000000113,
+          "p50": 3.0571249999998145,
+          "p95": 7.9477079999999205,
+          "p99": 9.804084000000103,
+          "maximum": 10.402667000000065,
+          "average": 3.8247409583333156
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258782000,
+            "ackRttMs": {
+              "count": 22,
+              "minimum": 0.7800410000000113,
+              "p50": 1.7808330000000296,
+              "p95": 4.296042,
+              "p99": 4.925083000000001,
+              "maximum": 4.925083000000001,
+              "average": 2.000838999999998
+            }
+          },
+          {
+            "startedAt": 1785258783000,
+            "ackRttMs": {
+              "count": 78,
+              "minimum": 1.351583000000005,
+              "p50": 3.542500000000018,
+              "p95": 8.163000000000011,
+              "p99": 8.857709,
+              "maximum": 8.857709,
+              "average": 4.130016525641011
+            }
+          },
+          {
+            "startedAt": 1785258784000,
+            "ackRttMs": {
+              "count": 20,
+              "minimum": 1.9574170000000777,
+              "p50": 4.085084000000052,
+              "p95": 9.804084000000103,
+              "p99": 10.402667000000065,
+              "maximum": 10.402667000000065,
+              "average": 4.640458399999955
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 240,
+          "minimum": 0,
+          "p50": 1,
+          "p95": 4,
+          "p99": 5,
+          "maximum": 6,
+          "average": 1.5041666666666667
+        },
+        "broadcastDeliveries": {
+          "expected": 240,
+          "observed": 240,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 7.541291000000001,
+            "p50": 7.541291000000001,
+            "p95": 7.541291000000001,
+            "p99": 7.541291000000001,
+            "maximum": 7.541291000000001,
+            "average": 7.541291000000001
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 8.970874999999978,
+            "p50": 8.970874999999978,
+            "p95": 8.970874999999978,
+            "p99": 8.970874999999978,
+            "maximum": 8.970874999999978,
+            "average": 8.970874999999978
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "10+10",
+      "requestedEvents": 120,
+      "run": 1,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:08.784Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 20,
+          "activeConnections": 10,
+          "observerConnections": 10,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258786426",
+        "startedEpochMs": 1785258786479,
+        "completedEpochMs": 1785258786766,
+        "actualEventCount": 120,
+        "encodedBytes": 11180,
+        "sendDurationMs": 287.54675,
+        "effectiveEventsPerSecond": 417.3234439269441,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 1.6387909999999692,
+          "p50": 8.641041000000001,
+          "p95": 78.12762500000002,
+          "p99": 100.00870800000001,
+          "maximum": 101.12337500000001,
+          "average": 25.17873406666667
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258786000,
+            "ackRttMs": {
+              "count": 120,
+              "minimum": 1.6387909999999692,
+              "p50": 8.641041000000001,
+              "p95": 78.12762500000002,
+              "p99": 100.00870800000001,
+              "maximum": 101.12337500000001,
+              "average": 25.17873406666667
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 2400,
+          "minimum": 0,
+          "p50": 2,
+          "p95": 16,
+          "p99": 41,
+          "maximum": 56,
+          "average": 4.292916666666667
+        },
+        "broadcastDeliveries": {
+          "expected": 2400,
+          "observed": 2400,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 10.270999999999958,
+            "p50": 10.270999999999958,
+            "p95": 10.270999999999958,
+            "p99": 10.270999999999958,
+            "maximum": 10.270999999999958,
+            "average": 10.270999999999958
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 10.874667000000045,
+            "p50": 10.874667000000045,
+            "p95": 10.874667000000045,
+            "p99": 10.874667000000045,
+            "maximum": 10.874667000000045,
+            "average": 10.874667000000045
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "10+10",
+      "requestedEvents": 120,
+      "run": 2,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:11.325Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 20,
+          "activeConnections": 10,
+          "observerConnections": 10,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258788971",
+        "startedEpochMs": 1785258789023,
+        "completedEpochMs": 1785258789311,
+        "actualEventCount": 120,
+        "encodedBytes": 11180,
+        "sendDurationMs": 288.11570800000004,
+        "effectiveEventsPerSecond": 416.4993322752121,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 1.2040829999999687,
+          "p50": 4.437582999999961,
+          "p95": 7.933375000000012,
+          "p99": 8.868249999999989,
+          "maximum": 9.410208999999952,
+          "average": 4.446596133333329
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258789000,
+            "ackRttMs": {
+              "count": 120,
+              "minimum": 1.2040829999999687,
+              "p50": 4.437582999999961,
+              "p95": 7.933375000000012,
+              "p99": 8.868249999999989,
+              "maximum": 9.410208999999952,
+              "average": 4.446596133333329
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 2400,
+          "minimum": 0,
+          "p50": 1,
+          "p95": 3,
+          "p99": 3,
+          "maximum": 4,
+          "average": 1.5358333333333334
+        },
+        "broadcastDeliveries": {
+          "expected": 2400,
+          "observed": 2400,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 8.096875000000182,
+            "p50": 8.096875000000182,
+            "p95": 8.096875000000182,
+            "p99": 8.096875000000182,
+            "maximum": 8.096875000000182,
+            "average": 8.096875000000182
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 8.526166999999987,
+            "p50": 8.526166999999987,
+            "p95": 8.526166999999987,
+            "p99": 8.526166999999987,
+            "maximum": 8.526166999999987,
+            "average": 8.526166999999987
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "10+10",
+      "requestedEvents": 120,
+      "run": 3,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:13.866Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 20,
+          "activeConnections": 10,
+          "observerConnections": 10,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258791506",
+        "startedEpochMs": 1785258791563,
+        "completedEpochMs": 1785258791850,
+        "actualEventCount": 120,
+        "encodedBytes": 11180,
+        "sendDurationMs": 287.056958,
+        "effectiveEventsPerSecond": 418.0355036020412,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 1.3326250000000073,
+          "p50": 4.351625000000013,
+          "p95": 7.706874999999997,
+          "p99": 8.575625000000002,
+          "maximum": 8.836082999999974,
+          "average": 4.52449098333333
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258791000,
+            "ackRttMs": {
+              "count": 120,
+              "minimum": 1.3326250000000073,
+              "p50": 4.351625000000013,
+              "p95": 7.706874999999997,
+              "p99": 8.575625000000002,
+              "maximum": 8.836082999999974,
+              "average": 4.52449098333333
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 2400,
+          "minimum": 0,
+          "p50": 2,
+          "p95": 3,
+          "p99": 3,
+          "maximum": 4,
+          "average": 1.6266666666666667
+        },
+        "broadcastDeliveries": {
+          "expected": 2400,
+          "observed": 2400,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 7.958041999999978,
+            "p50": 7.958041999999978,
+            "p95": 7.958041999999978,
+            "p99": 7.958041999999978,
+            "maximum": 7.958041999999978,
+            "average": 7.958041999999978
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 8.767542000000049,
+            "p50": 8.767542000000049,
+            "p95": 8.767542000000049,
+            "p99": 8.767542000000049,
+            "maximum": 8.767542000000049,
+            "average": 8.767542000000049
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "20-active",
+      "requestedEvents": 120,
+      "run": 1,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:16.252Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 20,
+          "activeConnections": 20,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258794051",
+        "startedEpochMs": 1785258794103,
+        "completedEpochMs": 1785258794242,
+        "actualEventCount": 120,
+        "encodedBytes": 11040,
+        "sendDurationMs": 138.88875,
+        "effectiveEventsPerSecond": 864.0008640008641,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 1.5591660000000047,
+          "p50": 6.551042000000024,
+          "p95": 11.341542000000004,
+          "p99": 12.954000000000008,
+          "maximum": 13.462917000000004,
+          "average": 6.450901708333337
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258794000,
+            "ackRttMs": {
+              "count": 120,
+              "minimum": 1.5591660000000047,
+              "p50": 6.551042000000024,
+              "p95": 11.341542000000004,
+              "p99": 12.954000000000008,
+              "maximum": 13.462917000000004,
+              "average": 6.450901708333337
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 2400,
+          "minimum": 0,
+          "p50": 2,
+          "p95": 3,
+          "p99": 4,
+          "maximum": 4,
+          "average": 1.61
+        },
+        "broadcastDeliveries": {
+          "expected": 2400,
+          "observed": 2400,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 5.587582999999995,
+            "p50": 5.587582999999995,
+            "p95": 5.587582999999995,
+            "p99": 5.587582999999995,
+            "maximum": 5.587582999999995,
+            "average": 5.587582999999995
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 6.014290999999957,
+            "p50": 6.014290999999957,
+            "p95": 6.014290999999957,
+            "p99": 6.014290999999957,
+            "maximum": 6.014290999999957,
+            "average": 6.014290999999957
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "20-active",
+      "requestedEvents": 120,
+      "run": 2,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:18.635Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 20,
+          "activeConnections": 20,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258796435",
+        "startedEpochMs": 1785258796487,
+        "completedEpochMs": 1785258796624,
+        "actualEventCount": 120,
+        "encodedBytes": 11040,
+        "sendDurationMs": 137.461333,
+        "effectiveEventsPerSecond": 872.9727653666796,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 1.6343750000000057,
+          "p50": 7.195166999999998,
+          "p95": 12.200583999999992,
+          "p99": 12.633207999999968,
+          "maximum": 12.669375000000002,
+          "average": 7.066468741666665
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258796000,
+            "ackRttMs": {
+              "count": 120,
+              "minimum": 1.6343750000000057,
+              "p50": 7.195166999999998,
+              "p95": 12.200583999999992,
+              "p99": 12.633207999999968,
+              "maximum": 12.669375000000002,
+              "average": 7.066468741666665
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 2400,
+          "minimum": 0,
+          "p50": 1,
+          "p95": 2,
+          "p99": 3,
+          "maximum": 4,
+          "average": 1.53125
+        },
+        "broadcastDeliveries": {
+          "expected": 2400,
+          "observed": 2400,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 6.056082999999944,
+            "p50": 6.056082999999944,
+            "p95": 6.056082999999944,
+            "p99": 6.056082999999944,
+            "maximum": 6.056082999999944,
+            "average": 6.056082999999944
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 6.452833000000055,
+            "p50": 6.452833000000055,
+            "p95": 6.452833000000055,
+            "p99": 6.452833000000055,
+            "maximum": 6.452833000000055,
+            "average": 6.452833000000055
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "20-active",
+      "requestedEvents": 120,
+      "run": 3,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:21.047Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 20,
+          "activeConnections": 20,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 1,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258798818",
+        "startedEpochMs": 1785258798886,
+        "completedEpochMs": 1785258799024,
+        "actualEventCount": 120,
+        "encodedBytes": 11040,
+        "sendDurationMs": 137.777959,
+        "effectiveEventsPerSecond": 870.9665963334527,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 1.4084159999999883,
+          "p50": 8.561125000000004,
+          "p95": 19.954583000000014,
+          "p99": 27.839083000000016,
+          "maximum": 28.018208000000016,
+          "average": 9.853978083333333
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258798000,
+            "ackRttMs": {
+              "count": 92,
+              "minimum": 1.4084159999999883,
+              "p50": 8.713707999999997,
+              "p95": 23.32887500000001,
+              "p99": 28.018208000000016,
+              "maximum": 28.018208000000016,
+              "average": 10.46529343478261
+            }
+          },
+          {
+            "startedAt": 1785258799000,
+            "ackRttMs": {
+              "count": 28,
+              "minimum": 1.8173750000000268,
+              "p50": 7.875540999999998,
+              "p95": 13.808291999999994,
+              "p99": 14.192208999999991,
+              "maximum": 14.192208999999991,
+              "average": 7.845370500000003
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 2400,
+          "minimum": 0,
+          "p50": 2,
+          "p95": 5,
+          "p99": 6,
+          "maximum": 7,
+          "average": 2.3979166666666667
+        },
+        "broadcastDeliveries": {
+          "expected": 2400,
+          "observed": 2400,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 1,
+          "eventCountPerConnection": {
+            "count": 1,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 1,
+            "minimum": 6.267000000000053,
+            "p50": 6.267000000000053,
+            "p95": 6.267000000000053,
+            "p99": 6.267000000000053,
+            "maximum": 6.267000000000053,
+            "average": 6.267000000000053
+          },
+          "completeMs": {
+            "count": 1,
+            "minimum": 6.570457999999917,
+            "p50": 6.570457999999917,
+            "p95": 6.570457999999917,
+            "p99": 6.570457999999917,
+            "maximum": 6.570457999999917,
+            "average": 6.570457999999917
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "20-cold",
+      "requestedEvents": 120,
+      "run": 1,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:24.806Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 2,
+          "activeConnections": 2,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 20,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258801224",
+        "startedEpochMs": 1785258801245,
+        "completedEpochMs": 1785258802732,
+        "actualEventCount": 120,
+        "encodedBytes": 11530,
+        "sendDurationMs": 1487.2849580000002,
+        "effectiveEventsPerSecond": 80.6839330650986,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 1.304458000000011,
+          "p50": 2.5631250000000136,
+          "p95": 7.277624999999944,
+          "p99": 8.398750000000064,
+          "maximum": 8.694124999999985,
+          "average": 3.343727074999999
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258801000,
+            "ackRttMs": {
+              "count": 60,
+              "minimum": 1.304458000000011,
+              "p50": 2.3017919999999776,
+              "p95": 5.788083000000029,
+              "p99": 7.918541000000005,
+              "maximum": 7.918541000000005,
+              "average": 2.9618589999999982
+            }
+          },
+          {
+            "startedAt": 1785258802000,
+            "ackRttMs": {
+              "count": 60,
+              "minimum": 1.5613749999999982,
+              "p50": 3.155917000000045,
+              "p95": 8.011416999999938,
+              "p99": 8.694124999999985,
+              "maximum": 8.694124999999985,
+              "average": 3.7255951499999997
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 240,
+          "minimum": 0,
+          "p50": 1,
+          "p95": 3,
+          "p99": 6,
+          "maximum": 6,
+          "average": 1.5291666666666666
+        },
+        "broadcastDeliveries": {
+          "expected": 240,
+          "observed": 240,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 20,
+          "eventCountPerConnection": {
+            "count": 20,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 20,
+            "minimum": 26.4721669999999,
+            "p50": 56.66329200000018,
+            "p95": 61.226750000000266,
+            "p99": 61.684208000000126,
+            "maximum": 61.684208000000126,
+            "average": 54.66175830000002
+          },
+          "completeMs": {
+            "count": 20,
+            "minimum": 28.01949999999988,
+            "p50": 57.17450000000008,
+            "p95": 61.486917000000176,
+            "p99": 61.94150000000036,
+            "maximum": 61.94150000000036,
+            "average": 55.234529299999984
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "20-cold",
+      "requestedEvents": 120,
+      "run": 2,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:28.573Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 2,
+          "activeConnections": 2,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 20,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258804994",
+        "startedEpochMs": 1785258805017,
+        "completedEpochMs": 1785258806506,
+        "actualEventCount": 120,
+        "encodedBytes": 11530,
+        "sendDurationMs": 1488.628708,
+        "effectiveEventsPerSecond": 80.61110158302819,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 0.8362909999999601,
+          "p50": 2.6199169999999867,
+          "p95": 6.119999999999891,
+          "p99": 6.8945830000000115,
+          "maximum": 8.966207999999938,
+          "average": 3.040508700000002
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258805000,
+            "ackRttMs": {
+              "count": 80,
+              "minimum": 0.8362909999999601,
+              "p50": 2.4140409999999974,
+              "p95": 4.414790999999923,
+              "p99": 8.966207999999938,
+              "maximum": 8.966207999999938,
+              "average": 2.635621887499997
+            }
+          },
+          {
+            "startedAt": 1785258806000,
+            "ackRttMs": {
+              "count": 40,
+              "minimum": 1.6583330000000842,
+              "p50": 3.562832999999955,
+              "p95": 6.690167000000201,
+              "p99": 6.8945830000000115,
+              "maximum": 6.8945830000000115,
+              "average": 3.8502823250000118
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 240,
+          "minimum": 0,
+          "p50": 1,
+          "p95": 3,
+          "p99": 5,
+          "maximum": 7,
+          "average": 1.4
+        },
+        "broadcastDeliveries": {
+          "expected": 240,
+          "observed": 240,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 20,
+          "eventCountPerConnection": {
+            "count": 20,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 20,
+            "minimum": 18.72629199999983,
+            "p50": 54.3637920000001,
+            "p95": 58.26708299999973,
+            "p99": 58.67691599999989,
+            "maximum": 58.67691599999989,
+            "average": 51.982156099999955
+          },
+          "completeMs": {
+            "count": 20,
+            "minimum": 20.119000000000142,
+            "p50": 54.68404199999986,
+            "p95": 58.59154199999966,
+            "p99": 58.95316599999978,
+            "maximum": 58.95316599999978,
+            "average": 52.658785349999995
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    },
+    {
+      "scenario": "20-cold",
+      "requestedEvents": 120,
+      "run": 3,
+      "result": {
+        "schema": "koge.realtime-benchmark.v2",
+        "recordedAt": "2026-07-28T17:13:32.330Z",
+        "input": {
+          "endpoint": "ws://localhost:8787",
+          "origin": "http://localhost:3000",
+          "requestedEvents": 120,
+          "connections": 2,
+          "activeConnections": 2,
+          "observerConnections": 0,
+          "coldRecoveryConnections": 20,
+          "targetEventsPerSecondPerConnection": 40,
+          "pointsPerAppend": 6,
+          "ackTimeoutMs": 120000,
+          "pipeline": true,
+          "replay": true
+        },
+        "roomId": "room_benchmark_1785258808751",
+        "startedEpochMs": 1785258808775,
+        "completedEpochMs": 1785258810262,
+        "actualEventCount": 120,
+        "encodedBytes": 11530,
+        "sendDurationMs": 1486.7338750000001,
+        "effectiveEventsPerSecond": 80.71383992646297,
+        "ackRttMs": {
+          "count": 120,
+          "minimum": 0.9573749999999563,
+          "p50": 2.721041000000014,
+          "p95": 5.300166999999874,
+          "p99": 5.8872919999998885,
+          "maximum": 6.361125000000129,
+          "average": 2.949997891666671
+        },
+        "ackTimeline": [
+          {
+            "startedAt": 1785258808000,
+            "ackRttMs": {
+              "count": 18,
+              "minimum": 1.5344169999999906,
+              "p50": 1.8861250000000211,
+              "p95": 3.6356660000000147,
+              "p99": 3.6356660000000147,
+              "maximum": 3.6356660000000147,
+              "average": 2.1517684444444507
+            }
+          },
+          {
+            "startedAt": 1785258809000,
+            "ackRttMs": {
+              "count": 80,
+              "minimum": 0.9573749999999563,
+              "p50": 2.9206669999999804,
+              "p95": 4.925792000000001,
+              "p99": 5.8872919999998885,
+              "maximum": 5.8872919999998885,
+              "average": 3.0491869500000015
+            }
+          },
+          {
+            "startedAt": 1785258810000,
+            "ackRttMs": {
+              "count": 22,
+              "minimum": 1.2231249999999818,
+              "p50": 2.7919160000001284,
+              "p95": 5.841959000000088,
+              "p99": 6.361125000000129,
+              "maximum": 6.361125000000129,
+              "average": 3.242407227272741
+            }
+          }
+        ],
+        "acceptedToArrivalMs": {
+          "count": 240,
+          "minimum": 0,
+          "p50": 1,
+          "p95": 3,
+          "p99": 4,
+          "maximum": 4,
+          "average": 1.3666666666666667
+        },
+        "broadcastDeliveries": {
+          "expected": 240,
+          "observed": 240,
+          "missing": 0
+        },
+        "replay": {
+          "connections": 20,
+          "eventCountPerConnection": {
+            "count": 20,
+            "minimum": 120,
+            "p50": 120,
+            "p95": 120,
+            "p99": 120,
+            "maximum": 120,
+            "average": 120
+          },
+          "firstFrameMs": {
+            "count": 20,
+            "minimum": 20.169708000000355,
+            "p50": 52.31824999999981,
+            "p95": 57.05212500000016,
+            "p99": 57.251667,
+            "maximum": 57.251667,
+            "average": 46.14775004999999
+          },
+          "completeMs": {
+            "count": 20,
+            "minimum": 22.277916000000005,
+            "p50": 53.582042,
+            "p95": 57.6904169999998,
+            "p99": 58.77291699999978,
+            "maximum": 58.77291699999978,
+            "average": 47.249314600000005
+          }
+        },
+        "notes": [
+          "acceptedToArrivalMs includes server/client wall-clock skew",
+          "events are complete begin/append/end strokes",
+          "observer connections receive broadcasts but do not send drawing events",
+          "cold recovery connections start concurrently after active clients close",
+          "ackTimeline uses one-second client wall-clock buckets"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "Each scenario is repeated at least three times.",
+    "10+10 uses 10 participant connections and 10 broadcast-only viewers.",
+    "20-cold starts 20 viewer full-replay connections concurrently.",
+    "RTT and browser rasterization are outside this Node WebSocket suite."
+  ]
+}

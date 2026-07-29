@@ -1,15 +1,19 @@
-# お絵描きチャット Web サービス実装前の設計整理
+# koge お絵描きチャットサービス設計整理
 
 記録日: 2026-07-26
-更新日: 2026-07-27
-状態: 計画書作成前の設計ベース
-対象: echanotes v2 モックアップを実際の Web サービスへ移行するための前提整理
+更新日: 2026-07-29
+状態: 設計ベース。MVP実装、preview検証、production初回配備へ反映済み
+対象: v2モックアップをkoge Webサービスへ移行するための前提整理
 
 ## この文書の目的
 
 この文書は実装計画書そのものではない。
 
 これまでの技術調査、画面設計、モックアップで決めたことを同じ前提へ揃え、計画書を作る前に必要な情報をまとめる。採用済みの方向性、MVP と将来機能の境界、技術的な注意点、未決事項を分離し、実装時にモックアップの見た目だけをそのまま仕様扱いしないための基準にする。
+
+この設計ベースから作成した実装計画は`docs/plans/mvp-implementation-plan.md`を参照する。
+実装後に変更された現在値は`docs/spec/`、採用判断は`docs/decisions/`、
+検証結果は`docs/results/`を優先する。
 
 ## 参照資料
 
@@ -34,7 +38,8 @@
 
 ## プロダクトの定義
 
-echanotes は、複数人が同じ固定サイズのキャンバスへほぼリアルタイムに描画し、同じ場所で短文チャットやスタンプによる交流もできる、お絵描きチャットサービス。
+kogeは、複数人が同じ固定サイズのキャンバスへほぼリアルタイムに描画し、
+同じ場所で短文チャットによる交流もできる、お絵描きチャットサービス。
 
 中心となる価値は次の 3 点。
 
@@ -70,7 +75,8 @@ echanotes は、複数人が同じ固定サイズのキャンバスへほぼリ�
 - モックアップに表示されている機能が、すべて初期リリース対象とは限らない。
 - 認証、セッション、ルーム所有権は MVP に含める。
 - ギャラリー、詳細プロフィール、フレンド、通知、パレット同期は将来像として保持し、MVP の必須要件から分離する。
-- 共通WASMレンダラーとsnapshotはMVP必須ではないが優先して試し、成立すれば採用する。event log全再生をfallbackとしてMVPの完了を妨げない。
+- 共通WASMレンダラーとsnapshot-first recoveryはGate Bをpassして採用済み。
+  event log全再生はfallbackとして維持する。
 - 将来機能を妨げない ID・権限・データ境界だけを先に用意する。
 
 ## 現在の画面・機能範囲
@@ -555,7 +561,9 @@ Cloudflare Workersはプリコンパイル済みWASMとSIMDを利用できるが
 
 - Browser / Workersのcanonical rendererでRGBA hashが一致する。
 - Browser WASMでの確定stroke描画が入力処理を阻害せず、Canvas 2Dのprovisional表示から自然に置き換えられる。
-- 100,000 drawing eventsでWorkerのCPU・メモリ・実行時間に十分な余裕がある。
+- 50,000-event初回生成と10,000-event増分生成でWorker余裕を確認し、
+  追加比較後は5,000-event増分を既定値とする。100,000-event full replayは
+  local worst caseとして回帰測定する。
 - snapshot生成失敗、R2保存失敗、manifest commit失敗のいずれでも元eventを削除しない。
 - snapshot + tail replayがevent log全再生より明確に速く、標準端末と低性能端末の復帰目標を満たす。
 - Queue、R2、manifest、cleanupを含む実装と運用が、MVPの保守可能な範囲に収まる。
@@ -572,19 +580,21 @@ snapshot vertical sliceでは、少なくとも次を仕様化する。
 - compaction前の失敗では元event logを削除せず全再生へ戻し、compaction後の失敗では直前の有効snapshotへ戻せること。
 - snapshot取得API、認可、整合性検証、live eventへの追従。
 
-導入初期はshadow modeで古いeventを削除せず、snapshot生成と復帰結果だけを検証する。十分な成功率とhash一致を確認してからcompactionを有効にする。compaction時は新snapshotのR2保存とmanifest commitが成功した後に限り、`baseRoomSeq`以前のeventを削除する。直前の有効snapshotは次のsnapshotが検証されるまで保持する。
+導入初期はshadow modeで古いeventを削除せず、snapshot生成と復帰結果だけを検証する。十分な成功率とhash一致を確認してからcompactionを有効にする。compaction時は新snapshotのR2保存とmanifest commitが成功した後に限り削除する。current snapshotが壊れた場合にprevious snapshotから復元できるよう、previousの`baseRoomSeq`からcurrentまでのbridge eventは残し、削除境界はpreviousの`baseRoomSeq`以前とする。最初のsnapshotしかない場合は削除しない。生成待ちjobが固定したsource境界は追加の削除下限として保護する。次のsnapshot Workerはcurrent snapshotを基点にtailを適用して生成できることをcompactionの前提とする。incremental generation、previous境界でのchunk deletion、中断再開、重複実行、compaction後の次世代生成、room closeとの競合フェンスは2026-07-27にlocalとCloudflare disposable preview roomで成立した。同日のpreview測定では50,220-event初回生成がCPU 17.121秒、10,020-event増分が3.891秒で、20接続・約400 events/sとの同時実行でもbroadcast欠落は0だった。memory p999は31,596,578 bytesで128 MiB上限の23.5%だった。2026-07-28の70,020-event compaction canary後もcurrent/previous両経路からroomSeq 79,980へ復帰したため、Gate Bをpassしsnapshot-firstを採用した。終了cleanup、DLQ、orphan inventoryはproductionまで実装・確認済みである。通常roomはshadowを維持し、event compactionはclosed betaの観測後に段階導入する。
 
 snapshot modeはルーム単位で`event_log_only`、`shadow`、`snapshot_compacted`を持ち、この順にだけ進める。compactionを一度行ったルームは全event logへ戻れないため、feature flagを停止しても`snapshot_compacted`のルームはsnapshot + tailで終了まで動かす。停止後に作る新規ルームと、まだcompactionしていない`shadow`ルームだけをevent log-onlyへ戻す。
 
-runtime起動条件は固定時間ではなく、event数、byte数、推定replay時間を組み合わせる。初期候補は50,000 drawing events、16MiB、推定replay 2秒のいずれかとするが、vertical sliceとend-to-end測定後に確定する。
+runtime起動条件は固定時間ではなくevent数とbyte数を使う。現在は初回50,000
+drawing eventsまたは16MiB、その後5,000 eventsまたは4MiBの増分を採用する。
+推定replay時間による動的triggerは将来候補として残す。
 
 ### 復帰フロー
 
 1. クライアントがルームメタデータ、canvas generation、event logの開始・終了roomSeq、commit済みsnapshot manifestの有無を取得する。
 2. 有効なsnapshotがあれば、認可済みURLから取得してhash、version、`baseRoomSeq`を検証する。
 3. snapshotを適用し、`baseRoomSeq + 1`以降のtail eventをroomSeq順に再生する。
-4. snapshotが無効、未生成、取得失敗、検証失敗の場合、shadow modeで全eventが残っていれば先頭からのevent log再生へ自動fallbackする。
-5. snapshot機能を採用しcompaction済みの場合は、直前の有効snapshotへfallbackする。それも利用できなければ入室を中止し、破損状態として管理側へ通知する。
+4. snapshotが無効、未生成、取得失敗、検証失敗の場合、shadow modeでは直前の有効snapshotを試し、それも利用できなければ全eventが残っているため先頭からのevent log再生へ自動fallbackする。
+5. snapshot機能を採用しcompaction済みの場合は、直前の有効snapshotと保持済みbridge eventへfallbackする。それも利用できなければ入室を中止し、破損状態として管理側へ通知する。
 6. snapshot機能自体が無効な構成では、event logを先頭からroomSeq順に再生する。
 7. WebSocketのlive eventへ追いつく。復帰中に届いたlive eventは一時キューへ入れる。
 8. ログ欠落、上限超過、schema非互換、hash不一致があれば、不完全なキャンバスを表示せず管理側へ通知する。
@@ -620,7 +630,7 @@ MVP で長期参照・検索が必要な通常データ。
 - 未完了 stroke
 - ルーム単位のsnapshot mode、生成状態、manifest、`baseRoomSeq`
 - connection/session mapping
-- chat 最新 N 件
+- chat 最新100件か24時間の早い方（暫定）
 - rate limit counter
 
 presence は接続中メモリを中心にし、永続化は最小限にする。
@@ -682,9 +692,9 @@ Local Storage には小さな設定、IndexedDB には未送信 event や復帰�
 - 表示名とカラーは session に関連づける。
 - ゲストはルームへ参加できるが、ルームを作成できない。
 - ルーム作成はログイン済みユーザーだけに許可する。
-- アカウント認証は Better Auth を第一候補とする。
+- アカウント認証は Better Auth + Google OAuthを採用する。
 - セッションとユーザーは D1 に保存する。
-- OAuth provider とメール認証の要否は実装計画の前に決定する。
+- メール認証はMVPの必須経路に含めない。
 - public room は公開 slug、unlisted room は招待 token を利用し、短命な参加 ticket へ交換する。
 - WebSocket 接続時に ticket を検証する。
 - 管理画面は Cloudflare Access + アプリ内管理者確認。
@@ -693,12 +703,14 @@ Local Storage には小さな設定、IndexedDB には未送信 event や復帰�
 
 - 内部 `roomId` は URL に直接使用しない。
 - public room の `roomSlug` は 128 bit 以上のランダム値とする。
-- unlisted room の招待 token は 192 bit 以上のランダム値とし、サーバーには hash を保存する。
+- unlisted room の招待 token は256 bitのランダム値とし、サーバーにはSHA-256だけを保存する。招待token自体は失効またはroom終了まで再利用でき、交換後のroom ticketをsingle useとする。
 - 招待 token はローテーションと失効を可能にする。
 - URLから受け取った招待 tokenは、HTTP APIで短命な `roomTicket` へ交換する。
 - `roomTicket` の有効期限は暫定 60 秒とし、1 回の WebSocket 接続にだけ使用できる。
 - 再接続時は新しい ticket を取得する。
 - ticket は `roomId`、actor ID、role、session ID、期限、一意な nonce に紐付ける。
+- MVPでは256-bit opaque tokenを採用し、room DOにはhashとclaimsだけを保存する。
+- WebSocket upgrade時にDO内transactionでnonceを消費し、replayを拒否する。
 - host 権限は URL token ではなく、ログインセッションと room ownership から判定する。
 - token、ticket、認証cookieをアクセスログ、Referer、エラー本文へ出さない。
 - 招待情報は可能なら URL fragment で受け取り、明示的な交換処理でサーバーへ送る。
@@ -709,6 +721,7 @@ Local Storage には小さな設定、IndexedDB には未送信 event や復帰�
 - room ごとに別の participant ID を発行し、サービス横断で外部へ同じ guest ID を露出しない。
 - ニックネームと参加カラーは 30 日間引き継げる。
 - ルーム開催中に同じ session で再入室した場合は、同じ actorとして識別する。
+- 同じactorの同時connectionは1つとし、新しいticket接続で旧接続を置換する。
 - MVPではルーム終了後の参加履歴をゲストへ永続的に紐付けない。
 - cookie 削除、明示的なリセット、30 日経過で identity を更新する。
 - BAN、rate limit 用識別子は guest session と短期 IP/UA hash を分離する。
@@ -820,7 +833,12 @@ MVP ではギャラリーページ、完成画像のサーバー生成・保存�
 
 - ルーム作成 rate limit
 - 表示名・ルーム名・ルームテーマの長さ制限
-- chat 連投制限
+- chatは本文500 Unicode code points、2件/秒・burst 5の独立bucket、
+  最新100件か24時間の早い方を暫定値とする。
+- host / participantは送信可、viewerはhost設定で明示的に許可した場合だけ
+  送信可とし、受信は全roleに許可する。
+- chatはdrawing event logやsnapshotのroomSeqから分離し、room内の短期
+  sequenceで順序付ける。
 - mute / kick / BAN
 - 通報
 - emergency mode
@@ -959,7 +977,7 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 
 このsampleでは100,000 drawing eventsでも推定64MiBへ達していない。event数上限とbyte上限は別々に保持し、さらに復帰時間を主要な判断基準にする。
 
-### まだ測定できないもの
+### 初回時点で未測定だったもの
 
 - Durable Objects SQLiteへの保存・読み出し
 - WebSocketのchunk転送時間
@@ -971,7 +989,9 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 - Queue、R2保存、manifest commitを含むsnapshot vertical slice
 - snapshot取得、decode、tail replay、event log fallbackのend-to-end比較
 
-同期基盤とsnapshot優先トラックでは同じschemaとfixtureを再利用して、これらを追加測定する。
+これらはPhase 2、3、7で順次測定・実装した。現在の結果は
+`docs/results/phase7-performance-foundation.md`を正本とし、Safari / Firefox、
+低性能端末、closed betaの継続測定は残っている。
 
 ## テスト方針
 
@@ -1186,10 +1206,11 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 
 ### 計画書確定前に残るアカウント決定
 
-1. OAuth provider。
-2. メール認証の要否。
+次は2026-07-27に決定し、productionまで実装済み。
 
-この2点と、Better AuthからD1へ永続化するadapterの成立性を確認するまでは、アカウント実装トラックの計画を確定しない。
+1. OAuth providerはGoogle。
+2. MVPにメール認証を含めない。
+3. Better Auth `1.6.25`をD1へ永続化する。
 
 ### MVP 後の各機能を導入する前
 
@@ -1201,7 +1222,8 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 
 ## 計画書を作る前に用意する成果物
 
-次の成果物が揃えば、実装計画をタスクへ分解しやすい。2026-07-27時点で、仕様・fixture・spike実行票として作成できるものは初稿を用意した。`作成済み`は実装結果ではなく、計画入力としての初稿があることを表す。
+次の成果物を計画入力として用意し、その後Phase 0〜7で実装・検証した。
+個別の現在状態は`docs/spec/`と`docs/results/`を参照する。
 
 1. `docs/spec/stroke-protocol.md` — 作成済み
    - opcode
@@ -1244,35 +1266,37 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
    - 消しゴム
    - 単点
    - cancel
-7. 2 クライアント同期 spike — `docs/spikes/two-client-sync.md`に実行票を作成済み、spike本体は未実行
-8. 共通WASMレンダラーとsnapshot優先トラック — `docs/spikes/snapshot-vertical-slice.md`に実行票を作成済み、spike本体は未実行
+7. 2 クライアント同期 spike — preview / productionの別browser E2Eまで完了
+8. 共通WASMレンダラーとsnapshot優先トラック — Stage A-DとStage Eの安全なchunk compactionまで実装・検証済み
    - Browser / WorkersのRGBA hash一致
    - Queueまたは専用Workerでのlossless snapshot生成
    - R2保存とmanifest commit
    - snapshot + tail replay
    - shadow modeとevent log fallback
    - 採用／延期の判定記録
-9. 自動終了時の接続切断・証跡保全・データ削除 spike — `docs/spikes/room-close-cleanup.md`に実行票を作成済み、spike本体は未実行
-10. Durable Object WebSocket Hibernation spike — `docs/spikes/websocket-hibernation.md`に実行票を作成済み、spike本体は未実行
-11. 小規模負荷試験の条件 — `docs/spec/load-test-plan.md`を作成済み
-12. Better Auth + D1の最小認証spike — `docs/spikes/auth-d1.md`に実行票を作成済み、provider決定とspike本体は未実行
+   - feature flagによる自動shadow生成とalarm駆動compactionを実装済み
+   - preview / production Worker性能を確認済み
+9. 自動終了時の接続切断・証跡保全・データ削除 — Queue / DLQ / healthとproduction E2Eまで完了
+10. Durable Object WebSocket Hibernation — SQLite復帰、attachment、再接続を実装・検証済み
+11. 小規模負荷試験 — Phase 7のrealtime / snapshot / browser測定まで完了
+12. Better Auth + D1 — Google OAuth、session、ownership復元をproduction E2Eまで完了
     - user / session schema
     - OAuth callback
     - cookie設定
     - room ownership復元
     - session失効
 
-## 暫定的な初期採用案
+## 採用結果
 
-現時点で計画書の前提にしてよいもの:
+現在の実装で採用しているもの:
 
 - Next.js + vinext + TypeScript
 - Cloudflare Workers + Hono
 - 1 room = 1 Durable Object
 - WebSocket Hibernation
 - D1 + Durable Objects SQLite
-- Canvas 2D + Pointer Events
-- MessagePack を第一候補、CBOR を代替候補
+- Canvas 2D provisional描画 + Pointer Events + 共通WASM canonical renderer
+- MessagePackと数値wire opcode
 - 960 x 640 の白い固定キャンバス
 - brush / eraser の stroke 同期
 - zoom / pan / eyedropper はローカル UI
@@ -1281,10 +1305,9 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 - public slug / unlisted token / 短命 room ticket
 - 管理画面は Cloudflare Access で保護
 - event log全再生を必須fallbackとして維持
-- 共通WASMレンダラーとsnapshot vertical sliceを優先実装
-- 採用条件を満たせばsnapshot-first、難しければevent log-only
-- 作成から最大開催2時間、100,000 drawing events、wire payload 64MiBの複合上限
-- soft close thresholdと終了用予約領域
+- snapshot-first recovery。event log-onlyをfallbackとして維持
+- 作成から最大開催2時間、hard limit 100,000 events / 64MiB
+- 通常受付soft limit 93,000 events / 56MiBと終了用予約領域
 - MVPではundo / redoなし
 - snapshot採用時も総event数・総byte数の活動量上限はリセットしない
 - 完成画像のサーバー生成・保存とギャラリーページは MVP 対象外
@@ -1293,7 +1316,7 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 
 ## 計画書の完了条件
 
-次に作る計画書では、少なくとも次を満たす。
+作成済みの`docs/plans/mvp-implementation-plan.md`では、少なくとも次を満たす。
 
 - MVP 1-3 の各成果物と依存関係が分かる。
 - UI 実装と同期基盤を別トラックで進められる。

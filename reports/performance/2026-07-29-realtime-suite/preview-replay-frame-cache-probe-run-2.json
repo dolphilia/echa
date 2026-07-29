@@ -1,0 +1,371 @@
+{
+  "schema": "koge.realtime-benchmark.v2",
+  "recordedAt": "2026-07-29T01:26:15.005Z",
+  "input": {
+    "endpoint": "wss://realtime-preview.koge.app",
+    "origin": "https://preview.koge.app",
+    "webOrigin": "https://preview.koge.app",
+    "publicSlug": "547fa285f91da855e5a4bcfdf149b8a0",
+    "requestedEvents": 3,
+    "connections": 1,
+    "activeConnections": 1,
+    "observerConnections": 0,
+    "coldRecoveryConnections": 20,
+    "targetEventsPerSecondPerConnection": 1,
+    "pointsPerAppend": 1,
+    "ackTimeoutMs": 120000,
+    "pipeline": false,
+    "replay": true,
+    "recoveryMode": "snapshot-required"
+  },
+  "roomId": "room_benchmark_1785288360019",
+  "startedEpochMs": 1785288362354,
+  "completedEpochMs": 1785288364410,
+  "actualEventCount": 3,
+  "roomSeqBefore": 80010,
+  "roomSeqAfter": 80013,
+  "encodedBytes": 256,
+  "sendDurationMs": 2056.2874580000002,
+  "effectiveEventsPerSecond": 1.4589399883408711,
+  "ackRttMs": {
+    "count": 3,
+    "minimum": 55.8159999999998,
+    "p50": 106.69095799999968,
+    "p95": 183.6186249999996,
+    "p99": 183.6186249999996,
+    "maximum": 183.6186249999996,
+    "average": 115.37519433333303
+  },
+  "ackTimeline": [
+    {
+      "startedAt": 1785288362000,
+      "ackRttMs": {
+        "count": 1,
+        "minimum": 183.6186249999996,
+        "p50": 183.6186249999996,
+        "p95": 183.6186249999996,
+        "p99": 183.6186249999996,
+        "maximum": 183.6186249999996,
+        "average": 183.6186249999996
+      }
+    },
+    {
+      "startedAt": 1785288363000,
+      "ackRttMs": {
+        "count": 1,
+        "minimum": 106.69095799999968,
+        "p50": 106.69095799999968,
+        "p95": 106.69095799999968,
+        "p99": 106.69095799999968,
+        "maximum": 106.69095799999968,
+        "average": 106.69095799999968
+      }
+    },
+    {
+      "startedAt": 1785288364000,
+      "ackRttMs": {
+        "count": 1,
+        "minimum": 55.8159999999998,
+        "p50": 55.8159999999998,
+        "p95": 55.8159999999998,
+        "p99": 55.8159999999998,
+        "maximum": 55.8159999999998,
+        "average": 55.8159999999998
+      }
+    }
+  ],
+  "acceptedToArrivalMs": {
+    "count": 4,
+    "minimum": -2,
+    "p50": 11,
+    "p95": 115,
+    "p99": 115,
+    "maximum": 115,
+    "average": 39.25
+  },
+  "broadcastDeliveries": {
+    "expected": 3,
+    "observed": 4,
+    "missing": -1
+  },
+  "replay": {
+    "connections": 20,
+    "eventCountMismatch": 20,
+    "connectionResults": [
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 474.31316699999934,
+        "snapshotFetchCompleteMs": 1369.1820829999997,
+        "replayFirstMs": 565.5631249999997,
+        "readyMs": 6510.292042
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 456.42212500000005,
+        "snapshotFetchCompleteMs": 1395.8335829999996,
+        "replayFirstMs": 586.6695829999999,
+        "readyMs": 7033.372458
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 422.0661249999994,
+        "snapshotFetchCompleteMs": 1389.4201249999996,
+        "replayFirstMs": 494.0757079999994,
+        "readyMs": 6427.598582999999
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 440.1426250000004,
+        "snapshotFetchCompleteMs": 1427.306125,
+        "replayFirstMs": 474.154708,
+        "readyMs": 7213.0641669999995
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 344.4551250000004,
+        "snapshotFetchCompleteMs": 1450.8021669999998,
+        "replayFirstMs": 418.84129200000007,
+        "readyMs": 7148.947292
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 356.17845899999975,
+        "snapshotFetchCompleteMs": 1394.1783340000002,
+        "replayFirstMs": 440.77933399999984,
+        "readyMs": 7063.9505
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 437.22229199999947,
+        "snapshotFetchCompleteMs": 1432.2703329999995,
+        "replayFirstMs": 474.88475000000017,
+        "readyMs": 7053.6692920000005
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 348.2357499999998,
+        "snapshotFetchCompleteMs": 1301.7444159999995,
+        "replayFirstMs": 424.9418749999995,
+        "readyMs": 6444.22825
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 480.9122499999994,
+        "snapshotFetchCompleteMs": 1554.0346249999993,
+        "replayFirstMs": 569.621916,
+        "readyMs": 6599.103291
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 460.7177920000004,
+        "snapshotFetchCompleteMs": 1345.5374590000001,
+        "replayFirstMs": 544.3855840000006,
+        "readyMs": 6100.103292
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 354.8902080000007,
+        "snapshotFetchCompleteMs": 1461.4605420000007,
+        "replayFirstMs": 433.5745420000003,
+        "readyMs": 7198.208083
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 344.71679200000017,
+        "snapshotFetchCompleteMs": 1279.2715829999997,
+        "replayFirstMs": 425.1269169999996,
+        "readyMs": 6849.901083000001
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 389.68004199999996,
+        "snapshotFetchCompleteMs": 1528.8554999999997,
+        "replayFirstMs": 397.72262500000033,
+        "readyMs": 7398.9283749999995
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 444.0772500000003,
+        "snapshotFetchCompleteMs": 1463.8777920000002,
+        "replayFirstMs": 475.0321249999997,
+        "readyMs": 7058.884292000001
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 414.45991700000013,
+        "snapshotFetchCompleteMs": 1335.6845000000003,
+        "replayFirstMs": 512.6567500000001,
+        "readyMs": 7463.056500000001
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 356.716042,
+        "snapshotFetchCompleteMs": 1271.7861669999993,
+        "replayFirstMs": 439.28699999999935,
+        "readyMs": 6998.809125
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 433.8481249999995,
+        "snapshotFetchCompleteMs": 1439.657416,
+        "replayFirstMs": 470.9396660000002,
+        "readyMs": 6881.441249999999
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 345.5747080000001,
+        "snapshotFetchCompleteMs": 1282.6455830000004,
+        "replayFirstMs": 427.7536660000005,
+        "readyMs": 6779.836500000001
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 351.7690840000005,
+        "snapshotFetchCompleteMs": 1283.005792,
+        "replayFirstMs": 559.8493340000005,
+        "readyMs": 6613.520624999999
+      },
+      {
+        "source": "snapshot",
+        "snapshotBaseRoomSeq": 70014,
+        "replayEventCount": 10002,
+        "expectedReplayEventCount": 9999,
+        "snapshotOfferMs": 463.31916699999965,
+        "snapshotFetchCompleteMs": 1462.8697090000005,
+        "replayFirstMs": 494.38729200000034,
+        "readyMs": 6739.626708999999
+      }
+    ],
+    "sourceCounts": {
+      "snapshot": 20,
+      "eventLog": 0
+    },
+    "snapshotBaseRoomSeq": {
+      "count": 20,
+      "minimum": 70014,
+      "p50": 70014,
+      "p95": 70014,
+      "p99": 70014,
+      "maximum": 70014,
+      "average": 70014
+    },
+    "snapshotObjectBytes": {
+      "count": 20,
+      "minimum": 10322,
+      "p50": 10322,
+      "p95": 10322,
+      "p99": 10322,
+      "maximum": 10322,
+      "average": 10322
+    },
+    "snapshotOfferMs": {
+      "count": 20,
+      "minimum": 344.4551250000004,
+      "p50": 414.45991700000013,
+      "p95": 474.31316699999934,
+      "p99": 480.9122499999994,
+      "maximum": 480.9122499999994,
+      "average": 405.98585225
+    },
+    "snapshotFetchCompleteMs": {
+      "count": 20,
+      "minimum": 1271.7861669999993,
+      "p50": 1394.1783340000002,
+      "p95": 1528.8554999999997,
+      "p99": 1554.0346249999993,
+      "maximum": 1554.0346249999993,
+      "average": 1393.4711916999997
+    },
+    "eventCountPerConnection": {
+      "count": 20,
+      "minimum": 10002,
+      "p50": 10002,
+      "p95": 10002,
+      "p99": 10002,
+      "maximum": 10002,
+      "average": 10002
+    },
+    "firstFrameMs": {
+      "count": 20,
+      "minimum": 397.72262500000033,
+      "p50": 474.154708,
+      "p95": 569.621916,
+      "p99": 586.6695829999999,
+      "maximum": 586.6695829999999,
+      "average": 481.5123895999999
+    },
+    "completeMs": {
+      "count": 20,
+      "minimum": 6100.103292,
+      "p50": 6881.441249999999,
+      "p95": 7398.9283749999995,
+      "p99": 7463.056500000001,
+      "maximum": 7463.056500000001,
+      "average": 6878.827085450001
+    }
+  },
+  "notes": [
+    "acceptedToArrivalMs includes server/client wall-clock skew",
+    "events are complete begin/append/end strokes",
+    "observer connections receive broadcasts but do not send drawing events",
+    "cold recovery connections start concurrently after active clients close",
+    "ackTimeline uses one-second client wall-clock buckets"
+  ]
+}

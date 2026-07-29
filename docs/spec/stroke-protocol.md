@@ -1,7 +1,7 @@
 # Stroke protocol v1
 
-更新日: 2026-07-27
-状態: 実装前初稿
+更新日: 2026-07-29
+状態: drawing、presence、cursorのproduction経路を実装し、利用者E2Eまでpass
 
 ## 目的
 
@@ -9,12 +9,12 @@
 
 ## 範囲
 
-- 対象: brush、eraser、stroke streaming、再送、重複排除
+- 対象: brush、eraser、stroke streaming、再送、重複排除、
+  非永続presence / cursor
 - 対象外: eyedropper、pan、zoom、undo / redo、筆圧
 - canvas: 960 x 640、白背景、sRGB
-- codec: MessagePack第一候補、CBOR代替候補
-
-codec確定前は、以下を論理schemaとして扱う。文字列opcodeは読みやすさを優先した表現であり、数値opcodeへの圧縮は互換fixtureを作ってから判断する。
+- drawing codec: MessagePack、数値opcode
+- cursor codec: 厳格な小型JSON text frame
 
 ## 共通フィールド
 
@@ -35,6 +35,7 @@ client eventへ次を付与または関連づけて永続化・配信する。
 | --- | --- | --- |
 | `roomSeq` | integer | room内で1から単調増加 |
 | `actor` | string | beginへ付与。append/end/cancelはstroke IDから解決 |
+| `connectionId` | string | 送信接続の識別とack照合に使用。描画結果には使わない |
 | `acceptedAt` | integer | storage metadata。描画payloadと結果には使わない |
 
 clientが送った`actor`、`roomSeq`、`acceptedAt`は信用しない。
@@ -141,6 +142,10 @@ curve補間、丸め、line cap、eraser倍率はrenderer仕様で固定する�
 | stroke duration | 120秒 | 暫定安全弁 |
 | encoded WebSocket frame | 64KiB | アプリ側暫定上限 |
 | unfinished strokes / actor | 1 | 決定 |
+| drawing event rate | 80/s、burst 120 | 暫定 |
+| cursor update rate | 20/s、burst 30 | 暫定 |
+| room activity soft limit | 93,000 events / 56MiB | 終了処理予約を除く |
+| room activity hard limit | 100,000 events / 64MiB | 暫定 |
 
 Cloudflare側の最大message sizeより十分小さいアプリ側上限を持つ。上限値はcodec実装後に実byteで再測定する。
 
@@ -180,8 +185,91 @@ Cloudflare側の最大message sizeより十分小さいアプリ側上限を持�
 - `STROKE_NOT_FOUND`
 - `STROKE_ALREADY_FINAL`
 - `ROOM_LIMIT_REACHED`
+- `SERVICE_EMERGENCY_STOP`
 
 reject eventはdrawing event countへ含めず、理由別metricへ加算する。
+
+`SERVICE_EMERGENCY_STOP`はサービス緊急制御で描画受付を止めている間に返す。
+DOは開始済みstrokeをserver生成endで先に確定し、拒否したclient frameの
+`clientSeq`も順序どおり消費する。clientは対応するoutbox項目とprovisional
+表示を破棄し、再開後に停止中のframeを再送しない。presence、cursor、chat、
+閲覧はこのrejectだけでは停止しない。
+
+`RATE_LIMITED`となった描画frameは再接続時に再送しない。serverは正しい
+`clientSeq`のframeを順序消費し、clientは対応するoutbox項目をack済みとして
+破棄する。actorにactive strokeがあればserver生成endで確定する。
+
+描画とチャットのrate超過はroom actor単位の10秒窓へ合算する。3回で5秒mute、
+8回でconnectionをclose code 1008で切断する。mute中の送信も違反へ含めて
+期限を延長するが、自動room BANは行わない。cursor dropは合算しない。
+
+## Room activity通知とsoft close
+
+soft limitはhard limitから、最大20 actorが進行中strokeを完了するための
+7,000 events / 8MiBを予約した値とする。eventまたはpayloadの先着で判定し、
+soft limitに対する80%、90%、98%、100%到達時に次を配信する。
+
+```json
+{
+  "type": "room.activity",
+  "level": 98,
+  "eventCount": 91140,
+  "eventLimit": 93000,
+  "payloadBytes": 12000000,
+  "payloadLimitBytes": 58720256,
+  "acceptingNewStrokes": true
+}
+```
+
+100%では`acceptingNewStrokes`をfalseにし、新しい`stroke.begin`を
+`ROOM_LIMIT_REACHED`で拒否する。既に受理済みのstrokeはappend、end、cancel、
+2秒timeoutを継続できる。未完了strokeが0になった時点で
+`activity_limit`理由のclosingへ進む。hard limitへ到達した場合は予約枯渇を
+避けるため、server生成endで即時closingへ進む。
+
+warning levelとlimit到達時刻はDO SQLiteへ永続化し、Hibernationまたは再接続後にも
+復元する。
+
+## Room time通知
+
+作成時刻からの最大時間に対し、15分、5分、1分前に次を配信する。
+
+```json
+{
+  "type": "room.time",
+  "warningMinutes": 5,
+  "endsAt": 1722000300000,
+  "remainingMs": 299500
+}
+```
+
+`warningMinutes`は`15 | 5 | 1`、`endsAt`はserverが保持する絶対期限、
+`remainingMs`は送信時点の非負整数とする。alarmが遅れて複数の境界を越えた場合は、
+現在時刻に対応する最も新しい段階だけを送る。最後に到達した段階はDO SQLiteへ
+永続化し、再接続時には最新の`remainingMs`で再送する。この通知はdrawing event
+log、roomSeq、idle activityへ含めない。
+
+Cloudflare Workers上のrate limiterは、CPU処理だけが続く間の`Date.now()`差分を
+token補充の唯一の根拠にしない。runtimeの時刻はI/O境界まで進まないため、
+tokenが枯渇へ近づいた場合だけbounded storage readで時刻を更新し、通常経路では
+memory上のbucketを使用する。token、更新時刻、connection attachmentは再起動後も
+安全側へ復元する。
+
+## Presenceとcursor
+
+presenceは接続中WebSocketのattachmentから再構成し、event logへ保存しない。
+同じroom actorの複数connectionは1 memberへまとめ、actorと
+`host | participant | viewer`を配信する。接続・退出時に最新snapshotを
+best effortで配信する。
+
+cursorはcanvas論理座標だけを受理し、event log、snapshot、idle activityへ
+含めない。clientは最大20Hzを目安に送信し、DOはdrawingとは独立した
+20/s・burst 30のtoken bucketをconnectionごとに適用する。超過cursorは
+描画を止めずに破棄する。viewerもcursorを送信できる。
+
+Hibernation後はconnection attachmentからpresenceを再構成する。cursorの
+最新座標は復元せず、次のclient updateを待つ。clientは2秒更新がないremote
+cursorを画面から除去する。
 
 ## Versioning
 
@@ -192,8 +280,5 @@ reject eventはdrawing event countへ含めず、理由別metricへ加算する�
 
 ## 未決定
 
-- MessagePack / CBORの最終選択
-- string / numeric opcode
 - renderer内部の固定小数点scale
-- actorごとのmessage rate
 - points / strokeとframe byteの最終値

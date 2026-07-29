@@ -1,0 +1,25 @@
+{
+  "name": "@koge/realtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --env=\"\" --outdir dist",
+    "cf:types": "wrangler types worker-configuration.d.ts",
+    "cf:types:check": "wrangler types worker-configuration.d.ts --check",
+    "dev": "wrangler dev --local",
+    "deploy:production": "wrangler deploy --env production",
+    "dry-run:production": "wrangler deploy --dry-run --env production --outdir dist-production",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@koge/protocol": "0.1.0",
+    "hono": "4.12.32"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.18.8",
+    "vitest": "4.1.10",
+    "wrangler": "4.114.0"
+  }
+}

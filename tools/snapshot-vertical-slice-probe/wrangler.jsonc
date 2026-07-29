@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "koge-snapshot-vertical-slice-probe",
+  "account_id": "add7fa1a3932f0d7e81b8c668f42156f",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-07-27",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DRAWING_ROOM",
+        "class_name": "DrawingRoom",
+        "script_name": "koge-realtime-preview"
+      }
+    ]
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "koge-web",
+  "account_id": "add7fa1a3932f0d7e81b8c668f42156f",
+  "main": "vinext/server/fetch-handler",
+  "compatibility_date": "2026-07-27",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+  "cache": {
+    "enabled": true
+  },
+  "vars": {
+    "APP_ENV": "local",
+    "PUBLIC_APP_ORIGIN": "http://localhost:3000",
+    "PUBLIC_REALTIME_ORIGIN": "http://localhost:8787",
+    "BETTER_AUTH_URL": "http://localhost:3000",
+    "BETTER_AUTH_TRUSTED_ORIGINS": "http://localhost:3000",
+    "CF_ACCESS_ISSUER": "https://dolphilia.cloudflareaccess.com",
+    "CF_ACCESS_AUD": "b7536e7cc03d57d8889760015ad850b72f08ae4a838a741054fc02094377c785",
+    "MODERATION_EVIDENCE_RETENTION_DAYS": 30
+  },
+  "secrets": {
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "koge-local",
+      "database_id": "local",
+      "migrations_dir": "../../migrations/d1"
+    }
+  ],
+  "services": [
+    {
+      "binding": "REALTIME",
+      "service": "koge-realtime",
+      "entrypoint": "RoomProvisioningService"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01
+    }
+  },
+  "env": {
+    "preview": {
+      "name": "koge-web-preview",
+      "vars": {
+        "APP_ENV": "preview",
+        "PUBLIC_APP_ORIGIN": "https://preview.koge.app",
+        "PUBLIC_REALTIME_ORIGIN": "https://realtime-preview.koge.app",
+        "BETTER_AUTH_URL": "https://preview.koge.app",
+        "BETTER_AUTH_TRUSTED_ORIGINS": "https://preview.koge.app",
+        "CF_ACCESS_ISSUER": "https://dolphilia.cloudflareaccess.com",
+        "CF_ACCESS_AUD": "b7536e7cc03d57d8889760015ad850b72f08ae4a838a741054fc02094377c785",
+        "MODERATION_EVIDENCE_RETENTION_DAYS": 30
+      },
+      "secrets": {
+        "required": [
+          "BETTER_AUTH_SECRET",
+          "GOOGLE_CLIENT_ID",
+          "GOOGLE_CLIENT_SECRET"
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "koge-preview",
+          "database_id": "59b84520-bef3-456e-90ec-37f4e496e851",
+          "migrations_dir": "../../migrations/d1"
+        }
+      ],
+      "services": [
+        {
+          "binding": "REALTIME",
+          "service": "koge-realtime-preview",
+          "entrypoint": "RoomProvisioningService"
+        }
+      ],
+      "routes": [
+        {
+          "pattern": "preview.koge.app",
+          "custom_domain": true
+        }
+      ]
+    },
+    "production": {
+      "name": "koge-web",
+      "vars": {
+        "APP_ENV": "production",
+        "PUBLIC_APP_ORIGIN": "https://koge.app",
+        "PUBLIC_REALTIME_ORIGIN": "https://realtime.koge.app",
+        "BETTER_AUTH_URL": "https://koge.app",
+        "BETTER_AUTH_TRUSTED_ORIGINS": "https://koge.app",
+        "CF_ACCESS_ISSUER": "https://dolphilia.cloudflareaccess.com",
+        "CF_ACCESS_AUD": "ddfcf25a51f780af02c6cff5073c6ba1fd0a6d42fdd9883a0232076cf5bd29ef",
+        "MODERATION_EVIDENCE_RETENTION_DAYS": 30
+      },
+      "secrets": {
+        "required": [
+          "BETTER_AUTH_SECRET",
+          "GOOGLE_CLIENT_ID",
+          "GOOGLE_CLIENT_SECRET"
+        ]
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "koge-production",
+          "database_id": "2071beb0-831b-40cf-9c7d-d068496766b3",
+          "migrations_dir": "../../migrations/d1"
+        }
+      ],
+      "services": [
+        {
+          "binding": "REALTIME",
+          "service": "koge-realtime",
+          "entrypoint": "RoomProvisioningService"
+        }
+      ],
+      "routes": [
+        {
+          "pattern": "koge.app",
+          "custom_domain": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "schema": "koge.replay-frame-cache-worker-metrics.v1",
+  "queriedAt": "2026-07-29T01:33:05.244Z",
+  "input": {
+    "account": "add7fa1a3932f0d7e81b8c668f42156f",
+    "script": "koge-realtime-preview",
+    "from": "2026-07-29T01:19:00.000Z",
+    "to": "2026-07-29T01:30:00.000Z"
+  },
+  "overall": {
+    "sampleCount": 40,
+    "requests": 359,
+    "errors": 0,
+    "statuses": {
+      "success": 256,
+      "clientDisconnected": 103
+    },
+    "maximumCpuTimeP99ApiValue": 11744,
+    "maximumMemoryBytesP999": 2691596,
+    "workerMemoryLimitBytes": 134217728,
+    "maximumMemoryPercentOfLimit": 2.005395293235779
+  },
+  "comparisonWindows": {
+    "baselineTenThousandTail": {
+      "from": "2026-07-29T01:20:00.000Z",
+      "to": "2026-07-29T01:21:00.000Z",
+      "workerVersion": "fcf777b6-6889-4553-a4e0-cc4d64659ed8",
+      "sampleCount": 7,
+      "requests": 60,
+      "errors": 0,
+      "statuses": {
+        "success": 40,
+        "clientDisconnected": 20
+      },
+      "maximumCpuTimeP99ApiValue": 10004,
+      "maximumSuccessCpuTimeP99ApiValue": 8753,
+      "maximumMemoryBytesP999": 2687372
+    },
+    "encodedFrameCacheTenThousandTail": {
+      "from": "2026-07-29T01:25:00.000Z",
+      "to": "2026-07-29T01:26:00.000Z",
+      "workerVersion": "43e9d904-3e42-4fa0-bedc-f01a37dab23d",
+      "sampleCount": 7,
+      "requests": 62,
+      "errors": 0,
+      "statuses": {
+        "success": 41,
+        "clientDisconnected": 21
+      },
+      "maximumCpuTimeP99ApiValue": 11744,
+      "maximumSuccessCpuTimeP99ApiValue": 6001,
+      "maximumMemoryBytesP999": 2691596
+    },
+    "encodedFrameCacheFiveThousandTail": {
+      "from": "2026-07-29T01:27:40.000Z",
+      "to": "2026-07-29T01:29:00.000Z",
+      "workerVersion": "43e9d904-3e42-4fa0-bedc-f01a37dab23d",
+      "sampleCount": 7,
+      "requests": 61,
+      "errors": 0,
+      "statuses": {
+        "success": 40,
+        "clientDisconnected": 21
+      },
+      "maximumCpuTimeP99ApiValue": 7536,
+      "maximumSuccessCpuTimeP99ApiValue": 2160,
+      "maximumMemoryBytesP999": 2486284
+    }
+  },
+  "comparison": {
+    "maximumSuccessCpuTimeP99ApiValueReductionPercent": 31.440648920370162,
+    "maximumMemoryBytesP999Delta": 4224,
+    "maximumMemoryBytesP999DeltaPercent": 0.15717957915764025
+  },
+  "excludedWindows": [
+    {
+      "from": "2026-07-29T01:26:00.000Z",
+      "to": "2026-07-29T01:26:50.000Z",
+      "reason": "Two benchmark processes overlapped; one received HTTP 429 and the other observed live events from the competing process."
+    }
+  ],
+  "interpretation": {
+    "resourceLimitEvidence": false,
+    "encodedFrameCacheMeasuredMemoryRegression": false,
+    "clientDisconnectedTreatment": "Expected for benchmark WebSocket clients that close after recovery; Cloudflare counts success and clientDisconnected as successful requests, and the queried errors sum is zero.",
+    "caveat": "CPU quantiles are grouped by invocation status and include WebSocket lifecycle work; the success-bucket maximum is supportive but is not a function-level encode timer."
+  }
+}

@@ -1,0 +1,277 @@
+{
+  "schema": "koge.snapshot-shadow-benchmark.v1",
+  "measuredAt": "2026-07-27T11:37:14.914Z",
+  "runtime": "Node v23.2.0",
+  "environment": "local",
+  "rendererVersion": 1,
+  "fixture": {
+    "path": "/Users/dolphilia/github/echa/tools/event-log-benchmark/fixtures/echa-raw-strokes-2026-07-26T16-06-54-108Z.json",
+    "sha256": "3e15260e8e0112f894fd3f9a6613226dc8f7afd95600cd4b71cf09622a33bf17",
+    "canvas": {
+      "width": 960,
+      "height": 640
+    },
+    "rawStrokeCount": 833
+  },
+  "conditions": {
+    "runs": 3,
+    "requestedVolumes": [
+      10000,
+      50000,
+      100000
+    ],
+    "requestedTailEvents": 1000,
+    "eventChunkSize": 500,
+    "actors": 5,
+    "appendIntervalMs": 50,
+    "maxPointsPerAppend": 12
+  },
+  "results": [
+    {
+      "requestedEvents": 10000,
+      "actualEvents": 10001,
+      "snapshotBaseRoomSeq": 8998,
+      "tailEvents": 1003,
+      "eventSummary": {
+        "schema": "echa.event-log.v1",
+        "eventCount": 10001,
+        "strokeCount": 2031,
+        "actorCount": 5,
+        "pointCount": 39823,
+        "eventsByType": {
+          "stroke.begin": 2031,
+          "stroke.append": 5939,
+          "stroke.end": 2031
+        },
+        "jsonBytes": 1702566,
+        "estimatedMessagePackBytes": 1424693,
+        "largestEstimatedEventBytes": 336,
+        "averageEstimatedEventBytes": 142.45505449455055
+      },
+      "replayStats": {
+        "completedStrokeCount": 2031,
+        "pointCount": 39823
+      },
+      "snapshotBytes": 41795,
+      "snapshotCompressionRatio": 0.017006429036458333,
+      "fullRgbaHash": "37ca4d39a5fa81a0e30ece08a4d6287ed31a4e51643747a4223e9832e9b9fc79",
+      "recoveredRgbaHash": "37ca4d39a5fa81a0e30ece08a4d6287ed31a4e51643747a4223e9832e9b9fc79",
+      "hashMatch": true,
+      "timings": {
+        "fullReplayMs": {
+          "minimum": 1832.2348749999996,
+          "p50": 1840.5911669999996,
+          "p95": 1915.3944999999999,
+          "maximum": 1915.3944999999999,
+          "average": 1862.7401806666664
+        },
+        "snapshotRenderMs": {
+          "minimum": 1614.1864580000001,
+          "p50": 1628.9371250000004,
+          "p95": 1630.0358340000002,
+          "maximum": 1630.0358340000002,
+          "average": 1624.3864723333336
+        },
+        "snapshotEncodeMs": {
+          "minimum": 10.609749999999622,
+          "p50": 12.751040999999532,
+          "p95": 16.078333999999813,
+          "maximum": 16.078333999999813,
+          "average": 13.146374999999656
+        },
+        "snapshotDecodeMs": {
+          "minimum": 4.315166000000318,
+          "p50": 4.887625000001208,
+          "p95": 5.478874999999789,
+          "maximum": 5.478874999999789,
+          "average": 4.893888666667105
+        },
+        "snapshotLoadMs": {
+          "minimum": 0.08149999999932334,
+          "p50": 0.10437499999898137,
+          "p95": 0.12708299999985684,
+          "maximum": 0.12708299999985684,
+          "average": 0.10431933333272052
+        },
+        "tailReplayMs": {
+          "minimum": 203.55979100000013,
+          "p50": 204.11124999999993,
+          "p95": 205.20550000000003,
+          "maximum": 205.20550000000003,
+          "average": 204.29218033333336
+        },
+        "snapshotRecoveryMs": {
+          "minimum": 210.4823749999996,
+          "p50": 210.49545799999987,
+          "p95": 210.92450000000008,
+          "maximum": 210.92450000000008,
+          "average": 210.63411099999985
+        }
+      }
+    },
+    {
+      "requestedEvents": 50000,
+      "actualEvents": 50001,
+      "snapshotBaseRoomSeq": 48999,
+      "tailEvents": 1002,
+      "eventSummary": {
+        "schema": "echa.event-log.v1",
+        "eventCount": 50001,
+        "strokeCount": 10121,
+        "actorCount": 5,
+        "pointCount": 198606,
+        "eventsByType": {
+          "stroke.begin": 10121,
+          "stroke.append": 29759,
+          "stroke.end": 10121
+        },
+        "jsonBytes": 8661799,
+        "estimatedMessagePackBytes": 7196012,
+        "largestEstimatedEventBytes": 336,
+        "averageEstimatedEventBytes": 143.91736165276694
+      },
+      "replayStats": {
+        "completedStrokeCount": 10121,
+        "pointCount": 198606
+      },
+      "snapshotBytes": 55960,
+      "snapshotCompressionRatio": 0.022770182291666666,
+      "fullRgbaHash": "89e61492249076be4d85119bc42911c527cfeba94ae58c0ca1debdd4cea233e0",
+      "recoveredRgbaHash": "89e61492249076be4d85119bc42911c527cfeba94ae58c0ca1debdd4cea233e0",
+      "hashMatch": true,
+      "timings": {
+        "fullReplayMs": {
+          "minimum": 9106.321958999999,
+          "p50": 9139.656541000004,
+          "p95": 9200.301875000005,
+          "maximum": 9200.301875000005,
+          "average": 9148.760125000003
+        },
+        "snapshotRenderMs": {
+          "minimum": 9022.339333,
+          "p50": 9118.156709000003,
+          "p95": 9155.667375000005,
+          "maximum": 9155.667375000005,
+          "average": 9098.721139000003
+        },
+        "snapshotEncodeMs": {
+          "minimum": 11.768083999999362,
+          "p50": 21.82499999999709,
+          "p95": 21.83087499999965,
+          "maximum": 21.83087499999965,
+          "average": 18.4746529999987
+        },
+        "snapshotDecodeMs": {
+          "minimum": 6.296249999999418,
+          "p50": 7.28020800000013,
+          "p95": 7.692041000002064,
+          "maximum": 7.692041000002064,
+          "average": 7.089499666667204
+        },
+        "snapshotLoadMs": {
+          "minimum": 0.07208400000672555,
+          "p50": 0.07866700000158744,
+          "p95": 0.08675000000221189,
+          "maximum": 0.08675000000221189,
+          "average": 0.07916700000350829
+        },
+        "tailReplayMs": {
+          "minimum": 135.17145900000105,
+          "p50": 136.69812499999534,
+          "p95": 137.83395799999562,
+          "maximum": 137.83395799999562,
+          "average": 136.56784733333066
+        },
+        "snapshotRecoveryMs": {
+          "minimum": 143.92291699999987,
+          "p50": 144.77945800000452,
+          "p95": 146.99837499999558,
+          "maximum": 146.99837499999558,
+          "average": 145.2335833333333
+        }
+      }
+    },
+    {
+      "requestedEvents": 100000,
+      "actualEvents": 100001,
+      "snapshotBaseRoomSeq": 98997,
+      "tailEvents": 1004,
+      "eventSummary": {
+        "schema": "echa.event-log.v1",
+        "eventCount": 100001,
+        "strokeCount": 20253,
+        "actorCount": 5,
+        "pointCount": 397210,
+        "eventsByType": {
+          "stroke.begin": 20253,
+          "stroke.append": 59495,
+          "stroke.end": 20253
+        },
+        "jsonBytes": 17394622,
+        "estimatedMessagePackBytes": 14468160,
+        "largestEstimatedEventBytes": 338,
+        "averageEstimatedEventBytes": 144.68015319846802
+      },
+      "replayStats": {
+        "completedStrokeCount": 20253,
+        "pointCount": 397210
+      },
+      "snapshotBytes": 63510,
+      "snapshotCompressionRatio": 0.02584228515625,
+      "fullRgbaHash": "11bbfc9ddac8695ecabf238488161339d174fdc27060cc500839bf2537108a40",
+      "recoveredRgbaHash": "11bbfc9ddac8695ecabf238488161339d174fdc27060cc500839bf2537108a40",
+      "hashMatch": true,
+      "timings": {
+        "fullReplayMs": {
+          "minimum": 18153.450666999997,
+          "p50": 18250.670625,
+          "p95": 18763.041874999995,
+          "maximum": 18763.041874999995,
+          "average": 18389.054388999997
+        },
+        "snapshotRenderMs": {
+          "minimum": 18040.824083999993,
+          "p50": 18091.860625,
+          "p95": 18152.370500000005,
+          "maximum": 18152.370500000005,
+          "average": 18095.018403
+        },
+        "snapshotEncodeMs": {
+          "minimum": 13.085416000001715,
+          "p50": 14.058250000001863,
+          "p95": 28.266792000009445,
+          "maximum": 28.266792000009445,
+          "average": 18.47015266667101
+        },
+        "snapshotDecodeMs": {
+          "minimum": 3.9870409999857657,
+          "p50": 12.498749999998836,
+          "p95": 13.203666999994311,
+          "maximum": 13.203666999994311,
+          "average": 9.89648599999297
+        },
+        "snapshotLoadMs": {
+          "minimum": 0.07704200000443961,
+          "p50": 0.0792090000177268,
+          "p95": 0.08987500000512227,
+          "maximum": 0.08987500000512227,
+          "average": 0.08204200000909623
+        },
+        "tailReplayMs": {
+          "minimum": 163.94574999999895,
+          "p50": 167.48574999999255,
+          "p95": 168.69054199999664,
+          "maximum": 168.69054199999664,
+          "average": 166.70734733332938
+        },
+        "snapshotRecoveryMs": {
+          "minimum": 174.3279169999878,
+          "p50": 178.81141700000444,
+          "p95": 181.51591699998244,
+          "maximum": 181.51591699998244,
+          "average": 178.21841699999155
+        }
+      }
+    }
+  ]
+}

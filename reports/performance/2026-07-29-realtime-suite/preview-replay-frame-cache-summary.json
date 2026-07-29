@@ -1,0 +1,76 @@
+{
+  "schema": "koge.replay-frame-cache-comparison.v1",
+  "recordedAt": "2026-07-29T01:28:38.342Z",
+  "workerVersions": {
+    "observabilityBaseline": "fcf777b6-6889-4553-a4e0-cc4d64659ed8",
+    "encodedFrameCache": "43e9d904-3e42-4fa0-bedc-f01a37dab23d"
+  },
+  "workerMetricsSummary": "preview-replay-frame-cache-worker-metrics-summary.json",
+  "cachePolicy": {
+    "entries": 1,
+    "maximumEncodedBytes": 8388608,
+    "key": [
+      "afterRoomSeq",
+      "throughRoomSeq"
+    ],
+    "oversizeBehavior": "stream_without_cache"
+  },
+  "comparableTenThousandTail": {
+    "baseline": {
+      "source": "preview-replay-observability-probe.json",
+      "tailEventsPerConnection": 9993,
+      "snapshotOfferP95Ms": 3444.306625,
+      "firstFrameP95Ms": 3654.9797499999995,
+      "readyP95Ms": 11723.353959,
+      "eventCountMismatch": 0
+    },
+    "encodedFrameCache": {
+      "source": "preview-replay-frame-cache-probe.json",
+      "tailEventsPerConnection": 9996,
+      "snapshotOfferP95Ms": 636.2923330000003,
+      "firstFrameP95Ms": 683.7540829999998,
+      "readyP95Ms": 7281.804875000001,
+      "eventCountMismatch": 0
+    },
+    "improvementPercent": {
+      "snapshotOfferP95": 81.52625761070269,
+      "firstFrameP95": 81.29253430200262,
+      "readyP95": 37.886334401685694
+    }
+  },
+  "tailVolumeProbes": [
+    {
+      "source": "preview-replay-frame-cache-valid-run-2.json",
+      "tailEventsPerConnection": 3,
+      "snapshotOfferP95Ms": 357.6033749999997,
+      "firstFrameP95Ms": 357.5652089999994,
+      "readyP95Ms": 777.6492500000004,
+      "eventCountMismatch": 0
+    },
+    {
+      "source": "preview-replay-frame-cache-5k-tail.json",
+      "tailEventsPerConnection": 5001,
+      "snapshotOfferP95Ms": 426.3235000000059,
+      "firstFrameP95Ms": 481.429667000004,
+      "readyP95Ms": 5123.411249999997,
+      "eventCountMismatch": 0
+    }
+  ],
+  "excludedRuns": [
+    {
+      "source": "preview-replay-frame-cache-probe-run-2.json",
+      "reason": "A second benchmark was started concurrently and appended three live events during recovery, producing 20 expected-tail mismatches."
+    },
+    {
+      "source": null,
+      "reason": "The concurrently started benchmark was rejected with HTTP 429 before producing an output artifact."
+    }
+  ],
+  "conclusion": {
+    "encodedFrameSharing": "keep",
+    "standardRecoveryTargetMetAtTenThousandTail": false,
+    "dominantRemainingCost": "per-connection tail delivery and client processing",
+    "resourceLimitEvidence": false,
+    "nextExperiment": "compare snapshot interval cost and browser receive/decode/rasterize time before adding server-side backpressure"
+  }
+}

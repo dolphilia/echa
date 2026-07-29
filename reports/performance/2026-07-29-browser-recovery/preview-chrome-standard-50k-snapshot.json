@@ -1,0 +1,90 @@
+{
+  "schema": "koge.browser-recovery-suite.v1",
+  "measuredAt": "2026-07-29T02:39:00Z",
+  "target": "preview",
+  "conditions": {
+    "browser": "Chrome",
+    "cpuThrottlingRate": 1,
+    "networkThrottling": "none",
+    "runs": 3
+  },
+  "state": {
+    "snapshotBaseRoomSeq": 50002,
+    "readyRoomSeq": 50005,
+    "snapshotObjectBytes": 7564,
+    "snapshotRgbaBytes": 2457600,
+    "tailEventCount": 3,
+    "tailFrameCount": 1,
+    "tailEncodedBytes": 745
+  },
+  "runs": [
+    {
+      "socketOpenMs": 284,
+      "snapshotOfferMs": 286.5,
+      "snapshotFetchMs": 426.8999996185303,
+      "snapshotBodyReadMs": 0.40000009536743164,
+      "snapshotObjectHashMs": 2.700000286102295,
+      "snapshotDecodeMs": 4.599999904632568,
+      "snapshotRgbaHashMs": 2.0999999046325684,
+      "snapshotVerificationMs": 437.09999990463257,
+      "snapshotApplyMs": 2.6000003814697266,
+      "tailDecodeMs": 0.6999998092651367,
+      "tailApplyMs": 4.699999809265137,
+      "readyMs": 731.8999996185303,
+      "readyPaintMs": 736.3999996185303,
+      "lcpMs": 704,
+      "ttfbMs": 123,
+      "cls": 0
+    },
+    {
+      "socketOpenMs": 228,
+      "snapshotOfferMs": 230.2000002861023,
+      "snapshotFetchMs": 345.40000009536743,
+      "snapshotBodyReadMs": 3,
+      "snapshotObjectHashMs": 0.19999980926513672,
+      "snapshotDecodeMs": 1.700000286102295,
+      "snapshotRgbaHashMs": 2.299999713897705,
+      "snapshotVerificationMs": 352.69999980926514,
+      "snapshotApplyMs": 2.4000000953674316,
+      "tailDecodeMs": 0.5,
+      "tailApplyMs": 3.4000000953674316,
+      "readyMs": 589.6000003814697,
+      "readyPaintMs": 600.8000001907349,
+      "lcpMs": 233,
+      "ttfbMs": 116,
+      "cls": 0
+    },
+    {
+      "socketOpenMs": 381.5,
+      "snapshotOfferMs": 384.3999996185303,
+      "snapshotFetchMs": 353.19999980926514,
+      "snapshotBodyReadMs": 0.5,
+      "snapshotObjectHashMs": 0.3000001907348633,
+      "snapshotDecodeMs": 2.9000000953674316,
+      "snapshotRgbaHashMs": 2.5,
+      "snapshotVerificationMs": 359.5,
+      "snapshotApplyMs": 2.6999998092651367,
+      "tailDecodeMs": 0.5999999046325684,
+      "tailApplyMs": 7.900000095367432,
+      "readyMs": 755.6999998092651,
+      "readyPaintMs": 759.6999998092651,
+      "lcpMs": 215,
+      "ttfbMs": 119,
+      "cls": 0
+    }
+  ],
+  "summary": {
+    "socketOpenMsMedian": 284,
+    "snapshotOfferMsMedian": 286.5,
+    "snapshotFetchMsMedian": 353.19999980926514,
+    "snapshotVerificationMsMedian": 359.5,
+    "snapshotApplyMsMedian": 2.6000003814697266,
+    "tailDecodeMsMedian": 0.5999999046325684,
+    "tailApplyMsMedian": 4.699999809265137,
+    "readyMsMedian": 731.8999996185303,
+    "readyPaintMsMedian": 736.3999996185303,
+    "readyPaintMsMaximum": 759.6999998092651,
+    "lcpMsMedian": 233,
+    "clsMaximum": 0
+  }
+}

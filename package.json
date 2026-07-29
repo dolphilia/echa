@@ -1,0 +1,53 @@
+{
+  "name": "koge",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@10.9.0",
+  "engines": {
+    "node": ">=22.0.0 <25"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "postcss": "8.5.23",
+    "sharp": "0.35.3"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "metrics:worker": "node tools/cloudflare-worker-metrics/cli/query.mjs",
+    "smoke:room-ticket": "node tools/room-ticket-smoke/cli/run.mjs",
+    "smoke:presence-cursor": "node tools/presence-cursor-smoke/cli/run.mjs",
+    "smoke:chat": "node tools/chat-smoke/cli/run.mjs",
+    "benchmark:realtime": "tsx tools/realtime-benchmark/cli/run.ts",
+    "benchmark:realtime-suite": "tsx tools/realtime-benchmark/cli/suite.ts",
+    "benchmark:browser-recovery": "node tools/browser-recovery-benchmark/cli/run.mjs",
+    "benchmark:snapshot-shadow": "node --import tsx tools/snapshot-shadow-benchmark/cli/run.mjs",
+    "orphan-snapshots:operator": "wrangler dev --config tools/snapshot-orphan-inventory/wrangler.jsonc --port 8792 --show-interactive-dev-session=false",
+    "orphan-snapshots:scan": "node tools/snapshot-orphan-inventory/cli.mjs scan",
+    "orphan-snapshots:plan": "node tools/snapshot-orphan-inventory/cli.mjs plan",
+    "orphan-snapshots:apply": "node tools/snapshot-orphan-inventory/cli.mjs apply",
+    "rate-abuse:operator": "wrangler dev --config tools/rate-abuse-metrics/wrangler.jsonc --port 8793 --show-interactive-dev-session=false",
+    "rate-abuse:capture": "node tools/rate-abuse-metrics/cli.mjs capture",
+    "rate-abuse:compare": "node tools/rate-abuse-metrics/cli.mjs compare",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "cf:types": "npm run cf:types --workspaces --if-present",
+    "cf:types:check": "npm run cf:types:check --workspaces --if-present",
+    "dev:realtime": "npm run dev --workspace @koge/realtime",
+    "dev:web": "npm run dev --workspace @koge/web",
+    "lint": "oxlint apps packages tools/realtime-benchmark tools/browser-recovery-benchmark tools/snapshot-orphan-inventory tools/rate-abuse-metrics",
+    "smoke:e2e": "playwright test",
+    "test": "npm run test --workspaces --if-present && npm --prefix tools/event-log-benchmark test && npm --prefix tools/renderer-fixtures test && node --test tools/rate-abuse-metrics/compare.test.mjs tools/browser-recovery-benchmark/test/core.test.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc --noEmit -p tools/realtime-benchmark/tsconfig.json"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/ws": "8.18.1",
+    "oxlint": "1.75.0",
+    "tsx": "4.23.1",
+    "typescript": "7.0.2",
+    "ws": "8.21.1"
+  }
+}

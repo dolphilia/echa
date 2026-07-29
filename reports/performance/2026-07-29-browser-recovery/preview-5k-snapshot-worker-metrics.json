@@ -1,0 +1,40 @@
+{
+  "schema": "koge.cloudflare-worker-metrics.v1",
+  "queriedAt": "2026-07-29T03:53:27.170Z",
+  "input": {
+    "account": "add7fa1a3932f0d7e81b8c668f42156f",
+    "script": "koge-snapshot-preview",
+    "from": "2026-07-29T02:55:30.000Z",
+    "to": "2026-07-29T02:57:10.000Z"
+  },
+  "sampleCount": 1,
+  "maximumMemoryBytes": {
+    "memoryUsageBytesP50": 18327956,
+    "memoryUsageBytesP90": 18327956,
+    "memoryUsageBytesP99": 18327956,
+    "memoryUsageBytesP999": 18327956
+  },
+  "workerMemoryLimitBytes": 134217728,
+  "targetMaximumBytesForThirtyPercentHeadroom": 93952409,
+  "samples": [
+    {
+      "dimensions": {
+        "datetime": "2026-07-29T02:55:53Z",
+        "scriptName": "koge-snapshot-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 1923344,
+        "cpuTimeP99": 1923344,
+        "memoryUsageBytesP50": 18327956,
+        "memoryUsageBytesP90": 18327956,
+        "memoryUsageBytesP99": 18327956,
+        "memoryUsageBytesP999": 18327956
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    }
+  ]
+}

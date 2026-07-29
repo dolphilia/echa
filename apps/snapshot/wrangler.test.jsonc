@@ -1,0 +1,18 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "koge-snapshot-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-27",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "APP_ENV": "local"
+  },
+  "r2_buckets": [
+    {
+      "binding": "RUNTIME_SNAPSHOTS",
+      "bucket_name": "koge-runtime-snapshots-test"
+    }
+  ]
+}

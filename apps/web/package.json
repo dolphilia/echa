@@ -1,0 +1,44 @@
+{
+  "name": "@koge/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run prepare:renderer && vinext build",
+    "cf:types": "wrangler types worker-configuration.d.ts",
+    "cf:types:check": "wrangler types worker-configuration.d.ts --check",
+    "deploy": "vinext-cloudflare deploy --config dist/server/wrangler.json",
+    "deploy:preview": "vinext-cloudflare deploy --config dist/server/wrangler.json --env preview",
+    "deploy:production": "vinext-cloudflare deploy --config dist/server/wrangler.json --env production",
+    "dry-run:production": "vinext-cloudflare deploy --config wrangler.jsonc --env production --dry-run",
+    "dev": "npm run prepare:renderer && vinext dev",
+    "prepare:renderer": "npm run build:wasm --workspace @koge/renderer-core && node scripts/prepare-renderer.mjs",
+    "start": "wrangler dev --config dist/server/wrangler.json",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@koge/protocol": "0.1.0",
+    "@koge/renderer-core": "0.1.0",
+    "@vinext/cloudflare": "1.0.0-beta.4",
+    "better-auth": "1.6.25",
+    "jose": "6.2.4",
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8",
+    "vinext": "1.0.0-beta.4"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.47.0",
+    "@cloudflare/vitest-pool-workers": "0.18.8",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.9",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.4",
+    "@vitejs/plugin-rsc": "0.5.26",
+    "vite": "8.1.5",
+    "vitest": "4.1.10",
+    "wrangler": "4.114.0"
+  }
+}

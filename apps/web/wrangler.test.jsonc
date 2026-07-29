@@ -1,0 +1,29 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "koge-web-test",
+  "main": "test/worker.ts",
+  "compatibility_date": "2026-07-27",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "APP_ENV": "local",
+    "PUBLIC_APP_ORIGIN": "http://koge.test",
+    "PUBLIC_REALTIME_ORIGIN": "http://realtime.koge.test",
+    "BETTER_AUTH_URL": "http://koge.test",
+    "BETTER_AUTH_TRUSTED_ORIGINS": "http://koge.test",
+    "BETTER_AUTH_SECRET": "test-only-secret-with-more-than-32-characters",
+    "GOOGLE_CLIENT_ID": "test-google-client-id",
+    "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
+    "CF_ACCESS_ISSUER": "https://test.cloudflareaccess.com",
+    "CF_ACCESS_AUD": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "MODERATION_EVIDENCE_RETENTION_DAYS": 30
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "koge-web-test",
+      "database_id": "local"
+    }
+  ]
+}

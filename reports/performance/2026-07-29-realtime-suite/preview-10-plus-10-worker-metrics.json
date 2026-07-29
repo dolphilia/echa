@@ -1,0 +1,268 @@
+{
+  "schema": "koge.cloudflare-worker-metrics.v1",
+  "queriedAt": "2026-07-28T17:36:11.391Z",
+  "input": {
+    "account": "add7fa1a3932f0d7e81b8c668f42156f",
+    "script": "koge-realtime-preview",
+    "from": "2026-07-28T17:24:00.000Z",
+    "to": "2026-07-28T17:29:00.000Z"
+  },
+  "sampleCount": 13,
+  "maximumMemoryBytes": {
+    "memoryUsageBytesP50": 2482188,
+    "memoryUsageBytesP90": 2482188,
+    "memoryUsageBytesP99": 2482188,
+    "memoryUsageBytesP999": 2482188
+  },
+  "workerMemoryLimitBytes": 134217728,
+  "targetMaximumBytesForThirtyPercentHeadroom": 93952409,
+  "samples": [
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:25:08Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 717,
+        "cpuTimeP99": 1568,
+        "memoryUsageBytesP50": 1958412,
+        "memoryUsageBytesP90": 2081292,
+        "memoryUsageBytesP99": 2220172,
+        "memoryUsageBytesP999": 2220172
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 17
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:25:06Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 433,
+        "cpuTimeP99": 586,
+        "memoryUsageBytesP50": 1999244,
+        "memoryUsageBytesP90": 2040204,
+        "memoryUsageBytesP99": 2040204,
+        "memoryUsageBytesP999": 2040204
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 3
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:28:21Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 425,
+        "cpuTimeP99": 425,
+        "memoryUsageBytesP50": 1958412,
+        "memoryUsageBytesP90": 1958412,
+        "memoryUsageBytesP99": 1958412,
+        "memoryUsageBytesP999": 1958412
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:26:04Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 704,
+        "cpuTimeP99": 1341,
+        "memoryUsageBytesP50": 1958156,
+        "memoryUsageBytesP90": 1999244,
+        "memoryUsageBytesP99": 1999372,
+        "memoryUsageBytesP999": 1999372
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 22
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:27:10Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 708,
+        "cpuTimeP99": 1262,
+        "memoryUsageBytesP50": 1958156,
+        "memoryUsageBytesP90": 1999116,
+        "memoryUsageBytesP99": 1999116,
+        "memoryUsageBytesP999": 1999116
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 17
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:27:09Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 454,
+        "cpuTimeP99": 454,
+        "memoryUsageBytesP50": 1999244,
+        "memoryUsageBytesP90": 1999244,
+        "memoryUsageBytesP99": 1999244,
+        "memoryUsageBytesP999": 1999244
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:25:09Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "clientDisconnected"
+      },
+      "quantiles": {
+        "cpuTimeP50": 4359,
+        "cpuTimeP99": 10152,
+        "memoryUsageBytesP50": 2482188,
+        "memoryUsageBytesP90": 2482188,
+        "memoryUsageBytesP99": 2482188,
+        "memoryUsageBytesP999": 2482188
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 19
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:26:01Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "clientDisconnected"
+      },
+      "quantiles": {
+        "cpuTimeP50": 4535,
+        "cpuTimeP99": 4535,
+        "memoryUsageBytesP50": 2482188,
+        "memoryUsageBytesP90": 2482188,
+        "memoryUsageBytesP99": 2482188,
+        "memoryUsageBytesP999": 2482188
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:26:03Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 700,
+        "cpuTimeP99": 700,
+        "memoryUsageBytesP50": 1958028,
+        "memoryUsageBytesP90": 1958028,
+        "memoryUsageBytesP99": 1958028,
+        "memoryUsageBytesP999": 1958028
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:28:22Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "clientDisconnected"
+      },
+      "quantiles": {
+        "cpuTimeP50": 1441,
+        "cpuTimeP99": 1441,
+        "memoryUsageBytesP50": 1957900,
+        "memoryUsageBytesP90": 1957900,
+        "memoryUsageBytesP99": 1957900,
+        "memoryUsageBytesP999": 1957900
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 1
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:26:05Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "clientDisconnected"
+      },
+      "quantiles": {
+        "cpuTimeP50": 4320,
+        "cpuTimeP99": 6404,
+        "memoryUsageBytesP50": 2482188,
+        "memoryUsageBytesP90": 2482188,
+        "memoryUsageBytesP99": 2482188,
+        "memoryUsageBytesP999": 2482188
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 19
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:27:10Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "clientDisconnected"
+      },
+      "quantiles": {
+        "cpuTimeP50": 4306,
+        "cpuTimeP99": 10226,
+        "memoryUsageBytesP50": 2482188,
+        "memoryUsageBytesP90": 2482188,
+        "memoryUsageBytesP99": 2482188,
+        "memoryUsageBytesP999": 2482188
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 20
+      }
+    },
+    {
+      "dimensions": {
+        "datetime": "2026-07-28T17:26:05Z",
+        "scriptName": "koge-realtime-preview",
+        "status": "success"
+      },
+      "quantiles": {
+        "cpuTimeP50": 694,
+        "cpuTimeP99": 1021,
+        "memoryUsageBytesP50": 1958412,
+        "memoryUsageBytesP90": 1958412,
+        "memoryUsageBytesP99": 1958412,
+        "memoryUsageBytesP999": 1958412
+      },
+      "sum": {
+        "errors": 0,
+        "requests": 3
+      }
+    }
+  ]
+}

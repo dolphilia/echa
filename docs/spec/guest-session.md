@@ -1,7 +1,8 @@
 # Guest session and room ticket
 
-更新日: 2026-07-27
-状態: 実装前初稿
+更新日: 2026-07-29
+状態: public / unlisted roomのguest session、room actor、single-use ticketを
+productionへ反映し、利用者E2Eまでpass。abuse controlも実装済み
 
 ## Identityの分離
 
@@ -37,13 +38,20 @@ public slugは一覧・URL用識別子で、host権限を与えない。参加�
 
 ## Unlisted room
 
-1. 招待tokenは192bit以上のrandom。
+1. room作成clientが256bitの招待tokenを生成する。
 2. URL fragmentで受け取る。
 3. client JSが明示的なHTTP POSTで交換する。
 4. serverはtoken hash、失効、期限、room statusを確認。
 5. 短命room ticketを返す。
 
-fragmentはserver requestとRefererへ自動送信されない。交換後はhistory APIでfragmentを除去する。
+作成APIは生tokenを保存せず、SHA-256だけをD1へ保存する。tokenをclient側で
+先に生成し、同じidempotency keyの再試行では同じtokenを送るため、serverが
+生tokenを復元する必要はない。招待tokenはroom終了・失効まで再利用できる
+bearer invitationであり、WebSocket用room ticketだけがsingle useである。
+
+fragmentはserver requestとRefererへ自動送信されない。受取clientは
+sessionStorageへ一時保存し、history APIでfragmentを除去する。招待リンクの
+コピー操作ではsessionStorageのtokenからfragment付きURLを再構築する。
 
 ## Room ticket
 
@@ -66,7 +74,15 @@ rule:
 - 別session、別room、期限切れは拒否
 - host roleはURL tokenではなくuser session + room ownershipから解決
 
-署名方式は実装時に決める。opaque one-time tokenをD1/DOで消費する方式と、署名token + nonce storeを比較する。
+MVPのpublic room経路はopaque one-time token方式を採用する。Web Workerが
+認証済みuser sessionまたはHttpOnly guest sessionを検証し、private Service
+Binding経由でroom DOへtoken hashとclaimsを登録する。ブラウザへ返す生tokenは
+DO SQLiteにもD1にも保存しない。WebSocket upgrade時にDO内transactionで
+`consumed_at`を設定し、同じtokenの再利用を拒否する。
+
+`session_binding_hash`はticketを発行した内部subjectとの関連をDO内へ記録する。
+WebSocket側へ認証cookieを共有する方式ではないため、現在の防御境界は
+同一Originの発行API、60秒TTL、256-bit token、single useである。
 
 ## 入室フロー
 
@@ -84,8 +100,15 @@ rule:
 - clientは指数backoffにjitterを加える。
 - HTTPで新ticketを取得。
 - `lastRoomSeq`、cached snapshot metadata、last ack clientSeqを送る。
-- room終了・suspended・banは再接続しない。
-- 同じsessionの再入室は同じroom actorとして扱うが、同時connection policyは未決定。
+- room終了・suspended・room banは再接続しない。kick通知時もその接続では
+  自動再接続せず、利用者が明示的に再入室した場合だけ新ticketを発行する。
+- 同じsessionの再入室は同じroom actorとして扱う。
+- 同じactorの同時connectionは1つとし、新しいticket接続を優先して旧接続を
+  `connection replaced`で閉じる。再接続競合と複数tabは同じ規則にする。
+- public roomではparticipant / viewerを入室時に選ぶ。選択はtab sessionへ
+  保存し、reload時の新ticketにも使う。
+- guestまたは非owner userは新ticket発行時にparticipant / viewerを変更できる。
+  ownerはrequested roleにかかわらず常にhostとして解決する。
 
 ## Abuse control
 
@@ -105,6 +128,25 @@ IPアドレスそのものを長期identityにしない。salt rotation、保持
 3. disconnect
 4. room ban
 5. service-level temporary ban
+
+drawing / chatはroom actor単位の違反を合算し、短時間mute後も反復した場合は
+connectionを切断する。room BANと期限付きservice BANはserver側でticket発行と
+稼働中connectionの両方へ適用し、管理画面から監査・解除できる。
+
+1〜3は2026-07-28に実装した。drawing/chatのrate超過をroom actor単位で合算し、
+10秒内3回で5秒mute、8回でdisconnectする。状態はDO SQLiteへ保存するため、
+guest/userのどちらもconnection IDの交換だけでは回避できない。room banは
+管理者判断とする。service-level temporary banも管理者判断だけで適用し、
+24時間、7日、30日の期限付きで同じguest / user subjectの全room ticketを拒否する。
+guestはcookie削除でsubjectを更新できるため、IPを長期BAN identityとして保存せず、
+rate limit、room BAN、通報、emergency controlを組み合わせる。
+
+管理者kickは現在のactorの全connectionを直ちに閉じるが、D1の入室権限は
+変更しない。room banは現在のconnectionを閉じ、対象roomの終了時刻まで
+同じuser / guest subjectへのticket発行を拒否する。ホストはkick / room banの
+対象外とし、問題のあるホストを止める場合はroom suspend / closeを使う。
+service BANはホストにも適用でき、現在connectionを閉じて以後のroom作成・入室を
+拒否する。
 
 ## Logging
 
@@ -133,10 +175,10 @@ MVPで必要:
 - room creation
 - ownership/host復元
 
-未決定:
+実装済み:
 
-- OAuth provider
-- email認証
-- Better Auth D1 adapter
+- Better Auth + D1 adapter
+- Google OAuth
+- account statusを含むsession検証
 
-これらは`docs/spikes/auth-d1.md`で成立性を確認する。
+email認証はMVPの必須経路に含めない。

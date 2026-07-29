@@ -1,0 +1,38 @@
+{
+  "schema": "koge.cloudflare-worker-metrics-summary.v1",
+  "queriedAt": "2026-07-29T00:36:14.047Z",
+  "input": {
+    "account": "add7fa1a3932f0d7e81b8c668f42156f",
+    "script": "koge-realtime-preview",
+    "from": "2026-07-28T17:42:00.000Z",
+    "to": "2026-07-28T18:00:00.000Z"
+  },
+  "sampleCount": 19,
+  "requests": {
+    "total": 126,
+    "errors": 0,
+    "byStatus": {
+      "success": 64,
+      "clientDisconnected": 62
+    }
+  },
+  "maximumCpuTimeApiValue": {
+    "cpuTimeP50": 6299,
+    "cpuTimeP99": 6585,
+    "unit": "not annotated by the current query tool"
+  },
+  "maximumMemoryBytes": {
+    "memoryUsageBytesP50": 2482188,
+    "memoryUsageBytesP90": 2523148,
+    "memoryUsageBytesP99": 2523148,
+    "memoryUsageBytesP999": 2523148
+  },
+  "workerMemoryLimitBytes": 134217728,
+  "targetMaximumBytesForThirtyPercentHeadroom": 93952409,
+  "maximumMemoryPercentOfLimit": 1.8798917531967163,
+  "source": {
+    "kind": "user-supplied output from tools/cloudflare-worker-metrics",
+    "rawSampleCount": 19,
+    "rawOutputValidated": true
+  }
+}

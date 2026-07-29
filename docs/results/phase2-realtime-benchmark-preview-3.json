@@ -1,0 +1,48 @@
+{
+  "schema": "koge.realtime-benchmark.v1",
+  "recordedAt": "2026-07-27T07:16:18.611Z",
+  "input": {
+    "endpoint": "wss://realtime-preview.koge.app",
+    "origin": "https://preview.koge.app",
+    "requestedEvents": 900,
+    "connections": 3,
+    "targetEventsPerSecondPerConnection": 40
+  },
+  "roomId": "room_benchmark_1785136554773",
+  "actualEventCount": 900,
+  "encodedBytes": 70182,
+  "sendDurationMs": 19888.440459,
+  "effectiveEventsPerSecond": 45.252416943166004,
+  "ackRttMs": {
+    "count": 900,
+    "minimum": 43.67104199999994,
+    "p50": 62.40216700000019,
+    "p95": 83.4393329999998,
+    "p99": 115.44120900000053,
+    "maximum": 281.828125,
+    "average": 65.95283128222226
+  },
+  "acceptedToArrivalMs": {
+    "count": 2700,
+    "minimum": 36,
+    "p50": 70,
+    "p95": 86,
+    "p99": 115,
+    "maximum": 270,
+    "average": 71.40925925925926
+  },
+  "broadcastDeliveries": {
+    "expected": 2700,
+    "observed": 2700,
+    "missing": 0
+  },
+  "replay": {
+    "eventCount": 900,
+    "firstFrameMs": 669.7080830000014,
+    "completeMs": 732.0670410000021
+  },
+  "notes": [
+    "acceptedToArrivalMs includes server/client wall-clock skew",
+    "events are complete begin/append/end strokes"
+  ]
+}

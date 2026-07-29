@@ -1,10 +1,14 @@
 # Spike: Better Auth with D1
 
+更新日: 2026-07-28
+状態: local / preview成立。Google OAuth callback E2E pass
+
 ## Goal
 
 MVPに必要なlogin/session、room creation、room ownership復元をCloudflare Workers + D1で安全に実装できるか確認する。
 
-Better Authは2026年時点でD1 bindingのnative supportを案内しているが、採用versionを固定して実環境で確認する。
+Better AuthはD1 bindingのnative supportを案内している。MVPは安定版
+`better-auth@1.6.25`を固定し、1.7 RCは採用しない。
 
 ## Decisions required first
 
@@ -44,10 +48,29 @@ guest sessionはBetter Auth user sessionと分離する。MVPでは過去guest a
 
 ## D1 points
 
-- schemaはBetter Auth CLIまたはprogrammatic migration outputをreviewして固定。
+- schemaは採用versionのprogrammatic migration outputをreviewし、
+  `migrations/d1/0002_better_auth.sql`へ固定した。
 - D1はinteractive transactionを提供しない前提で、使用pluginが要求しないことを確認。
 - preview/prod databaseを分離。
 - sessionや短命roomをbackupから無条件復元しない。
+
+## 2026-07-28時点の結果
+
+- D1 bindingを直接Better Authへ渡すrequest-scoped auth factoryを実装した。
+- `/api/auth/*`を同一originのvinext routeとしてbuildできた。
+- generated `Env`にrequired secret名を含め、secret値はconfigへ保存していない。
+- Google OAuthだけを有効化し、email/passwordと即時account削除を無効化した。
+- Secure / HttpOnly / SameSite=Lax cookie、trusted origin、database rate limitを設定した。
+- Workers runtime + local D1で未ログインsession、cookie付きcross-origin拒否、
+  短いsecretのfail-closedを試験した。
+- auth migrationをlocalと`koge-preview`へ適用した。
+- production dependencyの`npm audit --omit=dev`は0 vulnerabilitiesだった。
+- Better Authの2026年6月security updateで示されたcore修正版
+  `1.6.11`以降を満たす。MVPでSSO、SCIM、OAuth provider pluginは使用しない。
+
+証跡は
+[`../results/phase4-auth-home-foundation.md`](../results/phase4-auth-home-foundation.md)
+を参照。
 
 ## Pass
 
@@ -56,6 +79,17 @@ guest sessionはBetter Auth user sessionと分離する。MVPでは過去guest a
 - bundle/startupが許容範囲。
 - ownershipがURL tokenではなくuser sessionから復元される。
 - security testに重大な未解決がない。
+
+local主要flow、migration再現性、preview OAuth E2Eはpass。preview Workerへ必要な
+3 secretを登録し、未ログインsession、Google認可開始、callback、session、logout、
+session revoke、再loginを確認した。Googleはclient IDとredirect URIを拒否せず、
+sign-in画面から同一originのcallbackへ戻る。
+
+対話試験後のpreview D1は、個人情報やtokenを読まず集計だけを確認した。active user、
+Google account、active sessionはいずれも1件で、logout前のsessionは残らず、
+再login後のsessionが1件だけ存在した。事前の非対話probeが作った未消費OAuth state
+2件は期限付きverificationとして残るが、probeではcallbackを行っていないため
+想定内とする。
 
 ## Deliverables
 
@@ -70,5 +104,5 @@ guest sessionはBetter Auth user sessionと分離する。MVPでは過去guest a
 
 - https://better-auth.com/docs/concepts/database
 - https://better-auth.com/docs/installation
+- https://better-auth.com/blog/security-update-june-2026
 - https://developers.cloudflare.com/d1/worker-api/
-

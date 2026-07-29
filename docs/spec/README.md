@@ -1,8 +1,9 @@
-# 実装前仕様書
+# 現行仕様
 
-更新日: 2026-07-27
+更新日: 2026-07-29
 
-このディレクトリは、`docs/notes/drawing-chat-service-design-foundation.md`で決めた方針を、実装と試験へ渡せる粒度にした仕様書を置く。
+このディレクトリには、設計方針を実装・試験・運用へ渡せる粒度にした現行仕様を置く。
+Phase別の当時の状態は`docs/results/`、採用判断は`docs/decisions/`を参照する。
 
 ## 読み方
 
@@ -14,27 +15,31 @@
 
 仕様間で矛盾した場合は、次の順で解決する。
 
-1. 後から承認された設計判断
-2. このディレクトリの個別仕様
-3. `docs/notes/drawing-chat-service-design-foundation.md`
-4. モックアップ
+1. 現在のコード、migration、test、Wrangler config
+2. 後から承認された設計判断
+3. このディレクトリの個別仕様
+4. `docs/notes/drawing-chat-service-design-foundation.md`
+5. モックアップ
 
 ## 現在の仕様
 
 | ファイル | 対象 | 状態 |
 | --- | --- | --- |
-| `stroke-protocol.md` | stroke wire semantics、順序、再送、上限 | 初稿 |
-| `room-lifecycle.md` | 状態遷移、終了、証跡、cleanup | 初稿 |
-| `event-log-recovery.md` | event log、snapshot、復帰、compaction | 初稿 |
-| `data-model.md` | D1、DO SQLite、R2、retention | 初稿 |
-| `guest-session.md` | guest cookie、招待token、room ticket | 初稿 |
-| `load-test-plan.md` | event log・WebSocket・snapshotの測定条件 | 初稿 |
+| `stroke-protocol.md` | stroke wire semantics、順序、再送、上限 | production利用者E2E済み |
+| `room-lifecycle.md` | 状態遷移、終了、証跡、cleanup | production利用者E2E・終了後health済み |
+| `event-log-recovery.md` | event log、snapshot、復帰、compaction | snapshot-first採用、productionはshadow |
+| `data-model.md` | D1、DO SQLite、R2、retention | migration `0001`〜`0017`をproduction適用済み |
+| `guest-session.md` | guest cookie、招待token、room ticket | production利用者E2E済み |
+| `chat-protocol.md` | chat wire semantics、権限、保持、rate limit | production利用者E2E済み |
+| `load-test-plan.md` | event log・WebSocket・snapshotの測定条件 | Phase 7測定を反映 |
 
 関連成果物:
 
+- `docs/plans/mvp-implementation-plan.md`: MVP実装順序、依存関係、判断ゲート、完了条件
 - `tools/renderer-fixtures/`: canonical renderer fixture
 - `docs/spikes/`: 2 client、snapshot、Hibernation、cleanup、認証の実行票
 - `tools/event-log-benchmark/`: raw stroke解析、event生成、Canvas cold replay
+- `tools/rate-abuse-metrics/`: closed betaのrate abuse baseline取得・差分比較
 
 ## 仕様化しても固定しないもの
 
@@ -42,10 +47,11 @@
 
 - 50ms / 最大12 pointsのappend batching
 - 2秒の未完了stroke timeout
-- 100,000 drawing events / 64MiB / 作成から2時間
-- snapshot triggerの50,000 events / 16MiB / replay推定2秒
+- hard limit 100,000 events / 64MiB、通常受付soft limit 93,000 events / 56MiB
+- 作成から2時間、退出後10分、idle 30分
+- snapshot初回trigger 50,000 events / 16MiB、増分5,000 events / 4MiB
 - guest session 30日、room ticket 60秒
-- rate limit、チャット保持数、snapshot生成頻度
+- rate limit、チャット保持数（100件 / 24時間）、snapshot生成頻度
 
 ## 外部仕様の確認
 

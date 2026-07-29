@@ -1,0 +1,19 @@
+{
+  "name": "@koge/renderer-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./js/index.d.mts",
+      "default": "./js/index.mjs"
+    }
+  },
+  "scripts": {
+    "benchmark": "npm run build:wasm && node scripts/benchmark.mjs",
+    "build": "npm run build:wasm",
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "test": "npm run build:wasm && node --test",
+    "typecheck": "node --check js/index.mjs && node --check js/wire.mjs"
+  }
+}

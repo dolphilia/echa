@@ -1,0 +1,722 @@
+{
+  "schema": "koge.browser-recovery-latency-suite.v1",
+  "recordedAt": "2026-07-29T04:47:15.454Z",
+  "target": {
+    "webOrigin": "https://preview.koge.app",
+    "roomDigest": "3928777431ed9afef4408cf8c3e113fda3e48474cccbc90fe1b1d2e9dc0acc13"
+  },
+  "browser": {
+    "engine": "chromium",
+    "channel": "chrome",
+    "headless": true,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  "network": {
+    "configuredLatencySemantics": "Chrome CDP minimum latency from request sent to response headers received",
+    "downloadThroughputBytesPerSecond": -1,
+    "uploadThroughputBytesPerSecond": -1,
+    "calibrationRequestsPerCondition": 3
+  },
+  "runsPerCondition": 3,
+  "conditions": [
+    {
+      "configuredMinimumRequestLatencyMs": 50,
+      "calibrationMs": [
+        328.90000009536743,
+        236.89999961853027,
+        415.59999990463257
+      ],
+      "calibrationSummary": {
+        "count": 3,
+        "minimum": 236.89999961853027,
+        "median": 328.90000009536743,
+        "p95": 415.59999990463257,
+        "maximum": 415.59999990463257,
+        "average": 327.13333320617676
+      },
+      "runs": [
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 1015.4000000953674,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.3000001907348633,
+          "tailApplyMs": 3.5,
+          "status": "painted",
+          "socketOpenMs": 279.30000019073486,
+          "snapshotOfferMs": 280,
+          "snapshotFetchMs": 391.2000002861023,
+          "snapshotBodyReadMs": 12,
+          "snapshotObjectHashMs": 0.39999961853027344,
+          "snapshotDecodeMs": 2.3000001907348633,
+          "snapshotRgbaHashMs": 2.4000000953674316,
+          "snapshotVerificationMs": 408.30000019073486,
+          "snapshotApplyMs": 3.4000000953674316,
+          "snapshotAppliedMs": 691.7000002861023,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 692.2000002861023,
+          "readyMs": 695.8000001907349,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 697.0999999046326,
+          "domContentLoadedMs": 84.40000009536743,
+          "loadEventMs": 84.5,
+          "firstContentfulPaintMs": 104,
+          "wallMs": 1719.979875
+        },
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 1096.8999996185303,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.3000001907348633,
+          "tailApplyMs": 2.799999713897705,
+          "status": "painted",
+          "socketOpenMs": 260,
+          "snapshotOfferMs": 260.80000019073486,
+          "snapshotFetchMs": 304.19999980926514,
+          "snapshotBodyReadMs": 10.100000381469727,
+          "snapshotObjectHashMs": 0.09999990463256836,
+          "snapshotDecodeMs": 2.1999998092651367,
+          "snapshotRgbaHashMs": 2.5999999046325684,
+          "snapshotVerificationMs": 319.19999980926514,
+          "snapshotApplyMs": 3.0999999046325684,
+          "snapshotAppliedMs": 583.2000002861023,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 583.6000003814697,
+          "readyMs": 586.5,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 591.1000003814697,
+          "domContentLoadedMs": 107.39999961853027,
+          "loadEventMs": 107.5,
+          "firstContentfulPaintMs": 212,
+          "wallMs": 1702.6263329999992
+        },
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 948.2000002861023,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.2999997138977051,
+          "tailApplyMs": 2.5,
+          "status": "painted",
+          "socketOpenMs": 297.09999990463257,
+          "snapshotOfferMs": 301.19999980926514,
+          "snapshotFetchMs": 392.09999990463257,
+          "snapshotBodyReadMs": 8.099999904632568,
+          "snapshotObjectHashMs": 0.3000001907348633,
+          "snapshotDecodeMs": 3.799999713897705,
+          "snapshotRgbaHashMs": 2.200000286102295,
+          "snapshotVerificationMs": 406.6000003814697,
+          "snapshotApplyMs": 2.0999999046325684,
+          "snapshotAppliedMs": 710,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 710.2999997138977,
+          "readyMs": 712.9000000953674,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 720.9000000953674,
+          "domContentLoadedMs": 90.5,
+          "loadEventMs": 93.30000019073486,
+          "firstContentfulPaintMs": 116,
+          "wallMs": 1680.5872920000002
+        }
+      ],
+      "summary": {
+        "socketOpenMs": {
+          "count": 3,
+          "minimum": 260,
+          "median": 279.30000019073486,
+          "p95": 297.09999990463257,
+          "maximum": 297.09999990463257,
+          "average": 278.8000000317891
+        },
+        "snapshotOfferMs": {
+          "count": 3,
+          "minimum": 260.80000019073486,
+          "median": 280,
+          "p95": 301.19999980926514,
+          "maximum": 301.19999980926514,
+          "average": 280.6666666666667
+        },
+        "snapshotFetchMs": {
+          "count": 3,
+          "minimum": 304.19999980926514,
+          "median": 391.2000002861023,
+          "p95": 392.09999990463257,
+          "maximum": 392.09999990463257,
+          "average": 362.5
+        },
+        "snapshotVerificationMs": {
+          "count": 3,
+          "minimum": 319.19999980926514,
+          "median": 406.6000003814697,
+          "p95": 408.30000019073486,
+          "maximum": 408.30000019073486,
+          "average": 378.0333334604899
+        },
+        "snapshotApplyMs": {
+          "count": 3,
+          "minimum": 2.0999999046325684,
+          "median": 3.0999999046325684,
+          "p95": 3.4000000953674316,
+          "maximum": 3.4000000953674316,
+          "average": 2.866666634877523
+        },
+        "firstTailFrameMs": {
+          "count": 3,
+          "minimum": 583.6000003814697,
+          "median": 692.2000002861023,
+          "p95": 710.2999997138977,
+          "maximum": 710.2999997138977,
+          "average": 662.0333334604899
+        },
+        "tailDecodeMs": {
+          "count": 3,
+          "minimum": 0.2999997138977051,
+          "median": 0.3000001907348633,
+          "p95": 0.3000001907348633,
+          "maximum": 0.3000001907348633,
+          "average": 0.30000003178914386
+        },
+        "tailApplyMs": {
+          "count": 3,
+          "minimum": 2.5,
+          "median": 2.799999713897705,
+          "p95": 3.5,
+          "maximum": 3.5,
+          "average": 2.933333237965902
+        },
+        "readyMs": {
+          "count": 3,
+          "minimum": 586.5,
+          "median": 695.8000001907349,
+          "p95": 712.9000000953674,
+          "maximum": 712.9000000953674,
+          "average": 665.0666667620341
+        },
+        "readyPaintMs": {
+          "count": 3,
+          "minimum": 591.1000003814697,
+          "median": 697.0999999046326,
+          "p95": 720.9000000953674,
+          "maximum": 720.9000000953674,
+          "average": 669.7000001271566
+        },
+        "wallMs": {
+          "count": 3,
+          "minimum": 1680.5872920000002,
+          "median": 1702.6263329999992,
+          "p95": 1719.979875,
+          "maximum": 1719.979875,
+          "average": 1701.0644999999997
+        },
+        "domContentLoadedMs": {
+          "count": 3,
+          "minimum": 84.40000009536743,
+          "median": 90.5,
+          "p95": 107.39999961853027,
+          "maximum": 107.39999961853027,
+          "average": 94.09999990463257
+        },
+        "loadEventMs": {
+          "count": 3,
+          "minimum": 84.5,
+          "median": 93.30000019073486,
+          "p95": 107.5,
+          "maximum": 107.5,
+          "average": 95.10000006357829
+        },
+        "firstContentfulPaintMs": {
+          "count": 3,
+          "minimum": 104,
+          "median": 116,
+          "p95": 212,
+          "maximum": 212,
+          "average": 144
+        }
+      }
+    },
+    {
+      "configuredMinimumRequestLatencyMs": 200,
+      "calibrationMs": [
+        202.7999997138977,
+        228.40000009536743,
+        350.90000009536743
+      ],
+      "calibrationSummary": {
+        "count": 3,
+        "minimum": 202.7999997138977,
+        "median": 228.40000009536743,
+        "p95": 350.90000009536743,
+        "maximum": 350.90000009536743,
+        "average": 260.6999999682109
+      },
+      "runs": [
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 1214.5,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.19999980926513672,
+          "tailApplyMs": 2.5999999046325684,
+          "status": "painted",
+          "socketOpenMs": 303.40000009536743,
+          "snapshotOfferMs": 304,
+          "snapshotFetchMs": 309,
+          "snapshotBodyReadMs": 11.100000381469727,
+          "snapshotObjectHashMs": 0.09999990463256836,
+          "snapshotDecodeMs": 1.5,
+          "snapshotRgbaHashMs": 2.1999998092651367,
+          "snapshotVerificationMs": 324,
+          "snapshotApplyMs": 2.5,
+          "snapshotAppliedMs": 630.5999999046326,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 630.9000000953674,
+          "readyMs": 633.5999999046326,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 635,
+          "domContentLoadedMs": 214.7000002861023,
+          "loadEventMs": 218,
+          "firstContentfulPaintMs": 288,
+          "wallMs": 1861.118292000001
+        },
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 1232.3000001907349,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.10000038146972656,
+          "tailApplyMs": 2.0999999046325684,
+          "status": "painted",
+          "socketOpenMs": 319.09999990463257,
+          "snapshotOfferMs": 320.69999980926514,
+          "snapshotFetchMs": 376,
+          "snapshotBodyReadMs": 9.899999618530273,
+          "snapshotObjectHashMs": 0.10000038146972656,
+          "snapshotDecodeMs": 1.3999996185302734,
+          "snapshotRgbaHashMs": 2,
+          "snapshotVerificationMs": 389.5,
+          "snapshotApplyMs": 1.9000000953674316,
+          "snapshotAppliedMs": 712.0999999046326,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 712.3000001907349,
+          "readyMs": 714.4000000953674,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 723.0999999046326,
+          "domContentLoadedMs": 212.30000019073486,
+          "loadEventMs": 216.5,
+          "firstContentfulPaintMs": 284,
+          "wallMs": 1967.4795000000013
+        },
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 1266.8000001907349,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.20000028610229492,
+          "tailApplyMs": 1.8999996185302734,
+          "status": "painted",
+          "socketOpenMs": 306.7999997138977,
+          "snapshotOfferMs": 307.7999997138977,
+          "snapshotFetchMs": 332.80000019073486,
+          "snapshotBodyReadMs": 3.9000000953674316,
+          "snapshotObjectHashMs": 0,
+          "snapshotDecodeMs": 3.0999999046325684,
+          "snapshotRgbaHashMs": 2.4000000953674316,
+          "snapshotVerificationMs": 342.2000002861023,
+          "snapshotApplyMs": 2.0999999046325684,
+          "snapshotAppliedMs": 652.0999999046326,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 652.4000000953674,
+          "readyMs": 654.2999997138977,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 655.0999999046326,
+          "domContentLoadedMs": 209,
+          "loadEventMs": 213.59999990463257,
+          "firstContentfulPaintMs": 344,
+          "wallMs": 1932.4479589999992
+        }
+      ],
+      "summary": {
+        "socketOpenMs": {
+          "count": 3,
+          "minimum": 303.40000009536743,
+          "median": 306.7999997138977,
+          "p95": 319.09999990463257,
+          "maximum": 319.09999990463257,
+          "average": 309.76666657129925
+        },
+        "snapshotOfferMs": {
+          "count": 3,
+          "minimum": 304,
+          "median": 307.7999997138977,
+          "p95": 320.69999980926514,
+          "maximum": 320.69999980926514,
+          "average": 310.83333317438763
+        },
+        "snapshotFetchMs": {
+          "count": 3,
+          "minimum": 309,
+          "median": 332.80000019073486,
+          "p95": 376,
+          "maximum": 376,
+          "average": 339.26666673024494
+        },
+        "snapshotVerificationMs": {
+          "count": 3,
+          "minimum": 324,
+          "median": 342.2000002861023,
+          "p95": 389.5,
+          "maximum": 389.5,
+          "average": 351.90000009536743
+        },
+        "snapshotApplyMs": {
+          "count": 3,
+          "minimum": 1.9000000953674316,
+          "median": 2.0999999046325684,
+          "p95": 2.5,
+          "maximum": 2.5,
+          "average": 2.1666666666666665
+        },
+        "firstTailFrameMs": {
+          "count": 3,
+          "minimum": 630.9000000953674,
+          "median": 652.4000000953674,
+          "p95": 712.3000001907349,
+          "maximum": 712.3000001907349,
+          "average": 665.2000001271566
+        },
+        "tailDecodeMs": {
+          "count": 3,
+          "minimum": 0.10000038146972656,
+          "median": 0.19999980926513672,
+          "p95": 0.20000028610229492,
+          "maximum": 0.20000028610229492,
+          "average": 0.16666682561238608
+        },
+        "tailApplyMs": {
+          "count": 3,
+          "minimum": 1.8999996185302734,
+          "median": 2.0999999046325684,
+          "p95": 2.5999999046325684,
+          "maximum": 2.5999999046325684,
+          "average": 2.1999998092651367
+        },
+        "readyMs": {
+          "count": 3,
+          "minimum": 633.5999999046326,
+          "median": 654.2999997138977,
+          "p95": 714.4000000953674,
+          "maximum": 714.4000000953674,
+          "average": 667.4333332379659
+        },
+        "readyPaintMs": {
+          "count": 3,
+          "minimum": 635,
+          "median": 655.0999999046326,
+          "p95": 723.0999999046326,
+          "maximum": 723.0999999046326,
+          "average": 671.0666666030884
+        },
+        "wallMs": {
+          "count": 3,
+          "minimum": 1861.118292000001,
+          "median": 1932.4479589999992,
+          "p95": 1967.4795000000013,
+          "maximum": 1967.4795000000013,
+          "average": 1920.348583666667
+        },
+        "domContentLoadedMs": {
+          "count": 3,
+          "minimum": 209,
+          "median": 212.30000019073486,
+          "p95": 214.7000002861023,
+          "maximum": 214.7000002861023,
+          "average": 212.0000001589457
+        },
+        "loadEventMs": {
+          "count": 3,
+          "minimum": 213.59999990463257,
+          "median": 216.5,
+          "p95": 218,
+          "maximum": 218,
+          "average": 216.0333333015442
+        },
+        "firstContentfulPaintMs": {
+          "count": 3,
+          "minimum": 284,
+          "median": 288,
+          "p95": 344,
+          "maximum": 344,
+          "average": 305.3333333333333
+        }
+      }
+    },
+    {
+      "configuredMinimumRequestLatencyMs": 500,
+      "calibrationMs": [
+        506.69999980926514,
+        506,
+        508
+      ],
+      "calibrationSummary": {
+        "count": 3,
+        "minimum": 506,
+        "median": 506.69999980926514,
+        "p95": 508,
+        "maximum": 508,
+        "average": 506.8999999364217
+      },
+      "runs": [
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 1954.5,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.20000028610229492,
+          "tailApplyMs": 2.4000000953674316,
+          "status": "painted",
+          "socketOpenMs": 600.0999999046326,
+          "snapshotOfferMs": 602.4000000953674,
+          "snapshotFetchMs": 567.5,
+          "snapshotBodyReadMs": 0.40000009536743164,
+          "snapshotObjectHashMs": 0.3000001907348633,
+          "snapshotDecodeMs": 2.1999998092651367,
+          "snapshotRgbaHashMs": 2.0999999046325684,
+          "snapshotVerificationMs": 572.5999999046326,
+          "snapshotApplyMs": 2.0999999046325684,
+          "snapshotAppliedMs": 1177.0999999046326,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 1177.3000001907349,
+          "readyMs": 1179.8000001907349,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 1181.2000002861023,
+          "domContentLoadedMs": 523.2000002861023,
+          "loadEventMs": 526.3000001907349,
+          "firstContentfulPaintMs": 548,
+          "wallMs": 3147.629791000003
+        },
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 1867.7999997138977,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.20000028610229492,
+          "tailApplyMs": 2,
+          "status": "painted",
+          "socketOpenMs": 595.1000003814697,
+          "snapshotOfferMs": 596.6000003814697,
+          "snapshotFetchMs": 569.0999999046326,
+          "snapshotBodyReadMs": 0.40000009536743164,
+          "snapshotObjectHashMs": 0,
+          "snapshotDecodeMs": 1.1999998092651367,
+          "snapshotRgbaHashMs": 1.8000001907348633,
+          "snapshotVerificationMs": 572.5,
+          "snapshotApplyMs": 2.0999999046325684,
+          "snapshotAppliedMs": 1171.3000001907349,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 1171.6000003814697,
+          "readyMs": 1173.7000002861023,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 1179.1000003814697,
+          "domContentLoadedMs": 517.6999998092651,
+          "loadEventMs": 521.6999998092651,
+          "firstContentfulPaintMs": 536,
+          "wallMs": 3059.396166999999
+        },
+        {
+          "schema": "koge.browser-recovery.v1",
+          "source": "snapshot",
+          "startedAt": 1834.9000000953674,
+          "tailFrameCount": 1,
+          "tailEventCount": 3,
+          "tailEncodedBytes": 745,
+          "tailDecodeMs": 0.09999990463256836,
+          "tailApplyMs": 2.8000001907348633,
+          "status": "painted",
+          "socketOpenMs": 588.9000000953674,
+          "snapshotOfferMs": 590.3000001907349,
+          "snapshotFetchMs": 564.9000000953674,
+          "snapshotBodyReadMs": 0.40000009536743164,
+          "snapshotObjectHashMs": 0.2999997138977051,
+          "snapshotDecodeMs": 2.200000286102295,
+          "snapshotRgbaHashMs": 2.299999713897705,
+          "snapshotVerificationMs": 570.0999999046326,
+          "snapshotApplyMs": 2.8000001907348633,
+          "snapshotAppliedMs": 1163.3000001907349,
+          "snapshotObjectBytes": 7564,
+          "snapshotRgbaBytes": 2457600,
+          "snapshotBaseRoomSeq": 60066,
+          "firstTailFrameMs": 1163.5999999046326,
+          "readyMs": 1166.4000000953674,
+          "readyRoomSeq": 60069,
+          "readyPaintMs": 1170.4000000953674,
+          "domContentLoadedMs": 511.80000019073486,
+          "loadEventMs": 516.2000002861023,
+          "firstContentfulPaintMs": 592,
+          "wallMs": 3015.496124999998
+        }
+      ],
+      "summary": {
+        "socketOpenMs": {
+          "count": 3,
+          "minimum": 588.9000000953674,
+          "median": 595.1000003814697,
+          "p95": 600.0999999046326,
+          "maximum": 600.0999999046326,
+          "average": 594.7000001271566
+        },
+        "snapshotOfferMs": {
+          "count": 3,
+          "minimum": 590.3000001907349,
+          "median": 596.6000003814697,
+          "p95": 602.4000000953674,
+          "maximum": 602.4000000953674,
+          "average": 596.4333335558573
+        },
+        "snapshotFetchMs": {
+          "count": 3,
+          "minimum": 564.9000000953674,
+          "median": 567.5,
+          "p95": 569.0999999046326,
+          "maximum": 569.0999999046326,
+          "average": 567.1666666666666
+        },
+        "snapshotVerificationMs": {
+          "count": 3,
+          "minimum": 570.0999999046326,
+          "median": 572.5,
+          "p95": 572.5999999046326,
+          "maximum": 572.5999999046326,
+          "average": 571.733333269755
+        },
+        "snapshotApplyMs": {
+          "count": 3,
+          "minimum": 2.0999999046325684,
+          "median": 2.0999999046325684,
+          "p95": 2.8000001907348633,
+          "maximum": 2.8000001907348633,
+          "average": 2.3333333333333335
+        },
+        "firstTailFrameMs": {
+          "count": 3,
+          "minimum": 1163.5999999046326,
+          "median": 1171.6000003814697,
+          "p95": 1177.3000001907349,
+          "maximum": 1177.3000001907349,
+          "average": 1170.833333492279
+        },
+        "tailDecodeMs": {
+          "count": 3,
+          "minimum": 0.09999990463256836,
+          "median": 0.20000028610229492,
+          "p95": 0.20000028610229492,
+          "maximum": 0.20000028610229492,
+          "average": 0.16666682561238608
+        },
+        "tailApplyMs": {
+          "count": 3,
+          "minimum": 2,
+          "median": 2.4000000953674316,
+          "p95": 2.8000001907348633,
+          "maximum": 2.8000001907348633,
+          "average": 2.4000000953674316
+        },
+        "readyMs": {
+          "count": 3,
+          "minimum": 1166.4000000953674,
+          "median": 1173.7000002861023,
+          "p95": 1179.8000001907349,
+          "maximum": 1179.8000001907349,
+          "average": 1173.3000001907349
+        },
+        "readyPaintMs": {
+          "count": 3,
+          "minimum": 1170.4000000953674,
+          "median": 1179.1000003814697,
+          "p95": 1181.2000002861023,
+          "maximum": 1181.2000002861023,
+          "average": 1176.9000002543132
+        },
+        "wallMs": {
+          "count": 3,
+          "minimum": 3015.496124999998,
+          "median": 3059.396166999999,
+          "p95": 3147.629791000003,
+          "maximum": 3147.629791000003,
+          "average": 3074.1740276666665
+        },
+        "domContentLoadedMs": {
+          "count": 3,
+          "minimum": 511.80000019073486,
+          "median": 517.6999998092651,
+          "p95": 523.2000002861023,
+          "maximum": 523.2000002861023,
+          "average": 517.5666667620341
+        },
+        "loadEventMs": {
+          "count": 3,
+          "minimum": 516.2000002861023,
+          "median": 521.6999998092651,
+          "p95": 526.3000001907349,
+          "maximum": 526.3000001907349,
+          "average": 521.4000000953674
+        },
+        "firstContentfulPaintMs": {
+          "count": 3,
+          "minimum": 536,
+          "median": 548,
+          "p95": 592,
+          "maximum": 592,
+          "average": 558.6666666666666
+        }
+      }
+    }
+  ],
+  "correctness": {
+    "recoveryRunCount": 9,
+    "snapshotSourceCount": 9,
+    "timeoutCount": 0,
+    "tailEventCountMismatchCount": 0
+  },
+  "notes": [
+    "The public room slug, guest cookies and room tickets are not written to the report.",
+    "Configured CDP latency is a deterministic request-latency condition, not a claim about physical path RTT.",
+    "Throughput is unlimited unless download-bps or upload-bps is explicitly set.",
+    "All connections use the product viewer role and formal guest ticket endpoint."
+  ]
+}
