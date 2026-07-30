@@ -69,22 +69,12 @@ export default async function Home({
         </div>
       </header>
 
-      <section className="home-intro">
-        <div>
-          {parameters?.accountDeleted === "1" ? (
-            <p className="home-account-notice" role="status">
-              アカウントの削除を受け付けました。
-            </p>
-          ) : null}
-          <p className="home-kicker">開催中のルーム</p>
-          <h1>いま描ける場所を見つける</h1>
-          <p>
-            ログインしなくても公開ルームを見たり、ゲストとして参加できます。
-          </p>
-        </div>
-      </section>
-
       <section aria-labelledby="public-rooms-heading" className="home-rooms">
+        {parameters?.accountDeleted === "1" ? (
+          <p className="home-account-notice" role="status">
+            アカウントの削除を受け付けました。
+          </p>
+        ) : null}
         <div className="home-section-heading">
           <div>
             <h2 id="public-rooms-heading">公開ルーム</h2>
@@ -94,7 +84,6 @@ export default async function Home({
 
         {rooms.length === 0 ? (
           <div className="home-empty">
-            <span aria-hidden="true">○</span>
             <h3>いま開催中の公開ルームはありません</h3>
             <p>
               {activeUser
@@ -107,9 +96,6 @@ export default async function Home({
             {rooms.map((room) => (
               <article className="home-room-card" key={room.publicSlug}>
                 <div className="home-room-paper" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
                   {env.THUMBNAIL_ENABLED === "true"
                       && room.thumbnailVersion !== null
                     ? (

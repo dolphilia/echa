@@ -2,18 +2,9 @@ import { env } from "cloudflare:workers";
 
 const SLUG_PATTERN = /^[a-f0-9]{32}$/;
 const VERSION_PATTERN = /^(0|[1-9][0-9]{0,15})$/;
-const PLACEHOLDER_ETAG = "\"koge-room-placeholder-v1\"";
+const PLACEHOLDER_ETAG = "\"koge-room-placeholder-v2\"";
 const PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<rect width="512" height="512" fill="#fff"/>
-<g fill="#e2e4df">
-<circle cx="18" cy="18" r="2"/><circle cx="54" cy="18" r="2"/>
-<circle cx="90" cy="18" r="2"/><circle cx="126" cy="18" r="2"/>
-</g>
-<g fill="none" stroke-linecap="round" stroke-width="22" opacity=".8">
-<path d="M150 238L350 210" stroke="#c6d8cc"/>
-<path d="M230 278L340 310" stroke="#e6cbb4"/>
-<path d="M160 330L230 285" stroke="#c8c9df"/>
-</g></svg>`;
+<rect width="512" height="512" fill="#fff"/></svg>`;
 
 type ThumbnailProjection = {
   thumbnail_object_key: string;

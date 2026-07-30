@@ -107,6 +107,9 @@ describe("public room thumbnail endpoint", () => {
     expect(response.headers.get("cache-control")).toBe(
       "public, max-age=30, s-maxage=30",
     );
+    const placeholder = await response.text();
+    expect(placeholder).toContain('fill="#fff"');
+    expect(placeholder).not.toContain("<path");
   });
 
   it("fails closed while the thumbnail feature flag is disabled", async () => {
