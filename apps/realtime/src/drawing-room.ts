@@ -75,6 +75,20 @@ type ConnectionAttachment = {
   avatarUrl?: string | null;
 };
 
+export type RoomCapacityErrorCode =
+  | "ROOM_CAPACITY_REACHED"
+  | "ROOM_PARTICIPANT_CAPACITY_REACHED"
+  | "ROOM_VIEWER_CAPACITY_REACHED";
+
+export class RoomCapacityReachedError extends Error {
+  readonly code: RoomCapacityErrorCode;
+
+  constructor(code: RoomCapacityErrorCode) {
+    super(code);
+    this.code = code;
+  }
+}
+
 type ReplayFrameCacheEntry = {
   afterRoomSeq: number;
   throughRoomSeq: number;
@@ -1079,6 +1093,69 @@ export class DrawingRoom extends DurableObject<Env> {
     return currentVersion < LATEST_SCHEMA_VERSION;
   }
 
+  private connectionCapacityError(
+    actorId: string,
+    role: RoomRole,
+    replaceExistingActor: boolean,
+  ): RoomCapacityErrorCode | null {
+    const socketsForActor = replaceExistingActor
+      ? this.ctx.getWebSockets(`actor:${actorId}`)
+      : [];
+    const metadata = this.ctx.storage.sql
+      .exec<RoomMetadataRow>(
+        "SELECT * FROM room_metadata WHERE singleton = 1",
+      )
+      .toArray()[0];
+    const participantLimit = metadata?.participant_limit
+      ?? PROTOCOL_LIMITS.maxRoomConnections;
+    const viewerLimit = metadata?.viewer_limit
+      ?? PROTOCOL_LIMITS.maxRoomConnections;
+    const connectionCountExcludingActor = Math.max(
+      0,
+      this.ctx.getWebSockets().length - socketsForActor.length,
+    );
+    if (connectionCountExcludingActor >= PROTOCOL_LIMITS.maxRoomConnections) {
+      return "ROOM_CAPACITY_REACHED";
+    }
+    const actorDrawingConnections = socketsForActor.filter((socket) => {
+      const attachment = socket.deserializeAttachment() as
+        | ConnectionAttachment
+        | null;
+      return attachment?.role === "host" || attachment?.role === "participant";
+    }).length;
+    const actorViewerConnections = socketsForActor.length
+      - actorDrawingConnections;
+    const drawingConnectionCount = Math.max(
+      0,
+      this.ctx.getWebSockets("role:host").length
+        + this.ctx.getWebSockets("role:participant").length
+        - actorDrawingConnections,
+    );
+    const viewerConnectionCount = Math.max(
+      0,
+      this.ctx.getWebSockets("role:viewer").length - actorViewerConnections,
+    );
+    if (
+      role === "participant"
+      && drawingConnectionCount >= Math.max(
+        0,
+        participantLimit + viewerLimit
+            <= PROTOCOL_LIMITS.maxRoomConnections
+          ? participantLimit - 1
+          : participantLimit,
+      )
+    ) {
+      return "ROOM_PARTICIPANT_CAPACITY_REACHED";
+    }
+    if (role === "host" && drawingConnectionCount >= participantLimit) {
+      return "ROOM_PARTICIPANT_CAPACITY_REACHED";
+    }
+    if (role === "viewer" && viewerConnectionCount >= viewerLimit) {
+      return "ROOM_VIEWER_CAPACITY_REACHED";
+    }
+    return null;
+  }
+
   override async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return Response.json({ error: "WEBSOCKET_REQUIRED" }, { status: 426 });
@@ -1178,15 +1255,18 @@ export class DrawingRoom extends DurableObject<Env> {
     if (this.isActorRoomBanned(identity.actor)) {
       return Response.json({ error: "ROOM_ACCESS_FORBIDDEN" }, { status: 403 });
     }
-    const socketsForActor = roomTicket
-      ? this.ctx.getWebSockets(`actor:${identity.actor}`)
-      : [];
-    const connectionCountExcludingActor = Math.max(
-      0,
-      this.ctx.getWebSockets().length - socketsForActor.length,
+    const metadata = this.ctx.storage.sql
+      .exec<RoomMetadataRow>(
+        "SELECT * FROM room_metadata WHERE singleton = 1",
+      )
+      .toArray()[0];
+    const capacityError = this.connectionCapacityError(
+      identity.actor,
+      identity.role,
+      roomTicket !== null,
     );
-    if (connectionCountExcludingActor >= PROTOCOL_LIMITS.maxRoomConnections) {
-      return Response.json({ error: "ROOM_CAPACITY_REACHED" }, { status: 429 });
+    if (capacityError) {
+      return Response.json({ error: capacityError }, { status: 429 });
     }
 
     const lastRoomSeq = this.ctx.storage.sql
@@ -1229,6 +1309,9 @@ export class DrawingRoom extends DurableObject<Env> {
         baseRoomSeq: snapshotOffer?.manifest.baseRoomSeq,
       }));
     }
+    const socketsForActor = roomTicket
+      ? this.ctx.getWebSockets(`actor:${identity.actor}`)
+      : [];
     for (const socket of socketsForActor) {
       socket.close(1000, "connection replaced");
     }
@@ -1269,11 +1352,6 @@ export class DrawingRoom extends DurableObject<Env> {
       identity.avatarUrl ?? null,
     );
 
-    const metadata = this.ctx.storage.sql
-      .exec<{ present: number }>(
-        "SELECT 1 AS present FROM room_metadata WHERE singleton = 1",
-      )
-      .toArray()[0];
     if (metadata) {
       server.send(encodeServerMessage(this.lifecycleUpdatedMessage(lifecycle)));
     }
@@ -2103,6 +2181,12 @@ export class DrawingRoom extends DurableObject<Env> {
     if (this.isActorRoomBanned(request.actorId)) {
       throw new Error("room ticket targets a banned actor");
     }
+    const capacityError = this.connectionCapacityError(
+      request.actorId,
+      request.role,
+      true,
+    );
+    if (capacityError) throw new RoomCapacityReachedError(capacityError);
     this.ctx.storage.sql.exec(
       "DELETE FROM room_tickets WHERE expires_at <= ?",
       request.issuedAt,

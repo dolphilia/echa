@@ -16,6 +16,7 @@ import serviceControlsMigration from "../../../migrations/d1/0014_service_contro
 import serviceBansMigration from "../../../migrations/d1/0017_service_bans.sql?raw";
 import {
   RoomAccessForbiddenError,
+  RoomCapacityReachedError,
   RoomEntryDisabledError,
   issueRoomTicket,
   resolveRoomAccessSubject,
@@ -160,6 +161,24 @@ function fakeRealtime(registrations: unknown[]) {
 }
 
 describe("phase 5 guest identity and room tickets", () => {
+  it("propagates an authoritative Realtime role-capacity rejection", async () => {
+    const rejection = issueRoomTicket(env.DB, {
+      fetch: () => Promise.resolve(Response.json(
+        { error: "ROOM_VIEWER_CAPACITY_REACHED" },
+        { status: 429 },
+      )),
+    }, {
+      publicSlug: PUBLIC_SLUG,
+      requestedRole: "viewer",
+      subject: { kind: "user", id: "user-access-member" },
+      now: NOW + 5,
+    });
+    await expect(rejection).rejects.toBeInstanceOf(RoomCapacityReachedError);
+    await expect(rejection).rejects.toMatchObject({
+      code: "ROOM_VIEWER_CAPACITY_REACHED",
+    });
+  });
+
   it("creates an HttpOnly guest session and reuses only its server identity", async () => {
     const first = await resolveRoomAccessSubject(env.DB, {
       appEnvironment: "preview",

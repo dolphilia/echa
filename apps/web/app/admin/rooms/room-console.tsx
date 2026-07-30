@@ -7,6 +7,7 @@ import type {
   AdminModerationInput,
 } from "../../server/admin-moderation";
 import type { ServiceControls } from "../../server/service-controls";
+import type { ServiceCapacityLimits } from "../../server/service-capacity";
 import type { AdminServiceBan } from "../../server/service-bans";
 
 const STATUS_LABELS: Record<AdminRoom["status"], string> = {
@@ -29,14 +30,24 @@ type Notice = {
 } | null;
 
 export default function AdminRoomConsole({
+  capacityHardLimits,
+  initialCapacityLimits,
   initialControls,
   initialRooms,
   initialServiceBans,
 }: {
+  capacityHardLimits: {
+    liveRooms: number;
+    roomConnections: number;
+  };
+  initialCapacityLimits: ServiceCapacityLimits;
   initialControls: ServiceControls;
   initialRooms: AdminRoom[];
   initialServiceBans: AdminServiceBan[];
 }) {
+  const [capacityLimits, setCapacityLimits] = useState(initialCapacityLimits);
+  const [capacityDraft, setCapacityDraft] = useState(initialCapacityLimits);
+  const [capacityReason, setCapacityReason] = useState("");
   const [controls, setControls] = useState(initialControls);
   const [controlDraft, setControlDraft] = useState(initialControls);
   const [controlReason, setControlReason] = useState("");
@@ -52,6 +63,82 @@ export default function AdminRoomConsole({
   >({});
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+
+  async function applyCapacityLimits(): Promise<void> {
+    const reason = capacityReason.trim();
+    const total = capacityDraft.participantLimit + capacityDraft.viewerLimit;
+    if (!reason) {
+      setNotice({
+        kind: "error",
+        message: "利用上限を変更する理由を入力してください。",
+      });
+      return;
+    }
+    if (
+      !Number.isSafeInteger(capacityDraft.liveRoomLimit)
+      || capacityDraft.liveRoomLimit < 1
+      || capacityDraft.liveRoomLimit > capacityHardLimits.liveRooms
+      || !Number.isSafeInteger(capacityDraft.participantLimit)
+      || capacityDraft.participantLimit < 1
+      || !Number.isSafeInteger(capacityDraft.viewerLimit)
+      || capacityDraft.viewerLimit < 0
+      || total > capacityHardLimits.roomConnections
+    ) {
+      setNotice({
+        kind: "error",
+        message: `描く人と見る人の合計は${
+          capacityHardLimits.roomConnections
+        }人以下にしてください。`,
+      });
+      return;
+    }
+    if (
+      !window.confirm(
+        "利用上限を変更しますか？変更は新しく作成されるルームから適用されます。",
+      )
+    ) return;
+
+    setPendingKey("capacity");
+    setNotice(null);
+    try {
+      const response = await fetch("/api/admin/capacity", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          liveRoomLimit: capacityDraft.liveRoomLimit,
+          participantLimit: capacityDraft.participantLimit,
+          viewerLimit: capacityDraft.viewerLimit,
+          reason,
+        }),
+      });
+      const body = await response.json() as {
+        error?: string;
+        limits?: ServiceCapacityLimits;
+      };
+      if (!response.ok || !body.limits) {
+        throw new Error("利用上限を更新できませんでした。");
+      }
+      setCapacityLimits(body.limits);
+      setCapacityDraft(body.limits);
+      setCapacityReason("");
+      setNotice({
+        kind: "success",
+        message: "利用上限を更新しました。",
+      });
+    } catch (error) {
+      setNotice({
+        kind: "error",
+        message: error instanceof Error
+          ? error.message
+          : "利用上限の更新に失敗しました。",
+      });
+    } finally {
+      setPendingKey(null);
+    }
+  }
 
   async function applyEmergencyControls(): Promise<void> {
     const reason = controlReason.trim();
@@ -266,6 +353,19 @@ export default function AdminRoomConsole({
     }
   }
 
+  const capacityTotal =
+    capacityDraft.participantLimit + capacityDraft.viewerLimit;
+  const capacityDraftValid = (
+    Number.isSafeInteger(capacityDraft.liveRoomLimit)
+    && capacityDraft.liveRoomLimit >= 1
+    && capacityDraft.liveRoomLimit <= capacityHardLimits.liveRooms
+    && Number.isSafeInteger(capacityDraft.participantLimit)
+    && capacityDraft.participantLimit >= 1
+    && Number.isSafeInteger(capacityDraft.viewerLimit)
+    && capacityDraft.viewerLimit >= 0
+    && capacityTotal <= capacityHardLimits.roomConnections
+  );
+
   return (
     <main className="admin-shell">
       <header className="admin-header">
@@ -375,6 +475,106 @@ export default function AdminRoomConsole({
             type="button"
           >
             制御を適用
+          </button>
+        </div>
+      </section>
+
+      <section className="admin-emergency" aria-label="サービス利用上限">
+        <div className="admin-emergency-heading">
+          <div>
+            <p className="admin-kicker">capacity limits</p>
+            <h2>サービス利用上限</h2>
+          </div>
+          <span>
+            1ルーム最大
+            {capacityLimits.participantLimit + capacityLimits.viewerLimit}人
+          </span>
+        </div>
+        <p>
+          安全上限の範囲内で、新しく作成されるルームの上限を絞ります。
+          既存ルームの利用者は退出させません。
+        </p>
+        <div className="admin-capacity-fields">
+          <label>
+            <span>同時開催ルーム</span>
+            <input
+              disabled={pendingKey === "capacity"}
+              max={capacityHardLimits.liveRooms}
+              min={1}
+              onChange={(event) => setCapacityDraft((current) => ({
+                ...current,
+                liveRoomLimit: Number(event.target.value),
+              }))}
+              type="number"
+              value={capacityDraft.liveRoomLimit}
+            />
+            <small>最大 {capacityHardLimits.liveRooms}ルーム</small>
+          </label>
+          <label>
+            <span>描く人</span>
+            <input
+              disabled={pendingKey === "capacity"}
+              max={capacityHardLimits.roomConnections}
+              min={1}
+              onChange={(event) => setCapacityDraft((current) => ({
+                ...current,
+                participantLimit: Number(event.target.value),
+              }))}
+              type="number"
+              value={capacityDraft.participantLimit}
+            />
+            <small>オーナーを含みます</small>
+          </label>
+          <label>
+            <span>見る人</span>
+            <input
+              disabled={pendingKey === "capacity"}
+              max={capacityHardLimits.roomConnections - 1}
+              min={0}
+              onChange={(event) => setCapacityDraft((current) => ({
+                ...current,
+                viewerLimit: Number(event.target.value),
+              }))}
+              type="number"
+              value={capacityDraft.viewerLimit}
+            />
+            <small>0人なら閲覧入室を停止</small>
+          </label>
+        </div>
+        <p className={
+          !capacityDraftValid
+            ? "admin-capacity-total invalid"
+            : "admin-capacity-total"
+        }>
+          合計 {capacityTotal}
+          /{capacityHardLimits.roomConnections}人
+        </p>
+        <label className="admin-reason">
+          <span>変更理由</span>
+          <input
+            disabled={pendingKey === "capacity"}
+            maxLength={500}
+            onChange={(event) => setCapacityReason(event.target.value)}
+            placeholder="監査記録に残す理由"
+            value={capacityReason}
+          />
+        </label>
+        <div className="admin-room-actions">
+          <button
+            disabled={
+              pendingKey === "capacity"
+              || (
+                capacityDraft.liveRoomLimit === capacityLimits.liveRoomLimit
+                && capacityDraft.participantLimit
+                  === capacityLimits.participantLimit
+                && capacityDraft.viewerLimit === capacityLimits.viewerLimit
+              )
+              || !capacityDraftValid
+            }
+            onClick={() => void applyCapacityLimits()}
+            type="button"
+          >
+            上限を適用
           </button>
         </div>
       </section>

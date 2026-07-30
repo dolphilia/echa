@@ -37,6 +37,7 @@ closed betaを含む公開運用gateが残っています。現在の正確な�
 - room終了時のR2 → Durable Object → D1 cleanup
 - report、期限付きmoderation evidence、kick、room BAN、service BAN
 - 緊急時のroom作成・入室・描画停止
+- 管理画面から安全上限内で絞れる同時開催room数とrole別入室上限（local実装）
 - Cloudflare Accessで保護した管理画面と運用health endpoint
 
 MVPにギャラリー、完成画像保存、undo / redo、筆圧、スタンプは含めません。

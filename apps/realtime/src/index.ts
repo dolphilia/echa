@@ -8,7 +8,10 @@ import {
   type ActiveRoomMembersResult,
   type RoomTicketRegistrationResult,
 } from "@koge/protocol";
-import { DrawingRoom } from "./drawing-room";
+import {
+  DrawingRoom,
+  RoomCapacityReachedError,
+} from "./drawing-room";
 import {
   requestAccountDeletion,
   resumePendingAccountDeletions,
@@ -690,6 +693,9 @@ export class RoomProvisioningService extends WorkerEntrypoint<Env> {
       }
       return Response.json({ error: "NOT_FOUND" }, { status: 404 });
     } catch (error) {
+      if (error instanceof RoomCapacityReachedError) {
+        return Response.json({ error: error.code }, { status: 429 });
+      }
       if (error instanceof RoomReportNotAvailableError) {
         return Response.json(
           { error: "ROOM_REPORT_NOT_AVAILABLE" },

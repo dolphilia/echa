@@ -2797,6 +2797,72 @@ describe("phase 2 room synchronization", () => {
     recovered.close(1000, "test complete");
   });
 
+  it("enforces safe role limits while reserving a drawing seat for the host", async () => {
+    const roomId = "room-role-capacity";
+    const room = env.DRAWING_ROOM.getByName(roomId);
+    const createdAt = Date.now();
+    await room.initializeRoom({
+      v: 1,
+      roomId,
+      publicSlug: "9".repeat(32),
+      ownerUserId: "owner-role-capacity",
+      name: "Role capacity",
+      visibility: "public",
+      participantLimit: 2,
+      viewerLimit: 1,
+      viewerChatEnabled: false,
+      viewerStampEnabled: false,
+      createdAt,
+      maxEndsAt: createdAt + 2 * 60 * 60 * 1_000,
+    });
+    const open = (
+      actor: string,
+      role: "host" | "participant" | "viewer",
+    ) => room.fetch(new Request("http://internal.test/connect", {
+      headers: {
+        Upgrade: "websocket",
+        "x-koge-room-id": roomId,
+        "x-koge-actor": actor,
+        "x-koge-connection": `connection-${actor}`,
+        "x-koge-role": role,
+      },
+    }));
+
+    const participantResponse = await open(
+      "actor-role-capacity-participant",
+      "participant",
+    );
+    expect(participantResponse.status).toBe(101);
+    participantResponse.webSocket?.accept();
+    const participantOverflow = await open(
+      "actor-role-capacity-participant-overflow",
+      "participant",
+    );
+    expect(participantOverflow.status).toBe(429);
+    await expect(participantOverflow.json()).resolves.toEqual({
+      error: "ROOM_PARTICIPANT_CAPACITY_REACHED",
+    });
+
+    const hostResponse = await open("actor-role-capacity-host", "host");
+    expect(hostResponse.status).toBe(101);
+    hostResponse.webSocket?.accept();
+    const viewerResponse = await open("actor-role-capacity-viewer", "viewer");
+    expect(viewerResponse.status).toBe(101);
+    viewerResponse.webSocket?.accept();
+    const viewerOverflow = await open(
+      "actor-role-capacity-viewer-overflow",
+      "viewer",
+    );
+    expect(viewerOverflow.status).toBe(429);
+    await expect(viewerOverflow.json()).resolves.toEqual({
+      error: "ROOM_VIEWER_CAPACITY_REACHED",
+    });
+
+    participantResponse.webSocket?.close(1000, "test complete");
+    hostResponse.webSocket?.close(1000, "test complete");
+    viewerResponse.webSocket?.close(1000, "test complete");
+  });
+
   it("kicks an actor, permits manual re-entry, then room-bans that actor", async () => {
     const roomId = "room-member-removal-test";
     const actorId = "actor-member-removal-test";

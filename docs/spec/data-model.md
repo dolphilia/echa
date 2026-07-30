@@ -1,7 +1,7 @@
 # Data model
 
 更新日: 2026-07-30
-状態: migration `0001`〜`0019`はproduction反映済み。`0020`はlocal実装済み、
+状態: migration `0001`〜`0020`はproduction反映済み。`0021`はlocal実装済み、
 preview / production適用前。
 
 ## 原則
@@ -74,9 +74,27 @@ suspended`かつprovisioningが`pending | ready`のroomを条件付きINSERT内�
 同時requestでも2件目を作らない。`closing`へ遷移したroomは物理削除前でも上限から
 外し、次のroomを作成できる。失敗projectionの再試行も、別の未終了roomがある場合は
 拒否する。
+サイト全体の同時開催room数は`service_capacity_limits.live_room_limit`を上限とし、
+同じ条件付きINSERT内で数える。作成時点の`participant_limit`と`viewer_limit`を
+同テーブルからroom rowへ固定保存する。新しいroomでは両者の合計を20以下とし、
+設定変更を既存roomへ遡及しない。
 公開一覧は`visibility = public`、`provisioning_status = ready`、
 `status IN (waiting, active, idle)`だけを返す。終了時に物理削除し、
 復旧backup対象にしない。
+
+### `service_capacity_limits`
+
+- singleton row
+- `live_room_limit`: 1〜20、初期値20
+- `participant_limit`: 1〜20、初期値10
+- `viewer_limit`: 0〜19、初期値10
+- participantとviewerの合計は20以下
+- `revision`, `updated_at`, `actor_admin_id`, `reason`
+
+`service_capacity_limit_actions`へ変更者、変更値、理由、適用revisionを記録する。
+通常の利用上限であり、機能を即時停止する`service_controls`とは分離する。
+role別接続数のauthoritativeな判定はroom Durable Objectで行い、D1の
+`participant_count` / `viewer_count`は一覧表示用projectionとして扱う。
 
 ### `guest_sessions`
 

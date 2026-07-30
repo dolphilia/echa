@@ -4,6 +4,7 @@ import authMigration from "../../../migrations/d1/0002_better_auth.sql?raw";
 import roomMigration from "../../../migrations/d1/0003_room_projection.sql?raw";
 import provisioningMigration from "../../../migrations/d1/0004_room_provisioning.sql?raw";
 import serviceControlsMigration from "../../../migrations/d1/0014_service_controls.sql?raw";
+import serviceCapacityMigration from "../../../migrations/d1/0021_service_capacity_limits.sql?raw";
 import {
   AdminModerationConflictError,
   AdminModerationNotAvailableError,
@@ -20,6 +21,12 @@ import {
   parseServiceControlInput,
   readServiceControls,
 } from "../app/server/service-controls";
+import {
+  ServiceCapacityLimitConflictError,
+  applyServiceCapacityLimits,
+  parseServiceCapacityLimitInput,
+  readServiceCapacityLimits,
+} from "../app/server/service-capacity";
 
 const NOW = 1_785_400_000_000;
 
@@ -28,6 +35,7 @@ beforeAll(async () => {
   await applySqlMigration(env.DB, roomMigration);
   await applySqlMigration(env.DB, provisioningMigration);
   await applySqlMigration(env.DB, serviceControlsMigration);
+  await applySqlMigration(env.DB, serviceCapacityMigration);
   await env.DB.prepare(
     `INSERT INTO user (
       id, name, email, emailVerified, createdAt, updatedAt, status
@@ -81,6 +89,63 @@ beforeAll(async () => {
 });
 
 describe("administrator moderation boundary", () => {
+  it("applies bounded capacity limits and audits idempotently", async () => {
+    expect(parseServiceCapacityLimitInput({
+      liveRoomLimit: 12,
+      participantLimit: 4,
+      viewerLimit: 16,
+      reason: "  staged capacity reduction  ",
+    })).toEqual({
+      liveRoomLimit: 12,
+      participantLimit: 4,
+      viewerLimit: 16,
+      reason: "staged capacity reduction",
+    });
+    expect(() => parseServiceCapacityLimitInput({
+      liveRoomLimit: 12,
+      participantLimit: 4,
+      viewerLimit: 17,
+      reason: "over combined limit",
+    })).toThrow("invalid capacity limit input");
+
+    const input = {
+      actionId: "capacity_12345678-1234-4123-8123-123456789abc",
+      actorAdminId: "access_12345678-1234-4123-8123-123456789abc",
+      limits: {
+        liveRoomLimit: 12,
+        participantLimit: 4,
+        viewerLimit: 16,
+        reason: "staged capacity reduction",
+      },
+      now: NOW,
+    };
+    await expect(applyServiceCapacityLimits(env.DB, input)).resolves
+      .toMatchObject({
+        status: "applied",
+        limits: {
+          revision: 1,
+          liveRoomLimit: 12,
+          participantLimit: 4,
+          viewerLimit: 16,
+        },
+      });
+    await expect(applyServiceCapacityLimits(env.DB, input)).resolves
+      .toMatchObject({
+        status: "already_applied",
+        limits: { revision: 1 },
+      });
+    await expect(readServiceCapacityLimits(env.DB)).resolves.toMatchObject({
+      revision: 1,
+      liveRoomLimit: 12,
+      participantLimit: 4,
+      viewerLimit: 16,
+    });
+    await expect(applyServiceCapacityLimits(env.DB, {
+      ...input,
+      limits: { ...input.limits, viewerLimit: 15 },
+    })).rejects.toBeInstanceOf(ServiceCapacityLimitConflictError);
+  });
+
   it("applies and audits idempotent emergency controls", async () => {
     expect(parseServiceControlInput({
       roomCreationEnabled: false,

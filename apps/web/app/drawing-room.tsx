@@ -1355,6 +1355,19 @@ export default function DrawingRoom({
               );
               return;
             }
+            if (response.status === 429) {
+              terminal = true;
+              setConnectionStatus("disconnected");
+              showRealtimeNotice(
+                errorBody?.error === "ROOM_PARTICIPANT_CAPACITY_REACHED"
+                  ? "描く人の人数が上限に達しています。"
+                  : errorBody?.error === "ROOM_VIEWER_CAPACITY_REACHED"
+                  ? "見る人の人数が上限に達しています。"
+                  : "このルームは現在満員です。",
+                "warning",
+              );
+              return;
+            }
             if (
               response.status === 503
               && errorBody?.error === "ROOM_ENTRY_PAUSED"

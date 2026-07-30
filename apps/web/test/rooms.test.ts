@@ -9,12 +9,14 @@ import moderationMigration from "../../../migrations/d1/0008_moderation_evidence
 import serviceBansMigration from "../../../migrations/d1/0017_service_bans.sql?raw";
 import removeRoomThemesMigration from "../../../migrations/d1/0019_remove_room_themes.sql?raw";
 import roomThumbnailsMigration from "../../../migrations/d1/0020_room_thumbnails.sql?raw";
+import serviceCapacityMigration from "../../../migrations/d1/0021_service_capacity_limits.sql?raw";
 import { GET, POST } from "../app/api/rooms/route";
 import {
   RoomCreationConflictError,
   RoomCreationDisabledError,
   RoomCreationLimitError,
   RoomProvisioningError,
+  SiteRoomCreationLimitError,
   createRoom,
   listOwnedLiveRoomSlugs,
   listPublicRooms,
@@ -30,6 +32,7 @@ beforeAll(async () => {
   await applySqlMigration(env.DB, provisioningMigration);
   await applySqlMigration(env.DB, inviteMigration);
   await applySqlMigration(env.DB, serviceControlsMigration);
+  await applySqlMigration(env.DB, serviceCapacityMigration);
   await applySqlMigration(env.DB, moderationMigration);
   await applySqlMigration(env.DB, serviceBansMigration);
   const insertUser = env.DB.prepare(
@@ -92,6 +95,26 @@ beforeAll(async () => {
       "user-retry-limit-test",
       "Retry limit owner",
       "retry-limit@example.test",
+      1,
+      null,
+      NOW,
+      NOW,
+      "active",
+    ),
+    insertUser.bind(
+      "user-site-limit-test",
+      "Site limit owner",
+      "site-limit@example.test",
+      1,
+      null,
+      NOW,
+      NOW,
+      "active",
+    ),
+    insertUser.bind(
+      "user-site-limit-test-two",
+      "Second site limit owner",
+      "site-limit-two@example.test",
       1,
       null,
       NOW,
@@ -660,5 +683,74 @@ describe("public room projection", () => {
         NOW + 3,
       ),
     ).rejects.toBeInstanceOf(RoomCreationLimitError);
+  });
+
+  it("rejects creation atomically when the site live-room limit is reached", async () => {
+    const current = await env.DB.prepare(
+      `SELECT COUNT(*) AS count FROM rooms
+       WHERE provisioning_status IN ('pending', 'ready')
+         AND status IN ('waiting', 'active', 'idle', 'suspended')`,
+    ).first<{ count: number }>();
+    const liveRoomLimit = (current?.count ?? 0) + 1;
+    expect(liveRoomLimit).toBeLessThanOrEqual(20);
+    await env.DB.prepare(
+      `UPDATE service_capacity_limits
+       SET live_room_limit = ?, participant_limit = 4, viewer_limit = 16
+       WHERE singleton = 1`,
+    ).bind(liveRoomLimit).run();
+    const realtime = {
+      async fetch(_input: RequestInfo | URL, init?: RequestInit) {
+        const request = JSON.parse(String(init?.body)) as {
+          roomId: string;
+          createdAt: number;
+          maxEndsAt: number;
+        };
+        return Response.json({
+          status: "initialized" as const,
+          roomId: request.roomId,
+          createdAt: request.createdAt,
+          maxEndsAt: request.maxEndsAt,
+        });
+      },
+    };
+    try {
+      const input = {
+        name: "全体上限",
+        visibility: "public" as const,
+        inviteToken: null,
+      };
+      const attempts = await Promise.allSettled([
+        createRoom(
+          env.DB,
+          realtime,
+          "user-site-limit-test",
+          "site-limit-request-one",
+          input,
+          NOW + 10,
+        ),
+        createRoom(
+          env.DB,
+          realtime,
+          "user-site-limit-test-two",
+          "site-limit-request-two",
+          input,
+          NOW + 10,
+        ),
+      ]);
+      expect(attempts.filter((result) => result.status === "fulfilled"))
+        .toHaveLength(1);
+      const rejected = attempts.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === "rejected",
+      );
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0]?.reason).toBeInstanceOf(SiteRoomCreationLimitError);
+    } finally {
+      await env.DB.prepare(
+        `UPDATE service_capacity_limits
+         SET live_room_limit = 20, participant_limit = 10, viewer_limit = 10
+         WHERE singleton = 1`,
+      ).run();
+    }
   });
 });

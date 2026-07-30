@@ -727,6 +727,12 @@ Hibernation実行票: [`../spikes/websocket-hibernation.md`](../spikes/websocket
 - 通報、BAN、証跡開示・削除、緊急停止の運用者と手順を定める。
 - dashboard、alert、runbookを用意する。
 - cost上限と異常増加alertを設定する。
+- 管理画面からサイト同時開催room数と新規roomのrole別上限を、安全上限内で
+  絞れるようにする。2026-07-30にlocal実装し、初期値を20 room、
+  participant 10、viewer 10とした。participantとviewerの合計20接続を
+  hard limitとし、20超への拡張は後続のRealtime負荷試験と別判断まで行わない。
+  D1の同時作成競合、DOのrole別入室、owner予約席、既存room互換をpreviewで
+  検証してからproductionへ協調配備する。
 - production migrationとrollback手順を試す。
   2026-07-29に空のproduction D1へ`0001`〜`0017`を適用し、
   Realtime、Snapshot、Webの順で初回配備した。home / session / rooms /

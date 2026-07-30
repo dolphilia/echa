@@ -314,6 +314,18 @@ export async function issueRoomTicket(
     },
   );
   if (!response.ok) {
+    if (response.status === 429) {
+      const body = await response.json().catch(() => null) as {
+        error?: string;
+      } | null;
+      if (
+        body?.error === "ROOM_CAPACITY_REACHED"
+        || body?.error === "ROOM_PARTICIPANT_CAPACITY_REACHED"
+        || body?.error === "ROOM_VIEWER_CAPACITY_REACHED"
+      ) {
+        throw new RoomCapacityReachedError(body.error);
+      }
+    }
     throw new RoomTicketRegistrationError(
       `realtime ticket registration returned ${response.status}`,
     );
@@ -341,3 +353,14 @@ export class RoomAccessNotFoundError extends Error {}
 export class RoomAccessForbiddenError extends Error {}
 export class RoomEntryDisabledError extends Error {}
 export class RoomTicketRegistrationError extends Error {}
+export class RoomCapacityReachedError extends Error {
+  readonly code:
+    | "ROOM_CAPACITY_REACHED"
+    | "ROOM_PARTICIPANT_CAPACITY_REACHED"
+    | "ROOM_VIEWER_CAPACITY_REACHED";
+
+  constructor(code: RoomCapacityReachedError["code"]) {
+    super(code);
+    this.code = code;
+  }
+}

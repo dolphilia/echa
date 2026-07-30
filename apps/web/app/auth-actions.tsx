@@ -106,6 +106,8 @@ export default function AuthActions({
     setCreateError(
       errorCode === "LIVE_ROOM_LIMIT_REACHED"
         ? "同時に作成できるルームは1件までです。"
+        : errorCode === "SITE_LIVE_ROOM_LIMIT_REACHED"
+        ? "現在、サイト全体の開催ルーム数が上限に達しています。"
         : errorCode === "SERVICE_BANNED"
         ? "現在、このアカウントではルームを作成できません。"
         : errorCode === "ROOM_CREATION_PAUSED"

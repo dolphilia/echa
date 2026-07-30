@@ -16,7 +16,7 @@ preview資源をproductionへ流用せず、各段階に停止点を設ける。
 - 3 Workerの`env.production`とgenerated typesは追加済み
 - 3 Workerのproduction dry-runは成功
 - production Access AUDは設定済み
-- production D1へ`0001`〜`0020`を適用済み、未適用0
+- production D1へ`0001`〜`0020`を適用済み。`0021`はlocal実装済み、未配備
 - production Better Auth / Google OAuth secretsは設定済み
 - Realtime、Snapshot、Webの初回配備とCustom Domain公開は完了
 - 自動smokeと利用者によるOAuth / room / 管理操作E2Eはpass
@@ -149,6 +149,17 @@ npm exec wrangler -- d1 execute koge-production --remote \
   --config apps/realtime/wrangler.jsonc --env production \
   --command "SELECT name FROM pragma_table_info('rooms') WHERE name LIKE 'thumbnail_%' ORDER BY name"
 ```
+
+`0021_service_capacity_limits.sql`を含む配備では、初期値とCHECK境界を確認する。
+
+```sh
+npm exec wrangler -- d1 execute koge-production --remote \
+  --config apps/realtime/wrangler.jsonc --env production \
+  --command "SELECT revision, live_room_limit, participant_limit, viewer_limit FROM service_capacity_limits WHERE singleton = 1"
+```
+
+初回値が`0, 20, 10, 10`であり、participantとviewerの合計が20以下であることを
+確認する。管理画面から変更するまではD1を直接更新しない。
 
 ## Step 1.5: 新規room作成を停止する
 

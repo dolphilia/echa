@@ -5,6 +5,7 @@ import {
   RoomCreationDisabledError,
   RoomCreationLimitError,
   RoomProvisioningError,
+  SiteRoomCreationLimitError,
   createRoom,
   listPublicRooms,
   parseCreateRoomInput,
@@ -116,6 +117,12 @@ export async function POST(request: Request): Promise<Response> {
     if (error instanceof RoomCreationLimitError) {
       return Response.json(
         { error: "LIVE_ROOM_LIMIT_REACHED" },
+        { status: 429 },
+      );
+    }
+    if (error instanceof SiteRoomCreationLimitError) {
+      return Response.json(
+        { error: "SITE_LIVE_ROOM_LIMIT_REACHED" },
         { status: 429 },
       );
     }

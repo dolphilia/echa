@@ -1,8 +1,11 @@
 export const ROOM_PROVISIONING_VERSION = 1;
 export const ROOM_MAX_DURATION_MS = 2 * 60 * 60 * 1_000;
 export const ROOM_NAME_MAX_LENGTH = 60;
-export const ROOM_PARTICIPANT_LIMIT = 20;
-export const ROOM_VIEWER_LIMIT = 100;
+export const ROOM_PARTICIPANT_LIMIT = 10;
+export const ROOM_VIEWER_LIMIT = 10;
+export const ROOM_ROLE_LIMIT_MAX = 20;
+export const LEGACY_ROOM_PARTICIPANT_LIMIT = 20;
+export const LEGACY_ROOM_VIEWER_LIMIT = 100;
 
 export type RoomVisibility = "public" | "unlisted";
 
@@ -54,6 +57,21 @@ export function validateRoomProvisioningRequest(
     createdAt,
     maxEndsAt,
   } = value;
+  const hasSafeCapacityLimits = (
+    typeof value.participantLimit === "number"
+    && Number.isSafeInteger(value.participantLimit)
+    && value.participantLimit >= 1
+    && value.participantLimit <= ROOM_ROLE_LIMIT_MAX
+    && typeof value.viewerLimit === "number"
+    && Number.isSafeInteger(value.viewerLimit)
+    && value.viewerLimit >= 0
+    && value.viewerLimit < ROOM_ROLE_LIMIT_MAX
+    && value.participantLimit + value.viewerLimit <= ROOM_ROLE_LIMIT_MAX
+  );
+  const hasLegacyCapacityLimits = (
+    value.participantLimit === LEGACY_ROOM_PARTICIPANT_LIMIT
+    && value.viewerLimit === LEGACY_ROOM_VIEWER_LIMIT
+  );
   if (
     value.v !== ROOM_PROVISIONING_VERSION
     || typeof roomId !== "string"
@@ -67,8 +85,7 @@ export function validateRoomProvisioningRequest(
     || codePointLength(name) < 1
     || codePointLength(name) > ROOM_NAME_MAX_LENGTH
     || (visibility !== "public" && visibility !== "unlisted")
-    || value.participantLimit !== ROOM_PARTICIPANT_LIMIT
-    || value.viewerLimit !== ROOM_VIEWER_LIMIT
+    || (!hasSafeCapacityLimits && !hasLegacyCapacityLimits)
     || typeof value.viewerChatEnabled !== "boolean"
     || typeof value.viewerStampEnabled !== "boolean"
     || typeof createdAt !== "number"

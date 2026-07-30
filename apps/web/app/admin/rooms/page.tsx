@@ -8,6 +8,11 @@ import {
 } from "../../server/admin-access";
 import { listAdminRooms } from "../../server/admin-moderation";
 import { readServiceControls } from "../../server/service-controls";
+import {
+  SERVICE_LIVE_ROOM_HARD_LIMIT,
+  SERVICE_ROOM_CONNECTION_HARD_LIMIT,
+  readServiceCapacityLimits,
+} from "../../server/service-capacity";
 import { listAdminServiceBans } from "../../server/service-bans";
 
 export const dynamic = "force-dynamic";
@@ -40,13 +45,19 @@ export default async function AdminRoomsPage() {
     throw error;
   }
 
-  const [rooms, controls, serviceBans] = await Promise.all([
+  const [rooms, controls, capacityLimits, serviceBans] = await Promise.all([
     listAdminRooms(env.DB),
     readServiceControls(env.DB),
+    readServiceCapacityLimits(env.DB),
     listAdminServiceBans(env.DB),
   ]);
   return (
     <AdminRoomConsole
+      capacityHardLimits={{
+        liveRooms: SERVICE_LIVE_ROOM_HARD_LIMIT,
+        roomConnections: SERVICE_ROOM_CONNECTION_HARD_LIMIT,
+      }}
+      initialCapacityLimits={capacityLimits}
       initialControls={controls}
       initialRooms={rooms}
       initialServiceBans={serviceBans}

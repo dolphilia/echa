@@ -1,9 +1,7 @@
 import {
   ROOM_MAX_DURATION_MS,
   ROOM_NAME_MAX_LENGTH,
-  ROOM_PARTICIPANT_LIMIT,
   ROOM_PROVISIONING_VERSION,
-  ROOM_VIEWER_LIMIT,
   validateRoomProvisioningRequest,
   validateRoomProvisioningResult,
   type RoomProvisioningRequest,
@@ -84,6 +82,7 @@ type ProvisioningRoomRow = {
 export class RoomCreationConflictError extends Error {}
 export class RoomCreationDisabledError extends Error {}
 export class RoomCreationLimitError extends Error {}
+export class SiteRoomCreationLimitError extends Error {}
 export class RoomProvisioningError extends Error {}
 
 function codePointLength(value: string): number {
@@ -284,8 +283,11 @@ export async function createRoom(
           provisioning_attempts, provisioning_updated_at
         )
         SELECT
-          ?, ?, ?, ?, ?, 'waiting', ?, ?, 0, 0, 0, 0, ?, ?, ?,
+          ?, ?, ?, ?, ?, 'waiting',
+          capacity.participant_limit, capacity.viewer_limit,
+          0, 0, 0, 0, ?, ?, ?,
           'pending', ?, 0, ?
+        FROM service_capacity_limits AS capacity
         WHERE (
           SELECT COUNT(*)
           FROM rooms
@@ -293,6 +295,12 @@ export async function createRoom(
             AND provisioning_status IN ('pending', 'ready')
             AND status IN ('waiting', 'active', 'idle', 'suspended')
         ) < ?
+        AND (
+          SELECT COUNT(*)
+          FROM rooms
+          WHERE provisioning_status IN ('pending', 'ready')
+            AND status IN ('waiting', 'active', 'idle', 'suspended')
+        ) < capacity.live_room_limit
         AND EXISTS (
           SELECT 1 FROM service_controls
           WHERE singleton = 1 AND room_creation_enabled = 1
@@ -303,8 +311,6 @@ export async function createRoom(
         ownerUserId,
         input.name,
         input.visibility,
-        ROOM_PARTICIPANT_LIMIT,
-        ROOM_VIEWER_LIMIT,
         now,
         maxEndsAt,
         now,
@@ -344,6 +350,36 @@ export async function createRoom(
         if (latestControls?.room_creation_enabled !== 1) {
           throw new RoomCreationDisabledError(
             "room creation is paused by emergency control",
+          );
+        }
+        const capacity = await database.prepare(
+          `SELECT
+             limits.live_room_limit,
+             (
+               SELECT COUNT(*) FROM rooms
+               WHERE owner_user_id = ?
+                 AND provisioning_status IN ('pending', 'ready')
+                 AND status IN ('waiting', 'active', 'idle', 'suspended')
+             ) AS owner_live_rooms,
+             (
+               SELECT COUNT(*) FROM rooms
+               WHERE provisioning_status IN ('pending', 'ready')
+                 AND status IN ('waiting', 'active', 'idle', 'suspended')
+             ) AS live_rooms
+           FROM service_capacity_limits AS limits
+           WHERE limits.singleton = 1`,
+        ).bind(ownerUserId).first<{
+          live_room_limit: number;
+          owner_live_rooms: number;
+          live_rooms: number;
+        }>();
+        if (
+          capacity
+          && capacity.live_rooms >= capacity.live_room_limit
+          && capacity.owner_live_rooms < OWNER_LIVE_ROOM_LIMIT
+        ) {
+          throw new SiteRoomCreationLimitError(
+            "site live room limit reached",
           );
         }
         throw new RoomCreationLimitError("owner live room limit reached");

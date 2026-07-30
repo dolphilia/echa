@@ -4,6 +4,7 @@ import {
   RoomAccessForbiddenError,
   RoomEntryDisabledError,
   RoomAccessNotFoundError,
+  RoomCapacityReachedError,
   RoomTicketRegistrationError,
   issueRoomTicket,
   resolveRoomAccessSubject,
@@ -125,6 +126,9 @@ export async function POST(
         { error: "ROOM_ENTRY_PAUSED", retryable: true },
         { status: 503 },
       );
+    }
+    if (error instanceof RoomCapacityReachedError) {
+      return Response.json({ error: error.code }, { status: 429 });
     }
     if (error instanceof RoomTicketRegistrationError) {
       return Response.json(

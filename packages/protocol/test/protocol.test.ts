@@ -538,7 +538,7 @@ describe("stroke outbox", () => {
 });
 
 describe("room provisioning contract", () => {
-  it("accepts the fixed MVP room limits and rejects metadata drift", () => {
+  it("accepts bounded room limits and legacy rooms while rejecting drift", () => {
     const createdAt = 1_785_200_000_000;
     const request = {
       v: ROOM_PROVISIONING_VERSION,
@@ -556,6 +556,21 @@ describe("room provisioning contract", () => {
     } as const;
 
     expect(() => validateRoomProvisioningRequest(request)).not.toThrow();
+    expect(() => validateRoomProvisioningRequest({
+      ...request,
+      participantLimit: 4,
+      viewerLimit: 16,
+    })).not.toThrow();
+    expect(() => validateRoomProvisioningRequest({
+      ...request,
+      participantLimit: 20,
+      viewerLimit: 100,
+    })).not.toThrow();
+    expect(() => validateRoomProvisioningRequest({
+      ...request,
+      participantLimit: 4,
+      viewerLimit: 17,
+    })).toThrow("invalid room provisioning request");
     expect(() => validateRoomProvisioningRequest({
       ...request,
       maxEndsAt: request.maxEndsAt + 1,
