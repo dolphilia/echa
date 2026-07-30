@@ -1,4 +1,6 @@
 import {
+  PROTOCOL_LIMITS,
+  PROTOCOL_VERSION,
   SNAPSHOT_JOB_VERSION,
   SNAPSHOT_CANVAS_GENERATION,
   SNAPSHOT_RENDERER_VERSION,
@@ -33,7 +35,7 @@ function emptySnapshotJob(suffix: string): SnapshotJob {
     jobId: `snapshot-job-${suffix}`,
     roomId: `room-snapshot-${suffix}`,
     targetRoomSeq: 0,
-    protocolVersion: 1,
+    protocolVersion: PROTOCOL_VERSION,
     rendererVersion: SNAPSHOT_RENDERER_VERSION,
     canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
     generation: 1,
@@ -76,8 +78,10 @@ describe("snapshot Worker canonical renderer", () => {
       service: "koge-snapshot",
       environment: "local",
       rendererVersion: 1,
-      rgbaBytes: 960 * 640 * 4,
-      rgbaHash: "3a4e5e43f7371312ba0f4512f84a297aeb8e9a7012c67eff4512bc1f302537cb",
+      rgbaBytes: PROTOCOL_LIMITS.canvasWidth
+        * PROTOCOL_LIMITS.canvasHeight
+        * 4,
+      rgbaHash: "5417cae6587907b72b02cd21756bdee55d96124452d705107767bd14fccbc31b",
     });
   });
 
@@ -87,7 +91,7 @@ describe("snapshot Worker canonical renderer", () => {
       jobId: "snapshot-job-test-00000001",
       roomId: "room-snapshot-test-00000001",
       targetRoomSeq: 3,
-      protocolVersion: 1,
+      protocolVersion: PROTOCOL_VERSION,
       rendererVersion: SNAPSHOT_RENDERER_VERSION,
       canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
       generation: 1,
@@ -101,7 +105,7 @@ describe("snapshot Worker canonical renderer", () => {
         connectionId: "connection-snapshot-test",
         acceptedAt: 1,
         event: {
-          v: 1,
+          v: PROTOCOL_VERSION,
           op: "stroke.begin",
           clientSeq: 1,
           id: "stroke_snapshot_test_0001",
@@ -119,7 +123,7 @@ describe("snapshot Worker canonical renderer", () => {
         connectionId: "connection-snapshot-test",
         acceptedAt: 2,
         event: {
-          v: 1,
+          v: PROTOCOL_VERSION,
           op: "stroke.append",
           clientSeq: 2,
           id: "stroke_snapshot_test_0001",
@@ -133,7 +137,7 @@ describe("snapshot Worker canonical renderer", () => {
         connectionId: "connection-snapshot-test",
         acceptedAt: 3,
         event: {
-          v: 1,
+          v: PROTOCOL_VERSION,
           op: "stroke.end",
           clientSeq: 3,
           id: "stroke_snapshot_test_0001",
@@ -180,7 +184,9 @@ describe("snapshot Worker canonical renderer", () => {
       renderer,
     );
     expect(first.commit.status).toBe("committed");
-    expect(first.manifest.objectBytes).toBeLessThan(960 * 640 * 4);
+    expect(first.manifest.objectBytes).toBeLessThan(
+      PROTOCOL_LIMITS.canvasWidth * PROTOCOL_LIMITS.canvasHeight * 4,
+    );
 
     const object = await env.RUNTIME_SNAPSHOTS.get(first.manifest.objectKey);
     expect(object).not.toBeNull();
@@ -189,11 +195,14 @@ describe("snapshot Worker canonical renderer", () => {
     );
     expect(decoded).toMatchObject({
       rendererVersion: SNAPSHOT_RENDERER_VERSION,
-      width: 960,
-      height: 640,
+      width: PROTOCOL_LIMITS.canvasWidth,
+      height: PROTOCOL_LIMITS.canvasHeight,
     });
     const fixture = {
-      canvas: { width: 960, height: 640 },
+      canvas: {
+        width: PROTOCOL_LIMITS.canvasWidth,
+        height: PROTOCOL_LIMITS.canvasHeight,
+      },
       strokes: [{
         tool: "brush",
         color: "#336699",
@@ -237,7 +246,7 @@ describe("snapshot Worker canonical renderer", () => {
         connectionId: "connection-snapshot-test",
         acceptedAt: 4,
         event: {
-          v: 1,
+          v: PROTOCOL_VERSION,
           op: "stroke.begin",
           clientSeq: 4,
           id: "stroke_snapshot_test_0002",
@@ -255,7 +264,7 @@ describe("snapshot Worker canonical renderer", () => {
         connectionId: "connection-snapshot-test",
         acceptedAt: 5,
         event: {
-          v: 1,
+          v: PROTOCOL_VERSION,
           op: "stroke.append",
           clientSeq: 5,
           id: "stroke_snapshot_test_0002",
@@ -269,7 +278,7 @@ describe("snapshot Worker canonical renderer", () => {
         connectionId: "connection-snapshot-test",
         acceptedAt: 6,
         event: {
-          v: 1,
+          v: PROTOCOL_VERSION,
           op: "stroke.end",
           clientSeq: 6,
           id: "stroke_snapshot_test_0002",
@@ -382,13 +391,13 @@ describe("snapshot Worker canonical renderer", () => {
       jobId: job.sourceSnapshotJobId,
       roomId: job.roomId,
       baseRoomSeq: 0,
-      protocolVersion: 1,
+      protocolVersion: PROTOCOL_VERSION,
       rendererVersion: SNAPSHOT_RENDERER_VERSION,
       canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
       generation: 1,
       codec: "koge-rgba-deflate-v1",
-      width: 960,
-      height: 640,
+      width: PROTOCOL_LIMITS.canvasWidth,
+      height: PROTOCOL_LIMITS.canvasHeight,
       objectKey: `rooms/${job.roomId}/snapshots/staging/${job.sourceSnapshotJobId}.kgs`,
       objectBytes: 24,
       objectHash: "1".repeat(64),

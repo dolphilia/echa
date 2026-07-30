@@ -219,6 +219,15 @@ type SnapshotAutomationRow = {
   room_id: string | null;
   pending_compaction_job_id: string | null;
   compaction_due_at: number | null;
+  initial_thumbnail_state:
+    | "uninitialized"
+    | "disabled"
+    | "scheduled"
+    | "waiting_for_stroke"
+    | "queued"
+    | "satisfied";
+  initial_thumbnail_due_at: number | null;
+  initial_thumbnail_job_id: string | null;
   last_evaluated_at: number;
   last_evaluation_status: SnapshotAutomationDecision["status"] | null;
 };
@@ -234,6 +243,9 @@ type SnapshotAutomationState = {
   roomId?: string;
   pendingCompactionJobId?: string;
   compactionDueAt?: number;
+  initialThumbnailState: SnapshotAutomationRow["initial_thumbnail_state"];
+  initialThumbnailDueAt?: number;
+  initialThumbnailJobId?: string;
   lastEvaluatedAt: number;
   lastEvaluationStatus?: SnapshotAutomationDecision["status"];
 };
@@ -306,7 +318,7 @@ const SNAPSHOT_READ_TOKEN_PATTERN = /^[a-f0-9]{64}$/;
 const MAX_EXCLUDED_SNAPSHOT_JOBS = 2;
 const MAX_REPLAY_FRAME_CACHE_BYTES = 8 * 1024 * 1024;
 const MINUTE_MS = 60 * 1_000;
-const LATEST_SCHEMA_VERSION = 28;
+const LATEST_SCHEMA_VERSION = 29;
 
 function roomTimeWarningForStage(
   stage: number,
@@ -1046,6 +1058,22 @@ export class DrawingRoom extends DurableObject<Env> {
         ALTER TABLE chat_messages
           ADD COLUMN avatar_url TEXT;
         INSERT INTO _sql_schema_migrations (id) VALUES (28);
+      `);
+    }
+    if (currentVersion < 29) {
+      this.ctx.storage.sql.exec(`
+        ALTER TABLE snapshot_automation
+          ADD COLUMN initial_thumbnail_state TEXT NOT NULL
+          DEFAULT 'uninitialized'
+          CHECK (initial_thumbnail_state IN (
+            'uninitialized', 'disabled', 'scheduled',
+            'waiting_for_stroke', 'queued', 'satisfied'
+          ));
+        ALTER TABLE snapshot_automation
+          ADD COLUMN initial_thumbnail_due_at INTEGER;
+        ALTER TABLE snapshot_automation
+          ADD COLUMN initial_thumbnail_job_id TEXT;
+        INSERT INTO _sql_schema_migrations (id) VALUES (29);
       `);
     }
     return currentVersion < LATEST_SCHEMA_VERSION;
@@ -1853,6 +1881,8 @@ export class DrawingRoom extends DurableObject<Env> {
     }
     const roomTimeWarning = this.reconcileRoomTimeWarning(now);
     if (roomTimeWarning) this.broadcastEphemeral(roomTimeWarning);
+    const roomId = this.roomIdentity();
+    if (roomId) await this.reconcileInitialThumbnail(roomId, now);
     const due = this.ctx.storage.sql
       .exec<{ stroke_id: string; actor: string }>(
         `SELECT stroke_id, actor
@@ -1914,7 +1944,6 @@ export class DrawingRoom extends DurableObject<Env> {
     }
 
     await this.runPendingSnapshotCompaction(now);
-    const roomId = this.roomIdentity();
     if (due.length > 0 && roomId) {
       if (await this.reconcileRoomActivityLimit()) return;
       await this.reconcileSnapshotAutomation(roomId);
@@ -2435,7 +2464,9 @@ export class DrawingRoom extends DurableObject<Env> {
       this.ctx.storage.sql.exec("DELETE FROM scheduled_tasks");
       this.ctx.storage.sql.exec(
         `UPDATE snapshot_automation
-         SET pending_compaction_job_id = NULL, compaction_due_at = NULL
+         SET pending_compaction_job_id = NULL, compaction_due_at = NULL,
+             initial_thumbnail_state = 'disabled',
+             initial_thumbnail_due_at = NULL
          WHERE singleton = 1`,
       );
       this.ctx.storage.sql.exec(
@@ -2524,7 +2555,9 @@ export class DrawingRoom extends DurableObject<Env> {
       this.ctx.storage.sql.exec("DELETE FROM room_tickets");
       this.ctx.storage.sql.exec(
         `UPDATE snapshot_automation
-         SET pending_compaction_job_id = NULL, compaction_due_at = NULL
+         SET pending_compaction_job_id = NULL, compaction_due_at = NULL,
+             initial_thumbnail_state = 'disabled',
+             initial_thumbnail_due_at = NULL
          WHERE singleton = 1`,
       );
       this.ctx.storage.sql.exec("DELETE FROM scheduled_tasks");
@@ -2859,6 +2892,7 @@ export class DrawingRoom extends DurableObject<Env> {
       throw new TypeError("invalid room id");
     }
     this.ensureRoomIdentity(roomId);
+    await this.reconcileInitialThumbnail(roomId, Date.now());
     const config = snapshotAutomationConfig(this.env);
     const state = this.ctx.storage.sql.exec<{
       lifecycle_active: number;
@@ -2870,7 +2904,8 @@ export class DrawingRoom extends DurableObject<Env> {
       last_job_payload_bytes: number | null;
     }>(`
       SELECT
-        (SELECT status = 'active' FROM room_lifecycle WHERE singleton = 1)
+        (SELECT status IN ('active', 'idle')
+         FROM room_lifecycle WHERE singleton = 1)
           AS lifecycle_active,
         (SELECT COUNT(*) FROM strokes WHERE status = 'active') AS active_strokes,
         (SELECT COUNT(*) FROM snapshot_jobs WHERE status = 'queued') AS queued_jobs,
@@ -2942,6 +2977,13 @@ export class DrawingRoom extends DurableObject<Env> {
       ...(row.compaction_due_at === null
         ? {}
         : { compactionDueAt: row.compaction_due_at }),
+      initialThumbnailState: row.initial_thumbnail_state,
+      ...(row.initial_thumbnail_due_at === null
+        ? {}
+        : { initialThumbnailDueAt: row.initial_thumbnail_due_at }),
+      ...(row.initial_thumbnail_job_id === null
+        ? {}
+        : { initialThumbnailJobId: row.initial_thumbnail_job_id }),
       lastEvaluatedAt: row.last_evaluated_at,
       ...(row.last_evaluation_status === null
         ? {}
@@ -2952,12 +2994,14 @@ export class DrawingRoom extends DurableObject<Env> {
   private async createSnapshotJob(
     roomId: string,
     triggerKind: "manual" | "events" | "payload",
+    reserveInitialThumbnail: boolean = false,
   ): Promise<SnapshotJob> {
     if (!IDENTIFIER_PATTERN.test(roomId)) {
       throw new TypeError("invalid room id");
     }
     this.ensureRoomIdentity(roomId);
-    if (this.roomLifecycleState().status !== "active") {
+    const lifecycle = this.roomLifecycleState();
+    if (lifecycle.status !== "active" && lifecycle.status !== "idle") {
       throw new Error("room is closing");
     }
     const state = this.ctx.storage.sql.exec<{
@@ -2993,6 +3037,9 @@ export class DrawingRoom extends DurableObject<Env> {
       }
       const job = snapshotJobFromRow(existing);
       if (existing.status === "queued") {
+        if (reserveInitialThumbnail) {
+          this.reserveInitialThumbnailJob(job.jobId);
+        }
         await this.env.SNAPSHOT_QUEUE.send(job);
       }
       return job;
@@ -3054,6 +3101,9 @@ export class DrawingRoom extends DurableObject<Env> {
       state.event_count,
       state.payload_bytes,
     );
+    if (reserveInitialThumbnail) {
+      this.reserveInitialThumbnailJob(job.jobId);
+    }
     await this.env.SNAPSHOT_QUEUE.send(job);
     return job;
   }
@@ -3135,7 +3185,10 @@ export class DrawingRoom extends DurableObject<Env> {
         jobId,
       )
       .toArray()[0];
-    return lifecycle.status === "active" && job?.status === "queued"
+    return (
+      lifecycle.status === "active"
+      || lifecycle.status === "idle"
+    ) && job?.status === "queued"
       ? "run"
       : "discard";
   }
@@ -3266,6 +3319,17 @@ export class DrawingRoom extends DurableObject<Env> {
          WHERE singleton = 1`,
         manifest.jobId,
       );
+      if (manifest.baseRoomSeq > 0) {
+        this.ctx.storage.sql.exec(
+          `UPDATE snapshot_automation
+           SET initial_thumbnail_state = 'satisfied',
+               initial_thumbnail_due_at = NULL,
+               initial_thumbnail_job_id = ?
+           WHERE singleton = 1
+             AND initial_thumbnail_state NOT IN ('disabled', 'satisfied')`,
+          manifest.jobId,
+        );
+      }
       return { status: "committed", manifest };
     });
     if (
@@ -3323,6 +3387,13 @@ export class DrawingRoom extends DurableObject<Env> {
       )
       .toArray()[0];
     return row ? snapshotManifestFromRow(row) : undefined;
+  }
+
+  snapshotManifest(jobId: string): SnapshotManifest | undefined {
+    if (!IDENTIFIER_PATTERN.test(jobId)) {
+      throw new TypeError("invalid snapshot job id");
+    }
+    return this.readSnapshotManifest(jobId);
   }
 
   snapshotCompactionState(): SnapshotCompactionState {
@@ -3591,6 +3662,8 @@ export class DrawingRoom extends DurableObject<Env> {
     return this.ctx.storage.sql
       .exec<SnapshotAutomationRow>(
         `SELECT room_id, pending_compaction_job_id, compaction_due_at,
+                initial_thumbnail_state, initial_thumbnail_due_at,
+                initial_thumbnail_job_id,
                 last_evaluated_at, last_evaluation_status
          FROM snapshot_automation WHERE singleton = 1`,
       )
@@ -3633,6 +3706,14 @@ export class DrawingRoom extends DurableObject<Env> {
 
   private roomIdentity(): string | undefined {
     return this.readSnapshotAutomation().room_id ?? undefined;
+  }
+
+  private readRoomMetadata(): RoomMetadataRow | undefined {
+    return this.ctx.storage.sql
+      .exec<RoomMetadataRow>(
+        "SELECT * FROM room_metadata WHERE singleton = 1",
+      )
+      .toArray()[0];
   }
 
   private async runPendingSnapshotCompaction(now: number): Promise<void> {
@@ -3679,6 +3760,125 @@ export class DrawingRoom extends DurableObject<Env> {
       done: result.done,
       retryAt,
     }));
+  }
+
+  private thumbnailFeatureEnabled(): boolean {
+    return this.env.THUMBNAIL_ENABLED === "true";
+  }
+
+  private initialThumbnailDelayMs(): number {
+    const delay = this.env.THUMBNAIL_INITIAL_DELAY_MS;
+    if (!Number.isSafeInteger(delay) || delay <= 0) {
+      throw new RangeError(
+        "THUMBNAIL_INITIAL_DELAY_MS must be a positive safe integer",
+      );
+    }
+    return delay;
+  }
+
+  private armInitialThumbnail(startedAt: number): void {
+    const metadata = this.readRoomMetadata();
+    const enabled = this.thumbnailFeatureEnabled()
+      && metadata?.visibility === "public";
+    this.ctx.storage.sql.exec(
+      `UPDATE snapshot_automation
+       SET initial_thumbnail_state = ?,
+           initial_thumbnail_due_at = ?,
+           initial_thumbnail_job_id = NULL
+       WHERE singleton = 1
+         AND initial_thumbnail_state = 'uninitialized'`,
+      enabled ? "scheduled" : "disabled",
+      enabled ? startedAt + this.initialThumbnailDelayMs() : null,
+    );
+  }
+
+  private async reconcileInitialThumbnail(
+    roomId: string,
+    now: number,
+  ): Promise<SnapshotJob | undefined> {
+    const automation = this.readSnapshotAutomation();
+    if (
+      automation.initial_thumbnail_state === "disabled"
+      || automation.initial_thumbnail_state === "queued"
+      || automation.initial_thumbnail_state === "satisfied"
+      || automation.initial_thumbnail_state === "uninitialized"
+    ) {
+      return undefined;
+    }
+    if (
+      automation.initial_thumbnail_state === "scheduled"
+      && (
+        automation.initial_thumbnail_due_at === null
+        || automation.initial_thumbnail_due_at > now
+      )
+    ) {
+      return undefined;
+    }
+    const lifecycle = this.roomLifecycleState();
+    if (lifecycle.status !== "active" && lifecycle.status !== "idle") {
+      this.ctx.storage.sql.exec(
+        `UPDATE snapshot_automation
+         SET initial_thumbnail_state = 'disabled',
+             initial_thumbnail_due_at = NULL
+         WHERE singleton = 1`,
+      );
+      return undefined;
+    }
+    if (this.currentSnapshot()?.baseRoomSeq) {
+      this.ctx.storage.sql.exec(
+        `UPDATE snapshot_automation
+         SET initial_thumbnail_state = 'satisfied',
+             initial_thumbnail_due_at = NULL
+         WHERE singleton = 1`,
+      );
+      return undefined;
+    }
+    const strokes = this.ctx.storage.sql.exec<{
+      active_count: number;
+      completed_count: number;
+    }>(`
+      SELECT
+        COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0)
+          AS active_count,
+        COALESCE(SUM(CASE WHEN status = 'ended' THEN 1 ELSE 0 END), 0)
+          AS completed_count
+      FROM strokes
+    `).one();
+    if (strokes.active_count > 0 || strokes.completed_count === 0) {
+      this.ctx.storage.sql.exec(
+        `UPDATE snapshot_automation
+         SET initial_thumbnail_state = 'waiting_for_stroke',
+             initial_thumbnail_due_at = NULL
+         WHERE singleton = 1`,
+      );
+      return undefined;
+    }
+    // createSnapshotJob persists this reservation synchronously before its
+    // first Queue await. Concurrent accepted events therefore observe
+    // `queued` and cannot create additional jobs while the send is in flight.
+    const job = await this.createSnapshotJob(roomId, "manual", true);
+    console.log(JSON.stringify({
+      level: "info",
+      message: "initial room thumbnail snapshot queued",
+      roomId,
+      jobId: job.jobId,
+      targetRoomSeq: job.targetRoomSeq,
+      waitedForStroke:
+        automation.initial_thumbnail_state === "waiting_for_stroke",
+    }));
+    return job;
+  }
+
+  private reserveInitialThumbnailJob(jobId: string): void {
+    this.ctx.storage.sql.exec(
+      `UPDATE snapshot_automation
+       SET initial_thumbnail_state = 'queued',
+           initial_thumbnail_due_at = NULL,
+           initial_thumbnail_job_id = ?
+       WHERE singleton = 1
+         AND initial_thumbnail_state IN ('scheduled', 'waiting_for_stroke')`,
+      jobId,
+    );
   }
 
   private snapshotObjectKeys(): string[] {
@@ -4106,6 +4306,7 @@ export class DrawingRoom extends DurableObject<Env> {
       "DELETE FROM scheduled_tasks WHERE kind = 'empty_timeout'",
     );
     this.armIdleTask(now);
+    this.armInitialThumbnail(now);
     return {
       type: "room.updated",
       status: "active",
@@ -4291,6 +4492,8 @@ export class DrawingRoom extends DurableObject<Env> {
       )
       .one().next_alarm;
     const compactionAlarm = this.readSnapshotAutomation().compaction_due_at;
+    const thumbnailAlarm =
+      this.readSnapshotAutomation().initial_thumbnail_due_at;
     const lifecycleAlarm = this.ctx.storage.sql
       .exec<{ next_alarm: number | null }>(
         "SELECT MIN(due_at) AS next_alarm FROM scheduled_tasks",
@@ -4301,6 +4504,7 @@ export class DrawingRoom extends DurableObject<Env> {
     const candidates = [
       strokeAlarm,
       compactionAlarm,
+      thumbnailAlarm,
       lifecycleAlarm,
       roomTimeAlarm,
       cleanupAlarm,

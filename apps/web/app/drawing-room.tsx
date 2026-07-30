@@ -2,6 +2,8 @@
 
 import {
   PROTOCOL_LIMITS,
+  PROTOCOL_VERSION,
+  SNAPSHOT_CANVAS_GENERATION,
   SNAPSHOT_RENDERER_VERSION,
   StrokeOutbox,
   decodeServerMessage,
@@ -927,12 +929,21 @@ export default function DrawingRoom({
     if (chatOpen) setUnreadChatCount(0);
   }, [chatOpen]);
 
-  useEffect(() => {
-    const canvas = baseCanvasRef.current;
+  const attachBaseCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
+    baseCanvasRef.current = canvas;
     const context = canvas?.getContext("2d", { alpha: false });
     if (!canvas || !context) return;
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    const session = canonicalSessionRef.current;
+    if (!session) {
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+    context.putImageData(new ImageData(
+      new Uint8ClampedArray(session.pixels()),
+      PROTOCOL_LIMITS.canvasWidth,
+      PROTOCOL_LIMITS.canvasHeight,
+    ), 0, 0);
   }, []);
 
   useEffect(() => {
@@ -1295,6 +1306,10 @@ export default function DrawingRoom({
       }
       url.searchParams.set("lastRoomSeq", String(lastRoomSeqRef.current));
       url.searchParams.set("rendererVersion", String(SNAPSHOT_RENDERER_VERSION));
+      url.searchParams.set(
+        "canvasGeneration",
+        String(SNAPSHOT_CANVAS_GENERATION),
+      );
       url.searchParams.set(
         "snapshot",
         snapshotRecoveryDisabledRef.current ? "0" : "1",
@@ -1675,7 +1690,7 @@ export default function DrawingRoom({
     const socket = socketRef.current;
     if (!roomSlug || !socket || socket.readyState !== WebSocket.OPEN) return;
     socket.send(encodeClientCursorMessage({
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "cursor",
       ...message,
     }));
@@ -1704,7 +1719,7 @@ export default function DrawingRoom({
       return;
     }
     socket.send(encodeClientChatMessage({
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "chat.send",
       id: `chat_${crypto.randomUUID().replaceAll("-", "")}`,
       text,
@@ -1950,7 +1965,7 @@ export default function DrawingRoom({
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
     socket.send(encodeClientRoomStartMessage({
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "room.start",
       requestId: `start_${crypto.randomUUID().replaceAll("-", "")}`,
     }));
@@ -1998,7 +2013,7 @@ export default function DrawingRoom({
       return;
     }
     socket.send(encodeClientRoomCloseMessage({
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "room.close",
       requestId: `close_${crypto.randomUUID().replaceAll("-", "")}`,
     }));
@@ -2627,7 +2642,7 @@ export default function DrawingRoom({
           }}
         >
           <canvas
-            ref={baseCanvasRef}
+            ref={attachBaseCanvas}
             width={PROTOCOL_LIMITS.canvasWidth}
             height={PROTOCOL_LIMITS.canvasHeight}
           />

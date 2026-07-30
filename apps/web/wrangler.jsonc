@@ -23,7 +23,8 @@
     "BETTER_AUTH_TRUSTED_ORIGINS": "http://localhost:3000",
     "CF_ACCESS_ISSUER": "https://dolphilia.cloudflareaccess.com",
     "CF_ACCESS_AUD": "b7536e7cc03d57d8889760015ad850b72f08ae4a838a741054fc02094377c785",
-    "MODERATION_EVIDENCE_RETENTION_DAYS": 30
+    "MODERATION_EVIDENCE_RETENTION_DAYS": 30,
+    "THUMBNAIL_ENABLED": "true"
   },
   "secrets": {
     "required": [
@@ -38,6 +39,12 @@
       "database_name": "koge-local",
       "database_id": "local",
       "migrations_dir": "../../migrations/d1"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ROOM_THUMBNAILS",
+      "bucket_name": "koge-room-thumbnails-local"
     }
   ],
   "services": [
@@ -69,7 +76,8 @@
         "BETTER_AUTH_TRUSTED_ORIGINS": "https://preview.koge.app",
         "CF_ACCESS_ISSUER": "https://dolphilia.cloudflareaccess.com",
         "CF_ACCESS_AUD": "b7536e7cc03d57d8889760015ad850b72f08ae4a838a741054fc02094377c785",
-        "MODERATION_EVIDENCE_RETENTION_DAYS": 30
+        "MODERATION_EVIDENCE_RETENTION_DAYS": 30,
+        "THUMBNAIL_ENABLED": "true"
       },
       "secrets": {
         "required": [
@@ -84,6 +92,12 @@
           "database_name": "koge-preview",
           "database_id": "59b84520-bef3-456e-90ec-37f4e496e851",
           "migrations_dir": "../../migrations/d1"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ROOM_THUMBNAILS",
+          "bucket_name": "koge-room-thumbnails-preview"
         }
       ],
       "services": [
@@ -110,7 +124,8 @@
         "BETTER_AUTH_TRUSTED_ORIGINS": "https://koge.app",
         "CF_ACCESS_ISSUER": "https://dolphilia.cloudflareaccess.com",
         "CF_ACCESS_AUD": "ddfcf25a51f780af02c6cff5073c6ba1fd0a6d42fdd9883a0232076cf5bd29ef",
-        "MODERATION_EVIDENCE_RETENTION_DAYS": 30
+        "MODERATION_EVIDENCE_RETENTION_DAYS": 30,
+        "THUMBNAIL_ENABLED": "true"
       },
       "secrets": {
         "required": [
@@ -125,6 +140,12 @@
           "database_name": "koge-production",
           "database_id": "2071beb0-831b-40cf-9c7d-d068496766b3",
           "migrations_dir": "../../migrations/d1"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "ROOM_THUMBNAILS",
+          "bucket_name": "koge-room-thumbnails-production"
         }
       ],
       "services": [

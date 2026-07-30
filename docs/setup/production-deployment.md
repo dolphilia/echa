@@ -1,6 +1,6 @@
 # koge production配備runbook
 
-更新日: 2026-07-29
+更新日: 2026-07-30
 
 ## 目的
 
@@ -16,7 +16,7 @@ preview資源をproductionへ流用せず、各段階に停止点を設ける。
 - 3 Workerの`env.production`とgenerated typesは追加済み
 - 3 Workerのproduction dry-runは成功
 - production Access AUDは設定済み
-- production D1へ`0001`〜`0019`を適用済み、未適用0
+- production D1へ`0001`〜`0020`を適用済み、未適用0
 - production Better Auth / Google OAuth secretsは設定済み
 - Realtime、Snapshot、Webの初回配備とCustom Domain公開は完了
 - 自動smokeと利用者によるOAuth / room / 管理操作E2Eはpass
@@ -24,6 +24,18 @@ preview資源をproductionへ流用せず、各段階に停止点を設ける。
 - 初回配備時間窓のRealtime Analyticsはpass、Snapshotは未起動で想定内
 - Web AnalyticsはCPU / memory pass、`05:32:19Z`の2 errorsは既知の配備時過渡エラー
 - 2026-07-29のroom provisioning不整合を復旧し、実roomの作成・入室・描画を再確認
+- 1000 x 1000 canvas / room thumbnailの`0020`と専用R2 bindingは実装済み
+- preview / productionのthumbnail R2 resourceは作成済み
+- previewは`0020`適用と3 Worker協調配備、機能・負荷検証まで完了
+- Preview Snapshot Worker AnalyticsはP999 memory 54.9 MiB、headroom 57.1%、
+  errors 0でresource gateをpass
+- productionの`0020`は適用済み、未適用migration 0、nullableなthumbnail列3本を確認
+- production 3 Worker協調配備は2026-07-30に完了
+- production 3 Workerの現行sourceによるdry-runは成功
+- productionは未適用migration 0。協調配備中はroom作成だけを停止し、配備後に再開
+- productionの現行Web / Realtime health、公開API、UI・API両方のAccess gateは正常
+- production実room smoke、実Safari、public / unlisted、終了cleanupを確認済み
+- 配備後Analyticsは3 Workerともerrors 0、30% memory headroom基準をpass
 
 ## 配備範囲gate
 
@@ -84,7 +96,7 @@ https://koge.app/api/auth/callback/google
 4. rootのlint、typecheck、test、buildが成功する。
 5. `wrangler whoami`のaccount IDが台帳と一致する。
 6. production D1 UUIDを`d1 list`と照合する。
-7. R2と5 Queueが存在する。
+7. runtime snapshot / thumbnail / evidenceのR2と5 Queueが存在する。
 8. Web Workerの3 secretがproductionへ設定済みである。
 9. `koge.app`と`realtime.koge.app`に競合DNS recordがない。
 10. emergency modeが通常運用の3項目許可状態である。
@@ -103,6 +115,16 @@ npm exec wrangler -- deployments status \
 
 ## Step 1: D1 migration
 
+1000 x 1000 / thumbnail配備では、migrationより先にprivate R2 bucketを作成する。
+
+```sh
+npm exec wrangler -- r2 bucket create koge-room-thumbnails-preview
+npm exec wrangler -- r2 bucket create koge-room-thumbnails-production
+```
+
+既に存在する場合は再作成せず、`r2 bucket list`で名前とaccountを照合する。bucketを
+public accessへ接続しない。Web Workerは同一origin endpointからbinding経由で読む。
+
 まず未適用migrationとdatabase UUIDを読み取る。出力がpreview databaseを示した場合は
 直ちに停止する。
 
@@ -119,6 +141,37 @@ npm exec wrangler -- d1 migrations list koge-production --remote \
 
 適用後は未適用0件と、追加・変更したtable、column、indexをread-onlyで確認する。
 migrationは後戻りさせず、旧codeが追加schemaを無視できる前方向互換にする。
+
+`0020_room_thumbnails.sql`では次を確認する。
+
+```sh
+npm exec wrangler -- d1 execute koge-production --remote \
+  --config apps/realtime/wrangler.jsonc --env production \
+  --command "SELECT name FROM pragma_table_info('rooms') WHERE name LIKE 'thumbnail_%' ORDER BY name"
+```
+
+## Step 1.5: 新規room作成を停止する
+
+`https://koge.app/admin/rooms`へCloudflare Access認証で入り、「サービス緊急制御」で
+room作成だけを停止する。
+新規入室と描画は、開催中roomがある場合に終了を妨げないよう有効のままにする。
+管理APIを迂回するD1直接更新は監査記録が欠けるため使わない。
+
+反映後はread-only queryで確認する。
+
+```sh
+npm exec wrangler -- d1 execute koge-production --remote \
+  --config apps/realtime/wrangler.jsonc --env production \
+  --command "SELECT revision, room_creation_enabled, room_entry_enabled, drawing_enabled FROM service_controls WHERE singleton = 1"
+
+npm exec wrangler -- d1 execute koge-production --remote \
+  --config apps/realtime/wrangler.jsonc --env production \
+  --command "SELECT status, COUNT(*) AS count FROM rooms GROUP BY status ORDER BY status"
+```
+
+`room_creation_enabled = 0`、他2項目が`1`であることを確認する。開催中roomがある場合は
+host終了または自然終了とcleanupを待ち、room projectionが0になるまで協調配備を
+開始しない。
 
 ## Step 2: Realtime Worker
 
@@ -182,11 +235,20 @@ Vinext adapter経由でbuildとproduction environment選択を一体で実行す
 7. Web配備後に新しい`REALTIME_INIT_FAILED`が0件であることを確認。
 8. snapshot + tail復帰。
 9. host終了、一覧除外、再入室拒否、D1 / R2 cleanup。
-10. `koge.app/admin/*`と`/api/admin/*`がAccessなしでは拒否される。
-11. Access認証後に管理停止、復旧、監査記録。
-12. Queue / DLQ、Worker errors、CPU / memoryを確認。
+10. 描画のあるpublic roomで通常snapshotまたは5分one-shot後に正方形thumbnailを確認。
+11. unlisted roomにthumbnail URLが作られず、終了後にthumbnail R2 objectが残らない。
+12. `koge.app/admin/*`と`/api/admin/*`がAccessなしでは拒否される。
+13. Access認証後に管理停止、復旧、監査記録。
+14. Queue / DLQ、Worker errors、CPU / memoryを確認。
+15. `https://koge.app/admin/rooms`でroom作成を再開し、D1で3項目が`1`、
+    `service_control_actions`に停止・再開の監査記録があることを確認。
 
 試験roomはhost終了し、cleanup完了まで確認する。
+
+Access gateでは、`/admin/rooms`だけでなく`/api/admin/emergency`への未認証requestも
+Access loginへ302されることを確認する。APIがWorkerまで届いてJSON 403を返す場合は、
+Access applicationに`koge.app/api/admin/*`が含まれていない。同じproduction
+applicationへ2つ目のPublic hostnameとして追加し、別AUDのapplicationを新設しない。
 
 healthが正常でも実room作成に失敗した場合は完了としない。新しい配備を重ねず、
 room作成を停止し、D1の`provisioning_error_code`、Web / Realtime logs、
@@ -229,7 +291,7 @@ D1を空に戻す、R2 bucketを削除する、Queueをpurgeする操作はrollb
 - rollback対象versionと停止手順が記録されている。
 - 一般公開まではOAuth test userとAccess管理者だけで限定運用する。
 
-## 2026-07-29 現在の配備結果
+## 2026-07-30 現在の配備結果
 
 正しいD1 UUIDは
 `2071beb0-831b-40cf-9c7d-d068496766b3`。利用者から最初に共有された値は末尾の`3`が
@@ -237,14 +299,24 @@ D1を空に戻す、R2 bucketを削除する、Queueをpurgeする操作はrollb
 
 | 対象 | version / 結果 |
 | --- | --- |
-| D1 | `0001`〜`0019`成功、未適用0 |
-| Realtime | `75f49cef-cd8b-4114-b5f1-7bbb14335693` |
-| Snapshot | `00da91cf-5665-416f-b9df-3da5c0ef6868` |
-| Web | `0eb82710-790d-4bcf-92b4-5c5a3a5e1c0f` |
+| D1 | `0001`〜`0020`成功、未適用0 |
+| Realtime | `5ffcaa7d-822f-4fbc-8701-4495b7d40603` |
+| Snapshot | `c92f426b-1aed-4733-9ae9-ffe92a3b57e7` |
+| Web | `b9b356af-ee42-410e-b445-2c7dfee72ed1` |
 
-D1の`service_controls`はroom作成・新規入室・描画がすべて`1`。APAC / NRT primaryの
-read-only queryで確認した。productionのsnapshot、cleanup、moderation evidence
-Queueは主要Queueがproducer 1 / consumer 1、DLQがproducer 1 / consumer 0。
+初回配備後、D1の`service_controls`はroom作成・新規入室・描画がすべて`1`であることを
+APAC / NRT primaryのread-only queryで確認した。1000 x 1000 canvas / room thumbnail
+協調配備中はroom作成だけを`0`へ変更し、他2項目は`1`を維持した。productionの
+snapshot Queueはproducer 2 / consumer 1、cleanupとmoderation evidenceの主要Queueは
+producer 1 / consumer 1、DLQはproducer 1 / consumer 0。
+
+1000 x 1000 canvas / room thumbnailの協調配備では、Access保護された管理APIから
+room作成だけを停止し、room 0件を確認してから、D1 `0020` → Realtime → Snapshot →
+Webの順に反映した。
+配備直後の機械的smokeではhome、session、rooms、Realtime healthがHTTP 200で、
+`/admin/rooms`と`/api/admin/emergency`はいずれも同じAccess applicationへ302した。
+配備直後の自動smoke通過後にroom作成を再開した。D1はrevision 2で3制御がすべて`1`、
+`service_control_actions`には停止・再開の監査記録が2件ある。
 
 Custom Domainの初回伝播直後、Realtime healthにCloudflare 1104、Web home / sessionに
 一時500が各1回出た。どちらも再試行後に収束し、Worker例外は再現しなかった。

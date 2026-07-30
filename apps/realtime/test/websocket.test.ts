@@ -154,6 +154,7 @@ function connectionResponse(
   url.searchParams.set("connection", connectionId);
   url.searchParams.set("lastRoomSeq", String(lastRoomSeq));
   url.searchParams.set("rendererVersion", snapshotRecovery ? "1" : "0");
+  url.searchParams.set("canvasGeneration", String(SNAPSHOT_CANVAS_GENERATION));
   url.searchParams.set("snapshot", snapshotRecovery ? "1" : "0");
   if (excludedSnapshotJobs.length > 0) {
     url.searchParams.set(
@@ -225,6 +226,31 @@ describe("phase 2 room synchronization", () => {
       { headers: { Origin: "https://attacker.example", Upgrade: "websocket" } },
     );
     expect(crossOrigin.status).toBe(403);
+
+    const missingCanvasGeneration = await exports.default.fetch(
+      `http://example.test/rooms/${ROOM_ID}/connect`
+        + `?actor=${ACTOR_ID}&connection=connection-canvas-missing`,
+      {
+        headers: {
+          Origin: "http://localhost:3000",
+          Upgrade: "websocket",
+        },
+      },
+    );
+    expect(missingCanvasGeneration.status).toBe(400);
+
+    const staleCanvasGeneration = await exports.default.fetch(
+      `http://example.test/rooms/${ROOM_ID}/connect`
+        + `?actor=${ACTOR_ID}&connection=connection-canvas-stale`
+        + `&canvasGeneration=${SNAPSHOT_CANVAS_GENERATION - 1}`,
+      {
+        headers: {
+          Origin: "http://localhost:3000",
+          Upgrade: "websocket",
+        },
+      },
+    );
+    expect(staleCanvasGeneration.status).toBe(400);
   });
 
   it("allows a viewer to recover room state but rejects drawing frames", async () => {
@@ -826,9 +852,13 @@ describe("phase 2 room synchronization", () => {
          ALTER TABLE connections DROP COLUMN avatar_url;
          ALTER TABLE chat_messages DROP COLUMN display_name;
          ALTER TABLE chat_messages DROP COLUMN avatar_url;
+         ALTER TABLE snapshot_automation DROP COLUMN initial_thumbnail_state;
+         ALTER TABLE snapshot_automation DROP COLUMN initial_thumbnail_due_at;
+         ALTER TABLE snapshot_automation DROP COLUMN initial_thumbnail_job_id;
          DELETE FROM room_metrics
          WHERE name IN ('rate_limited', 'short_mute', 'abuse_disconnect');
-         DELETE FROM _sql_schema_migrations WHERE id IN (24, 25, 26, 27, 28);`,
+         DELETE FROM _sql_schema_migrations
+         WHERE id IN (24, 25, 26, 27, 28, 29);`,
       );
       await state.storage.setAlarm(maxEndsAt);
     });
@@ -836,7 +866,7 @@ describe("phase 2 room synchronization", () => {
     room = env.DRAWING_ROOM.getByName(roomId);
     await expect(room.health()).resolves.toEqual({
       ok: true,
-      schemaVersion: 28,
+      schemaVersion: 29,
     });
     await expect(runInDurableObject(
       room,
@@ -1265,8 +1295,8 @@ describe("phase 2 room synchronization", () => {
       canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
       generation: 1,
       codec: SNAPSHOT_CODEC,
-      width: 960,
-      height: 640,
+      width: PROTOCOL_LIMITS.canvasWidth,
+      height: PROTOCOL_LIMITS.canvasHeight,
       objectKey: `rooms/${roomId}/snapshots/staging/${job.jobId}.kgs`,
       objectBytes: 4,
       objectHash: "a".repeat(64),
@@ -1409,6 +1439,237 @@ describe("phase 2 room synchronization", () => {
     );
   });
 
+  it("queues the one-shot initial thumbnail snapshot after the first completed stroke", async () => {
+    const roomId = "room-initial-thumbnail";
+    const room = env.DRAWING_ROOM.getByName(roomId);
+    const createdAt = Date.now();
+    await room.initializeRoom({
+      v: 1,
+      roomId,
+      publicSlug: "8".repeat(32),
+      ownerUserId: "owner-initial-thumbnail",
+      name: "Initial thumbnail",
+      visibility: "public",
+      participantLimit: 20,
+      viewerLimit: 100,
+      viewerChatEnabled: false,
+      viewerStampEnabled: false,
+      createdAt,
+      maxEndsAt: createdAt + 2 * 60 * 60 * 1_000,
+    });
+    const host = await startInitializedRoom(roomId);
+    await expect(room.snapshotAutomationState()).resolves.toMatchObject({
+      initialThumbnailState: "scheduled",
+    });
+
+    await runInDurableObject(room, async (_instance, state) => {
+      state.storage.sql.exec(
+        `UPDATE snapshot_automation
+         SET initial_thumbnail_due_at = ?
+         WHERE singleton = 1`,
+        Date.now() - 1,
+      );
+      await state.storage.setAlarm(Date.now());
+    });
+    await runDurableObjectAlarm(room);
+    await expect(room.snapshotAutomationState()).resolves.toMatchObject({
+      initialThumbnailState: "waiting_for_stroke",
+    });
+
+    await expect(send(host, {
+      v: 1,
+      op: "stroke.begin",
+      clientSeq: 1,
+      id: "stroke_initial_thumbnail_001",
+      tool: "brush",
+      color: "#336699",
+      size: 3,
+      opacity: 1,
+      point: [10, 20, 0],
+    })).resolves.toMatchObject({ type: "accepted" });
+    await expect(send(host, {
+      v: 1,
+      op: "stroke.end",
+      clientSeq: 2,
+      id: "stroke_initial_thumbnail_001",
+    })).resolves.toMatchObject({ type: "accepted" });
+    await Promise.all(
+      Array.from(
+        { length: 20 },
+        () => room.reconcileSnapshotAutomation(roomId),
+      ),
+    );
+
+    const state = await room.snapshotAutomationState();
+    expect(state).toMatchObject({
+      initialThumbnailState: "queued",
+    });
+    expect(state.initialThumbnailJobId).toMatch(
+      /^[a-f0-9-]{36}$/,
+    );
+    const jobs = await runInDurableObject(room, (_instance, durableState) =>
+      durableState.storage.sql.exec<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM snapshot_jobs",
+      ).one().count
+    );
+    expect(jobs).toBe(1);
+    await room.reconcileSnapshotAutomation(roomId);
+    await expect(runInDurableObject(room, (_instance, durableState) =>
+      durableState.storage.sql.exec<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM snapshot_jobs",
+      ).one().count
+    )).resolves.toBe(1);
+    host.close(1000, "test complete");
+  });
+
+  it("satisfies the initial thumbnail task when a normal snapshot commits before its deadline", async () => {
+    const roomId = "room-initial-thumbnail-early";
+    const room = env.DRAWING_ROOM.getByName(roomId);
+    const createdAt = Date.now();
+    await room.initializeRoom({
+      v: 1,
+      roomId,
+      publicSlug: "9".repeat(32),
+      ownerUserId: "owner-initial-thumbnail-early",
+      name: "Early thumbnail",
+      visibility: "public",
+      participantLimit: 20,
+      viewerLimit: 100,
+      viewerChatEnabled: false,
+      viewerStampEnabled: false,
+      createdAt,
+      maxEndsAt: createdAt + 2 * 60 * 60 * 1_000,
+    });
+    const host = await startInitializedRoom(roomId);
+    await expect(send(host, {
+      v: 1,
+      op: "stroke.begin",
+      clientSeq: 1,
+      id: "stroke_initial_thumbnail_early",
+      tool: "brush",
+      color: "#336699",
+      size: 3,
+      opacity: 1,
+      point: [10, 20, 0],
+    })).resolves.toMatchObject({ type: "accepted" });
+    await expect(send(host, {
+      v: 1,
+      op: "stroke.end",
+      clientSeq: 2,
+      id: "stroke_initial_thumbnail_early",
+    })).resolves.toMatchObject({ type: "accepted" });
+
+    const job = await room.requestSnapshot(roomId);
+    await expect(room.commitSnapshot({
+      v: SNAPSHOT_JOB_VERSION,
+      jobId: job.jobId,
+      roomId,
+      baseRoomSeq: job.targetRoomSeq,
+      protocolVersion: 1,
+      rendererVersion: SNAPSHOT_RENDERER_VERSION,
+      canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
+      generation: job.generation,
+      codec: SNAPSHOT_CODEC,
+      width: PROTOCOL_LIMITS.canvasWidth,
+      height: PROTOCOL_LIMITS.canvasHeight,
+      objectKey: `rooms/${roomId}/snapshots/staging/${job.jobId}.kgs`,
+      objectBytes: 4,
+      objectHash: "1".repeat(64),
+      rgbaHash: "2".repeat(64),
+      createdAt: Date.now(),
+    })).resolves.toMatchObject({ status: "committed" });
+    await expect(room.snapshotAutomationState()).resolves.toMatchObject({
+      initialThumbnailState: "satisfied",
+      initialThumbnailJobId: job.jobId,
+    });
+
+    await runInDurableObject(room, async (_instance, state) => {
+      state.storage.sql.exec(
+        `UPDATE snapshot_automation
+         SET initial_thumbnail_due_at = ?
+         WHERE singleton = 1`,
+        Date.now() - 1,
+      );
+      await state.storage.setAlarm(Date.now());
+    });
+    await runDurableObjectAlarm(room);
+    await room.reconcileSnapshotAutomation(roomId);
+    await expect(runInDurableObject(room, (_instance, durableState) =>
+      durableState.storage.sql.exec<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM snapshot_jobs",
+      ).one().count
+    )).resolves.toBe(1);
+    host.close(1000, "test complete");
+  });
+
+  it("waits for the active stroke boundary before queuing the initial thumbnail", async () => {
+    const roomId = "room-initial-thumbnail-active";
+    const room = env.DRAWING_ROOM.getByName(roomId);
+    const createdAt = Date.now();
+    await room.initializeRoom({
+      v: 1,
+      roomId,
+      publicSlug: "a".repeat(32),
+      ownerUserId: "owner-initial-thumbnail-active",
+      name: "Active stroke thumbnail",
+      visibility: "public",
+      participantLimit: 20,
+      viewerLimit: 100,
+      viewerChatEnabled: false,
+      viewerStampEnabled: false,
+      createdAt,
+      maxEndsAt: createdAt + 2 * 60 * 60 * 1_000,
+    });
+    const host = await startInitializedRoom(roomId);
+    await expect(send(host, {
+      v: 1,
+      op: "stroke.begin",
+      clientSeq: 1,
+      id: "stroke_initial_thumbnail_active",
+      tool: "brush",
+      color: "#336699",
+      size: 3,
+      opacity: 1,
+      point: [10, 20, 0],
+    })).resolves.toMatchObject({ type: "accepted" });
+
+    await runInDurableObject(room, async (_instance, state) => {
+      state.storage.sql.exec(
+        `UPDATE snapshot_automation
+         SET initial_thumbnail_due_at = ?
+         WHERE singleton = 1`,
+        Date.now() - 1,
+      );
+      await state.storage.setAlarm(Date.now());
+    });
+    await runDurableObjectAlarm(room);
+    await expect(room.snapshotAutomationState()).resolves.toMatchObject({
+      initialThumbnailState: "waiting_for_stroke",
+    });
+    await expect(runInDurableObject(room, (_instance, durableState) =>
+      durableState.storage.sql.exec<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM snapshot_jobs",
+      ).one().count
+    )).resolves.toBe(0);
+
+    await expect(send(host, {
+      v: 1,
+      op: "stroke.end",
+      clientSeq: 2,
+      id: "stroke_initial_thumbnail_active",
+    })).resolves.toMatchObject({ type: "accepted" });
+    await room.reconcileSnapshotAutomation(roomId);
+    await expect(room.snapshotAutomationState()).resolves.toMatchObject({
+      initialThumbnailState: "queued",
+    });
+    await expect(runInDurableObject(room, (_instance, durableState) =>
+      durableState.storage.sql.exec<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM snapshot_jobs",
+      ).one().count
+    )).resolves.toBe(1);
+    host.close(1000, "test complete");
+  });
+
   it("falls back from current to previous snapshot, then to the full event log", async () => {
     const roomId = "room-phase3-snapshot-chain";
     const stub = env.DRAWING_ROOM.getByName(roomId);
@@ -1425,8 +1686,8 @@ describe("phase 2 room synchronization", () => {
       canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
       generation: 1,
       codec: SNAPSHOT_CODEC,
-      width: 960,
-      height: 640,
+      width: PROTOCOL_LIMITS.canvasWidth,
+      height: PROTOCOL_LIMITS.canvasHeight,
       objectKey: `rooms/${roomId}/snapshots/staging/${firstJob.jobId}.kgs`,
       objectBytes: 4,
       objectHash: "1".repeat(64),
@@ -1582,8 +1843,8 @@ describe("phase 2 room synchronization", () => {
       canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
       generation: job.generation,
       codec: SNAPSHOT_CODEC,
-      width: 960,
-      height: 640,
+      width: PROTOCOL_LIMITS.canvasWidth,
+      height: PROTOCOL_LIMITS.canvasHeight,
       objectKey: `rooms/${roomId}/snapshots/staging/${job.jobId}.kgs`,
       objectBytes: 4,
       objectHash: hashDigit.repeat(64),
@@ -1897,8 +2158,8 @@ describe("phase 2 room synchronization", () => {
         canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
         generation: job.generation,
         codec: SNAPSHOT_CODEC,
-        width: 960,
-        height: 640,
+        width: PROTOCOL_LIMITS.canvasWidth,
+        height: PROTOCOL_LIMITS.canvasHeight,
         objectKey: `rooms/${roomId}/snapshots/staging/${job.jobId}.kgs`,
         objectBytes: 4,
         objectHash: hashDigit.repeat(64),
@@ -2039,8 +2300,8 @@ describe("phase 2 room synchronization", () => {
       canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
       generation: job.generation,
       codec: SNAPSHOT_CODEC,
-      width: 960,
-      height: 640,
+      width: PROTOCOL_LIMITS.canvasWidth,
+      height: PROTOCOL_LIMITS.canvasHeight,
       objectKey: `rooms/${roomId}/snapshots/staging/${job.jobId}.kgs`,
       objectBytes: 4,
       objectHash: "a".repeat(64),
@@ -2097,8 +2358,8 @@ describe("phase 2 room synchronization", () => {
       canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
       generation: 1,
       codec: SNAPSHOT_CODEC,
-      width: 960,
-      height: 640,
+      width: PROTOCOL_LIMITS.canvasWidth,
+      height: PROTOCOL_LIMITS.canvasHeight,
       objectKey: `rooms/${roomId}/snapshots/staging/${job.jobId}.kgs`,
       objectBytes: 4,
       objectHash: "c".repeat(64),
@@ -2331,7 +2592,8 @@ describe("phase 2 room synchronization", () => {
     await Promise.all(sockets.map(nextMessage));
     const overCapacity = await exports.default.fetch(
       `http://example.test/rooms/${capacityRoom}/connect`
-        + `?actor=${ACTOR_ID}&connection=connection-capacity-overflow`,
+        + `?actor=${ACTOR_ID}&connection=connection-capacity-overflow`
+        + `&canvasGeneration=${SNAPSHOT_CANVAS_GENERATION}`,
       {
         headers: {
           Origin: "http://localhost:3000",

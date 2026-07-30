@@ -98,7 +98,7 @@ kogeは、複数人が同じ固定サイズのキャンバスへほぼリアル�
 
 現在のモックアップで確定度が高いもの:
 
-- 960 x 640 の白い固定キャンバス
+- 1000 x 1000 の白い固定キャンバス
 - キャンバスの表示サイズはウィンドウ変更では変えず、ズームだけで変更
 - ブラシ
 - 消しゴム
@@ -289,7 +289,7 @@ MVP では `public` と `unlisted` の 2 種類に絞る。
 
 ### キャンバス
 
-- MVP は 960 x 640 固定。
+- MVP は 1000 x 1000 固定。
 - 背景は白。
 - 画面上のパンとズームはクライアント固有の表示状態であり、共有しない。
 - キャンバスの論理座標はズームに依存しない。
@@ -1302,7 +1302,7 @@ npm --prefix tools/event-log-benchmark run analyze-raw -- \
 - D1 + Durable Objects SQLite
 - Canvas 2D provisional描画 + Pointer Events + 共通WASM canonical renderer
 - MessagePackと数値wire opcode
-- 960 x 640 の白い固定キャンバス
+- 1000 x 1000 の白い固定キャンバス
 - brush / eraser の stroke 同期
 - zoom / pan / eyedropper はローカル UI
 - Better Auth を用いたアカウント機能を含む MVP

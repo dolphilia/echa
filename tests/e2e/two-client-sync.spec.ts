@@ -40,8 +40,8 @@ async function captureVisibleCanvas(page: Page): Promise<void> {
   await page.locator(".canvas-stage").evaluate((stage) => {
     const canvases = [...stage.querySelectorAll("canvas")];
     const snapshot = document.createElement("canvas");
-    snapshot.width = 960;
-    snapshot.height = 640;
+    snapshot.width = 1000;
+    snapshot.height = 1000;
     const context = snapshot.getContext("2d");
     if (!context) throw new Error("2D context is unavailable");
     context.fillStyle = "#ffffff";
@@ -136,6 +136,8 @@ test("two clients converge and a reloaded client recovers the same canvas", asyn
 
   await first.locator(".brush-rail input[type=range]").nth(1).fill("35");
   const drawingSurface = first.locator(".canvas-stage canvas").last();
+  await expect(drawingSurface).toHaveJSProperty("width", 1000);
+  await expect(drawingSurface).toHaveJSProperty("height", 1000);
   const box = await drawingSurface.boundingBox();
   expect(box).not.toBeNull();
   await first.mouse.move(box!.x + 280, box!.y + 250);

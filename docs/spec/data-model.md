@@ -1,14 +1,15 @@
 # Data model
 
-更新日: 2026-07-29
-状態: migration `0001`〜`0019`をproductionへ反映済み、未適用0。
+更新日: 2026-07-30
+状態: migration `0001`〜`0019`はproduction反映済み。`0020`はlocal実装済み、
+preview / production適用前。
 
 ## 原則
 
 - D1: 検索・認証・運用に必要な通常データ
 - 1 room = 1 SQLite-backed Durable Object
 - DO SQLite: roomのauthoritative runtime stateと短期event
-- R2: 採用時のsnapshot、期限付きmoderation evidence
+- R2: runtime snapshot、公開中だけのthumbnail、期限付きmoderation evidence
 - client: UI設定と短期送信・復帰buffer
 - gallery用テーブルと完成画像はMVPに作らない
 
@@ -58,6 +59,9 @@ account削除request後は`deleting`へ遷移して全sessionとprovider account
 - `provisioning_attempts`
 - nullable `provisioning_error_code`
 - nullable `provisioning_updated_at`
+- nullable `thumbnail_object_key`
+- nullable `thumbnail_base_room_seq`
+- nullable `thumbnail_updated_at`
 - DO routingに必要な参照
 
 statusと人数は一覧用projectionであり、runtimeの正はroom DOとする。
@@ -440,7 +444,8 @@ client入力からchat権限・プロフィールを決めない。
 chatの`seq`はchat内だけの順序であり、drawing `roomSeq`、event log、
 snapshot baseRoomSeqへ含めない。
 
-DO SQLite schema v28ではticket、connection、chat messageへchat権限と
+DO SQLite schema v29ではpublic roomの5分one-shot thumbnail taskを
+`snapshot_automation`へ追加する。schema v28ではticket、connection、chat messageへchat権限と
 server由来プロフィールを追加する。schema v26では`actor_abuse_state`を追加する。
 
 - `actor_id` primary key

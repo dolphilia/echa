@@ -2,8 +2,8 @@
   "schema": "echa.raw-strokes.v1",
   "recordedAt": "2026-07-27T00:00:00.000Z",
   "canvas": {
-    "width": 960,
-    "height": 640
+    "width": 1000,
+    "height": 1000
   },
   "session": {
     "source": "hand-authored-canonical-renderer-fixture",
@@ -90,9 +90,9 @@
       "size": 60,
       "opacity": 1,
       "points": [
-        { "x": 0, "y": 610, "dt": 0 },
-        { "x": 40, "y": 630, "dt": 30 },
-        { "x": 100, "y": 640, "dt": 60 }
+        { "x": 0, "y": 970, "dt": 0 },
+        { "x": 40, "y": 990, "dt": 30 },
+        { "x": 100, "y": 1000, "dt": 60 }
       ]
     },
     {
@@ -103,11 +103,10 @@
       "opacity": 1,
       "cancelled": true,
       "points": [
-        { "x": 600, "y": 480, "dt": 0 },
-        { "x": 760, "y": 520, "dt": 40 },
-        { "x": 900, "y": 580, "dt": 80 }
+        { "x": 600, "y": 780, "dt": 0 },
+        { "x": 760, "y": 820, "dt": 40 },
+        { "x": 900, "y": 880, "dt": 80 }
       ]
     }
   ]
 }
-

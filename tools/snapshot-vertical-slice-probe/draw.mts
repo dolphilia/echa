@@ -1,6 +1,7 @@
 import {
   decodeServerMessage,
   encodeEvent,
+  SNAPSHOT_CANVAS_GENERATION,
   type ClientStrokeEvent,
   type ServerMessage,
 } from "@koge/protocol";
@@ -26,6 +27,7 @@ url.searchParams.set("actor", actor);
 url.searchParams.set("connection", connection);
 url.searchParams.set("lastRoomSeq", String(resumeAfterRoomSeq));
 url.searchParams.set("rendererVersion", "0");
+url.searchParams.set("canvasGeneration", String(SNAPSHOT_CANVAS_GENERATION));
 url.searchParams.set("snapshot", "0");
 
 const socket = new WebSocket(url, {

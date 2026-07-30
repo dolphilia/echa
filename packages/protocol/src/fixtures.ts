@@ -57,7 +57,9 @@ export function rawFixtureToClientEvents(fixture: RawStrokeFixture): ClientStrok
     fixture.canvas.width !== PROTOCOL_LIMITS.canvasWidth
     || fixture.canvas.height !== PROTOCOL_LIMITS.canvasHeight
   ) {
-    throw new RangeError("Fixture canvas does not match protocol v1");
+    throw new RangeError(
+      `Fixture canvas does not match protocol v${PROTOCOL_VERSION}`,
+    );
   }
 
   const events: ClientStrokeEvent[] = [];

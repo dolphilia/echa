@@ -1,6 +1,6 @@
 # Stroke protocol v1
 
-更新日: 2026-07-29
+更新日: 2026-07-30
 状態: drawing、presence、cursorのproduction経路を実装し、利用者E2Eまでpass
 
 ## 目的
@@ -12,7 +12,7 @@
 - 対象: brush、eraser、stroke streaming、再送、重複排除、
   非永続presence / cursor
 - 対象外: eyedropper、pan、zoom、undo / redo、筆圧
-- canvas: 960 x 640、白背景、sRGB
+- canvas: 1000 x 1000、白背景、sRGB、canvas generation 2
 - drawing codec: MessagePack、数値opcode
 - cursor codec: 厳格な小型JSON text frame
 

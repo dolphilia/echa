@@ -1,5 +1,6 @@
 import {
   decodeServerMessage,
+  SNAPSHOT_CANVAS_GENERATION,
   type ServerMessage,
   type SnapshotOfferMessage,
 } from "@koge/protocol";
@@ -34,6 +35,7 @@ url.searchParams.set(
 );
 url.searchParams.set("lastRoomSeq", "0");
 url.searchParams.set("rendererVersion", option === "disabled" ? "0" : "1");
+url.searchParams.set("canvasGeneration", String(SNAPSHOT_CANVAS_GENERATION));
 url.searchParams.set("snapshot", option === "disabled" ? "0" : "1");
 if (option && option !== "disabled") {
   url.searchParams.set("snapshotExcludeJobs", option);

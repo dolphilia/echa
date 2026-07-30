@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import {
+  SNAPSHOT_CANVAS_GENERATION,
   validateActiveRoomMembersRequest,
   validateRoomTicketRegistrationRequest,
   validateRoomProvisioningRequest,
@@ -469,6 +470,8 @@ app.get("/rooms/:roomId/connect", async (context) => {
   const lastRoomSeq = Number(lastRoomSeqValue);
   const rendererVersionValue = context.req.query("rendererVersion") ?? "0";
   const rendererVersion = Number(rendererVersionValue);
+  const canvasGenerationValue = context.req.query("canvasGeneration");
+  const canvasGeneration = Number(canvasGenerationValue);
   const snapshotRecovery = context.req.query("snapshot") ?? "1";
   const excludedSnapshotJobsValue =
     context.req.query("snapshotExcludeJobs") ?? "";
@@ -490,6 +493,8 @@ app.get("/rooms/:roomId/connect", async (context) => {
     || lastRoomSeq < 0
     || !Number.isSafeInteger(rendererVersion)
     || rendererVersion < 0
+    || canvasGenerationValue === undefined
+    || canvasGeneration !== SNAPSHOT_CANVAS_GENERATION
     || (snapshotRecovery !== "0" && snapshotRecovery !== "1")
     || excludedSnapshotJobs.length > maxExcludedSnapshotJobs
     || excludedSnapshotJobs.some((jobId) => !identifierPattern.test(jobId))
@@ -515,6 +520,7 @@ app.get("/rooms/:roomId/connect", async (context) => {
       "x-koge-last-room-seq": String(lastRoomSeq),
       "x-koge-room-id": roomId,
       "x-koge-renderer-version": String(rendererVersion),
+      "x-koge-canvas-generation": String(canvasGeneration),
       "x-koge-snapshot-recovery": snapshotRecovery,
       "x-koge-snapshot-exclude-jobs": excludedSnapshotJobs.join(","),
     },

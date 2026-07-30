@@ -32,15 +32,23 @@ previewでは2026-07-28、productionでは2026-07-29にAccess applicationと
 - AUD:
   `b7536e7cc03d57d8889760015ad850b72f08ae4a838a741054fc02094377c785`
 
-## productionで設定済みの内容
+## productionで設定する内容
 
 - path: `koge.app/admin/*`、`koge.app/api/admin/*`
 - issuer: `https://dolphilia.cloudflareaccess.com`
 - AUD:
   `ddfcf25a51f780af02c6cff5073c6ba1fd0a6d42fdd9883a0232076cf5bd29ef`
 - deny by default、許可対象identityだけをAllow
-- 未認証requestがAccess loginへredirectされることを確認済み
-- Access認証後の管理画面と管理操作をproduction利用者E2Eで確認済み
+- `/admin/*`と`/api/admin/*`は、同じAUDを使うため同じAccess applicationの
+  Public hostnameとして登録する。別applicationへ分けない。
+- 未認証requestが両pathともAccess loginへredirectされることを確認する。
+- Access認証後の管理画面GETだけでなく、管理API POSTにも
+  `Cf-Access-Jwt-Assertion`が付くことを確認する。
+
+2026-07-30の協調配備前gateで、`/admin/*`は保護されていたが
+`/api/admin/*`がAccess applicationから外れ、管理API POSTにJWT assertionが付かず
+Workerが403を返す構成ずれを検出した。production applicationへ
+`koge.app/api/admin/*`を追加し、両pathを再検証してから配備を続行する。
 
 ## 取得後に共有・記録する非secret値
 

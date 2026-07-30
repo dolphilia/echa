@@ -8,6 +8,7 @@ import serviceControlsMigration from "../../../migrations/d1/0014_service_contro
 import moderationMigration from "../../../migrations/d1/0008_moderation_evidence_fence.sql?raw";
 import serviceBansMigration from "../../../migrations/d1/0017_service_bans.sql?raw";
 import removeRoomThemesMigration from "../../../migrations/d1/0019_remove_room_themes.sql?raw";
+import roomThumbnailsMigration from "../../../migrations/d1/0020_room_thumbnails.sql?raw";
 import { GET, POST } from "../app/api/rooms/route";
 import {
   RoomCreationConflictError,
@@ -153,6 +154,7 @@ beforeAll(async () => {
     "UPDATE rooms SET theme = '青いもの' WHERE id = 'room-public-ready'",
   ).run();
   await applySqlMigration(env.DB, removeRoomThemesMigration);
+  await applySqlMigration(env.DB, roomThumbnailsMigration);
 });
 
 describe("public room projection", () => {
@@ -176,6 +178,7 @@ describe("public room projection", () => {
         viewerLimit: 100,
         createdAt: NOW,
         maxEndsAt: NOW + 7_200_000,
+        thumbnailVersion: null,
       },
     ]);
   });

@@ -41,6 +41,16 @@ export type SnapshotProcessResult = {
   };
 };
 
+export type SnapshotCommittedRgbaHook = (input: {
+  readonly job: SnapshotJob;
+  readonly manifest: SnapshotManifest;
+  readonly commit: Exclude<
+    SnapshotCommitResult,
+    { readonly status: "superseded" }
+  >;
+  readonly rgba: Uint8Array;
+}) => Promise<void>;
+
 const SNAPSHOT_RGBA_BYTES =
   PROTOCOL_LIMITS.canvasWidth * PROTOCOL_LIMITS.canvasHeight * 4;
 const MAX_SNAPSHOT_OBJECT_BYTES = SNAPSHOT_RGBA_BYTES + 65_536;
@@ -238,6 +248,7 @@ export async function processSnapshotJob(
   room: SnapshotRoomRpc,
   bucket: R2Bucket,
   renderer: RendererInstance,
+  onCommittedRgba?: SnapshotCommittedRgbaHook,
 ): Promise<SnapshotProcessResult> {
   validateJob(job);
   const session = new RendererSession(
@@ -349,6 +360,8 @@ export async function processSnapshotJob(
     const commit = await room.commitSnapshot(manifest);
     if (commit.status === "superseded") {
       await bucket.delete(objectKey);
+    } else if (onCommittedRgba) {
+      await onCommittedRgba({ job, manifest, commit, rgba });
     }
     return {
       commit,

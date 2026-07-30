@@ -1,7 +1,7 @@
 # 1000 x 1000キャンバス・公開ルームサムネイル実装計画
 
 作成日: 2026-07-30
-状態: 計画確定、未実装
+状態: 完了（Preview / Production Exit criteria通過）
 
 ## 1. 目的
 
@@ -28,8 +28,8 @@ canonical canvasを反映した正方形サムネイルを低負荷で表示す�
 - viewport変更だけでは論理サイズと表示倍率を変えない。
 - canvas downloadは1000 x 1000で出力する。
 - サムネイルは512 x 512の正方形とする。
-- encodingはWebPを第一候補とする。
-- Workers/WASMで十分軽いWebP実装が成立しない場合はPNGへ戻す。
+- encodingはWorkers標準APIだけで決定的に生成できるPNGを採用する。
+- WebPは負荷と保守性の採用条件を満たした場合の将来候補とする。
 - 公開中のpublicルームだけを生成・配信する。
 - unlistedルームではサムネイルを生成しない。
 - サムネイル未生成時は現在の共通placeholderを表示する。
@@ -89,7 +89,7 @@ CPU、memory、wall time、R2 object bytesを再測定する。
 object keyは次を基本形とする。
 
 ```text
-rooms/{internal-room-id}/thumbnails/{base-room-seq}.webp
+rooms/{internal-room-id}/thumbnails/{base-room-seq}.png
 ```
 
 公開slug、user名、tokenをkeyへ含めない。Queue再送と順序逆転を考慮し、
@@ -185,7 +185,9 @@ endpointは次を満たす。
 - 現在開催中のpublicルームだけを対象とする。
 - D1が現在指しているobjectだけを配信する。
 - runtime `.kgs`を取得できる経路を作らない。
-- version付きURLにETagと長いimmutable cacheを設定する。
+- version付きURLにETagとbrowser内の長いprivate immutable cacheを設定する。
+- 共有CDNには画像responseを保存せず、visibility変更・終了後の新規requestを
+  必ずD1のfail-closed判定へ通す。
 - 未生成、存在しない、削除済みの場合はplaceholderへfallbackする。
 - unlisted、closing、suspended、終了済みルームはfail-closedにする。
 
@@ -354,7 +356,7 @@ chat本文、stroke payload全体、token、生IPは通常logへ残さない。
 | 古いthumbnailへ巻き戻る | D1条件付きUPDATE試験 | `baseRoomSeq`前進時だけ更新 |
 | 非公開画像が露出する | endpoint認可E2E | 専用bucket、D1参照、fail-closed |
 | room終了後にobjectが残る | cleanup / orphan health | Queue再試行、DLQ、orphan inventory |
-| WebP encoderが重い | encode benchmark | PNGへfallback |
+| PNG resize / deflateが重い | encode benchmark | trigger調整、thumbnail停止 |
 | snapshot成功をthumbnail失敗が巻き戻す | failure injection | 処理結果とretryを分離 |
 
 ## 18. 利用者側で必要になる準備
@@ -381,3 +383,49 @@ Wrangler設定と合わせて提示し、resource作成前に現在のCloudflare
 - preview負荷測定で利用するWorker制限へ30%以上の余裕を維持する。
 - ルーム終了後にruntime snapshotとサムネイルが残らない。
 - production協調配備とrollback手順がpreviewで再現できる。
+
+## 20. 現在の進捗
+
+2026-07-30時点で、local実装と次の検証まで完了した。
+
+- 1000 x 1000 protocol limit、canvas generation 2、旧client接続拒否
+- Browser / WASM fixture、snapshot encode / decode、canvas download
+- 512 x 512 PNG resize / encode
+- public active / idleだけのR2 PUTとD1前進projection
+- commit済み`.kgs`からのthumbnail-only Queue retry
+- 5分one-shot、未描画時の描画待ち、重複排除、終了fence
+- 同一origin thumbnail endpoint、ETag / immutable cache、placeholder
+- 正方形room card、feature flag
+- room cleanupとruntime / thumbnail両R2のorphan inventory
+- lint、typecheck、全unit / Workers integration test、3 Worker build
+- Chrome E2Eで1000 x 1000、2 client同期、reload復帰
+
+Cloudflare外部状態は次まで完了した。
+
+- preview / production thumbnail R2 bucket作成
+- preview D1 `0018`〜`0020`適用、未適用0
+- Realtime → Snapshot → Webのpreview協調配備
+- 1000 x 1000 snapshot生成・公開read経路からのhash検証
+- 512 x 512 thumbnail生成、D1前進projection、ETag、正方形card
+- 共有CDN cacheを禁止し、unlisted変更後の同一URLが404になることを確認
+- 5分時点で描画済み3件、未描画から最初のstroke 3件のone-shot確認
+- 50,001-event fullと5,001-event incrementalを3ルームで2世代確認
+- Chromium / Firefox / WebKitで正方形card、1000 x 1000 canvas、RGBA hash一致
+- room close / publish競合、初回job予約競合、旧thumbnail残存を検出・修正
+- 5分trigger 6ルームの終了後D1 / runtime R2 / thumbnail R2残存0
+- Snapshot Worker P999 memory 54.9 MiB、headroom 57.1%、errors 0
+
+Productionでは協調配備後のpublicルームで、1000 x 1000 download、複数client同期、
+Safari復帰、512 x 512サムネイルと正方形cardを確認した。cleanup防御修正版を配備した
+新規ルームでも、終了直後にD1 projection、runtime snapshot R2 prefix、
+thumbnail R2 prefixがすべて0件となり、cleanup / evidence Queue・DLQ backlog 0を
+Workers bindingとhealth endpointで確認した。
+
+unlistedルームでは5分trigger経過後もD1 thumbnail projectionとthumbnail R2が
+空のまま、公開一覧に非掲載、同一origin thumbnail endpointが404 / no-storeとなる
+ことをProductionで確認した。終了後はD1とruntime / thumbnail R2がすべて0件となり、
+再入室も拒否された。最終状態は新規作成・入室・描画が有効、開催中room 0件である。
+
+本番smoke時間帯のWorker Analyticsも3 Workerすべてerrors 0だった。P999 memoryは
+Realtime 2.4 MiB、Snapshot 18.2 MiB、Web 12.9 MiBで、128 MiB上限へそれぞれ
+98.1%、85.8%、89.9%の余裕を維持した。以上により本計画のExit criteriaを通過した。

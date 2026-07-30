@@ -19,6 +19,12 @@ async function resetOrphanFixtures(): Promise<void> {
       objects.objects.map(({ key }) => key),
     );
   }
+  const thumbnails = await env.ROOM_THUMBNAILS.list({ prefix: "rooms/" });
+  if (thumbnails.objects.length > 0) {
+    await env.ROOM_THUMBNAILS.delete(
+      thumbnails.objects.map(({ key }) => key),
+    );
+  }
   await env.DB.batch([
     env.DB.prepare("DELETE FROM snapshot_orphan_deletion_items"),
     env.DB.prepare("DELETE FROM snapshot_orphan_deletion_runs"),
@@ -74,6 +80,16 @@ it("inventories only mature unreferenced runtime snapshot objects", async () => 
     `rooms/${roomId}/snapshots/staging/orphan-object-0001.kgs`;
   const missingRoomKey =
     "rooms/room-missing-inventory/snapshots/staging/orphan-object-0002.kgs";
+  const referencedThumbnailKey =
+    `rooms/${roomId}/thumbnails/10.png`;
+  const unreferencedThumbnailKey =
+    `rooms/${roomId}/thumbnails/9.png`;
+  await env.DB.prepare(
+    `UPDATE rooms
+     SET thumbnail_object_key = ?, thumbnail_base_room_seq = 10,
+         thumbnail_updated_at = ?
+     WHERE id = ?`,
+  ).bind(referencedThumbnailKey, now, roomId).run();
   await Promise.all([
     env.RUNTIME_SNAPSHOTS.put(referencedKey, new Uint8Array([1])),
     env.RUNTIME_SNAPSHOTS.put(unreferencedKey, new Uint8Array([2, 3])),
@@ -82,14 +98,22 @@ it("inventories only mature unreferenced runtime snapshot objects", async () => 
       "moderation-evidence/evidence-ignored/manifest.json",
       new Uint8Array([7]),
     ),
+    env.ROOM_THUMBNAILS.put(
+      referencedThumbnailKey,
+      new Uint8Array([8, 8, 8, 8]),
+    ),
+    env.ROOM_THUMBNAILS.put(
+      unreferencedThumbnailKey,
+      new Uint8Array([9, 9, 9, 9, 9]),
+    ),
   ]);
 
   await expect(scanSnapshotOrphans(env, scanNow)).resolves.toMatchObject({
     status: "completed",
-    objectCount: 3,
-    objectBytes: 6,
-    orphanCount: 2,
-    orphanBytes: 5,
+    objectCount: 5,
+    objectBytes: 15,
+    orphanCount: 3,
+    orphanBytes: 10,
   });
   await expect(env.DB.prepare(
     `SELECT object_key, reason
@@ -99,20 +123,30 @@ it("inventories only mature unreferenced runtime snapshot objects", async () => 
     results: [
       { object_key: unreferencedKey, reason: "unreferenced" },
       { object_key: missingRoomKey, reason: "room_missing" },
+      {
+        object_key: unreferencedThumbnailKey,
+        reason: "unreferenced",
+      },
     ].sort((left, right) => left.object_key.localeCompare(right.object_key)),
   });
 
   await env.RUNTIME_SNAPSHOTS.delete(missingRoomKey);
   await expect(scanSnapshotOrphans(env, scanNow + 1)).resolves.toMatchObject({
     status: "completed",
-    objectCount: 2,
-    orphanCount: 1,
-    orphanBytes: 2,
+    objectCount: 4,
+    orphanCount: 2,
+    orphanBytes: 7,
   });
   await expect(env.DB.prepare(
-    "SELECT object_key, reason FROM snapshot_orphans",
+    "SELECT object_key, reason FROM snapshot_orphans ORDER BY object_key",
   ).all()).resolves.toMatchObject({
-    results: [{ object_key: unreferencedKey, reason: "unreferenced" }],
+    results: [
+      { object_key: unreferencedKey, reason: "unreferenced" },
+      {
+        object_key: unreferencedThumbnailKey,
+        reason: "unreferenced",
+      },
+    ].sort((left, right) => left.object_key.localeCompare(right.object_key)),
   });
   await expect(env.RUNTIME_SNAPSHOTS.head(unreferencedKey)).resolves
     .not.toBeNull();
@@ -124,8 +158,8 @@ it("requires two scans and explicit confirmation before deleting an orphan", asy
   const now = Date.now();
   const scanNow = now + 2 * 60 * 60 * 1_000;
   const objectKey =
-    "rooms/room-missing-deletion/snapshots/staging/orphan-delete-0001.kgs";
-  await env.RUNTIME_SNAPSHOTS.put(objectKey, new Uint8Array([1, 2, 3, 4]));
+    "rooms/room-missing-deletion/thumbnails/42.png";
+  await env.ROOM_THUMBNAILS.put(objectKey, new Uint8Array([1, 2, 3, 4]));
 
   const firstPlan = await createSnapshotOrphanDeletionPlan(env, scanNow);
   expect(firstPlan).toMatchObject({
@@ -152,7 +186,7 @@ it("requires two scans and explicit confirmation before deleting an orphan", asy
   }, scanNow + 2)).rejects.toThrow(
     "snapshot orphan deletion confirmation mismatch",
   );
-  await expect(env.RUNTIME_SNAPSHOTS.head(objectKey)).resolves.not.toBeNull();
+  await expect(env.ROOM_THUMBNAILS.head(objectKey)).resolves.not.toBeNull();
 
   const deleted = await deleteSnapshotOrphans(env, {
     plan,
@@ -167,7 +201,7 @@ it("requires two scans and explicit confirmation before deleting an orphan", asy
     deletedBytes: 4,
     alreadyMissingCount: 0,
   });
-  await expect(env.RUNTIME_SNAPSHOTS.head(objectKey)).resolves.toBeNull();
+  await expect(env.ROOM_THUMBNAILS.head(objectKey)).resolves.toBeNull();
   await expect(env.DB.prepare(
     `SELECT status, object_count, deleted_count
      FROM snapshot_orphan_deletion_runs WHERE plan_hash = ?`,

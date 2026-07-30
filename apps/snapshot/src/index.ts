@@ -4,7 +4,10 @@ import {
   type RendererFixture,
 } from "@koge/renderer-core";
 import {
+  PROTOCOL_VERSION,
+  SNAPSHOT_CANVAS_GENERATION,
   SNAPSHOT_JOB_VERSION,
+  SNAPSHOT_RENDERER_VERSION,
   type AcceptedStrokeEvent,
   type Point,
   type SnapshotJob,
@@ -16,10 +19,20 @@ import rendererModule from "../../../packages/renderer-core/dist/koge-renderer.w
 import canonicalFixture from "../../../tools/renderer-fixtures/v1/canonical-strokes.json";
 import canonicalManifest from "../../../tools/renderer-fixtures/v1/manifest.json";
 import { processSnapshotJob } from "./processor";
+import {
+  createThumbnailRetryJob,
+  isThumbnailRetryJob,
+  publishRoomThumbnail,
+  retryRoomThumbnailFromSnapshot,
+  type ThumbnailPublicationResult,
+} from "./thumbnail-publication";
 
 const renderer = await instantiateRenderer(rendererModule);
 type SnapshotRoomTarget = DurableObjectBase<Env> & SnapshotRoomRpc & {
   snapshotJobDisposition(jobId: string): Promise<SnapshotJobDisposition>;
+  snapshotManifest(jobId: string): Promise<
+    import("@koge/protocol").SnapshotManifest | undefined
+  >;
 };
 
 function isSnapshotJob(value: unknown): value is SnapshotJob {
@@ -32,9 +45,9 @@ function isSnapshotJob(value: unknown): value is SnapshotJob {
     && typeof record.jobId === "string"
     && typeof record.roomId === "string"
     && typeof record.targetRoomSeq === "number"
-    && record.protocolVersion === 1
-    && record.rendererVersion === 1
-    && record.canvasGeneration === 1
+    && record.protocolVersion === PROTOCOL_VERSION
+    && record.rendererVersion === SNAPSHOT_RENDERER_VERSION
+    && record.canvasGeneration === SNAPSHOT_CANVAS_GENERATION
     && typeof record.generation === "number"
     && typeof record.requestedAt === "number"
     && (
@@ -92,6 +105,29 @@ export default {
     for (const message of batch.messages) {
       try {
         const job: unknown = message.body;
+        if (isThumbnailRetryJob(job)) {
+          const startedAt = Date.now();
+          // oxlint-disable-next-line no-await-in-loop -- each retry is acked only after its durable side effects commit.
+          const thumbnail = await retryRoomThumbnailFromSnapshot(
+            job,
+            env.DB,
+            env.RUNTIME_SNAPSHOTS,
+            env.ROOM_THUMBNAILS,
+            env.THUMBNAIL_ENABLED === "true",
+          );
+          console.log(JSON.stringify({
+            level: "info",
+            message: "thumbnail retry completed",
+            jobId: job.manifest.jobId,
+            roomId: job.manifest.roomId,
+            baseRoomSeq: job.manifest.baseRoomSeq,
+            status: thumbnail.status,
+            queueDelayMs: Math.max(0, startedAt - job.requestedAt),
+            observedWallMs: Math.max(0, Date.now() - startedAt),
+          }));
+          message.ack();
+          continue;
+        }
         if (!isSnapshotJob(job)) {
           throw new TypeError("unsupported snapshot job version");
         }
@@ -100,6 +136,20 @@ export default {
         // oxlint-disable-next-line no-await-in-loop -- disposition must be fixed before processing each queued message.
         const disposition = await stub.snapshotJobDisposition(job.jobId);
         if (disposition === "discard") {
+          // A prior delivery may have committed the lossless snapshot but
+          // failed before enqueueing the lightweight thumbnail retry.
+          // oxlint-disable-next-line no-await-in-loop -- duplicate recovery must complete before ack.
+          const committed = await stub.snapshotManifest(job.jobId);
+          if (committed) {
+            // oxlint-disable-next-line no-await-in-loop -- duplicate recovery is idempotent through D1 baseRoomSeq.
+            await retryRoomThumbnailFromSnapshot(
+              createThumbnailRetryJob({ ...committed }),
+              env.DB,
+              env.RUNTIME_SNAPSHOTS,
+              env.ROOM_THUMBNAILS,
+              env.THUMBNAIL_ENABLED === "true",
+            );
+          }
           message.ack();
           continue;
         }
@@ -147,12 +197,42 @@ export default {
           },
         };
         const startedAt = Date.now();
+        let thumbnail: ThumbnailPublicationResult | {
+          readonly status: "retry_queued";
+        } | undefined;
         // oxlint-disable-next-line eslint/no-await-in-loop -- each message is acked after its side effects commit.
         const result = await processSnapshotJob(
           job,
           room,
           env.RUNTIME_SNAPSHOTS,
           renderer,
+          async ({ manifest, rgba }) => {
+            const thumbnailStartedAt = Date.now();
+            try {
+              thumbnail = await publishRoomThumbnail(
+                manifest,
+                rgba,
+                env.DB,
+                env.ROOM_THUMBNAILS,
+                env.THUMBNAIL_ENABLED === "true",
+              );
+            } catch (error) {
+              await env.SNAPSHOT_QUEUE.send(createThumbnailRetryJob(manifest));
+              thumbnail = { status: "retry_queued" };
+              console.error(JSON.stringify({
+                level: "error",
+                message: "thumbnail publication deferred to retry job",
+                jobId: manifest.jobId,
+                roomId: manifest.roomId,
+                baseRoomSeq: manifest.baseRoomSeq,
+                observedWallMs: Math.max(
+                  0,
+                  Date.now() - thumbnailStartedAt,
+                ),
+                error: error instanceof Error ? error.message : String(error),
+              }));
+            }
+          },
         );
         console.log(JSON.stringify({
           level: "info",
@@ -169,6 +249,10 @@ export default {
           sourceObjectBytes: result.metrics.sourceObjectBytes,
           outputObjectBytes: result.manifest.objectBytes,
           commitStatus: result.commit.status,
+          thumbnailStatus: thumbnail?.status ?? "not_attempted",
+          thumbnailObjectBytes: thumbnail?.status === "published"
+            ? thumbnail.bytes
+            : undefined,
           queueDelayMs: Math.max(0, startedAt - job.requestedAt),
           observedWallMs: Math.max(0, Date.now() - startedAt),
         }));

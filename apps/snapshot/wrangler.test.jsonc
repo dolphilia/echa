@@ -7,12 +7,25 @@
     "nodejs_compat"
   ],
   "vars": {
-    "APP_ENV": "local"
+    "APP_ENV": "local",
+    "THUMBNAIL_ENABLED": "true"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "koge-snapshot-test",
+      "database_id": "local",
+      "migrations_dir": "../../migrations/d1"
+    }
+  ],
   "r2_buckets": [
     {
       "binding": "RUNTIME_SNAPSHOTS",
       "bucket_name": "koge-runtime-snapshots-test"
+    },
+    {
+      "binding": "ROOM_THUMBNAILS",
+      "bucket_name": "koge-room-thumbnails-test"
     }
   ]
 }

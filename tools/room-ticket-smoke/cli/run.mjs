@@ -1,3 +1,4 @@
+import { SNAPSHOT_CANVAS_GENERATION } from "@koge/protocol";
 import process from "node:process";
 import WebSocket from "ws";
 
@@ -90,6 +91,7 @@ function ticketConnectUrl(ticket) {
   url.searchParams.set("ticket", ticket);
   url.searchParams.set("lastRoomSeq", "0");
   url.searchParams.set("rendererVersion", "1");
+  url.searchParams.set("canvasGeneration", String(SNAPSHOT_CANVAS_GENERATION));
   url.searchParams.set("snapshot", "1");
   return url;
 }

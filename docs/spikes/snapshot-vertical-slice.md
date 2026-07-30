@@ -16,7 +16,7 @@ MVP blockerではないが、2 client sync直後の優先トラック。renderer
 ### A. Renderer
 
 - Rust renderer core
-- 960 x 640、白背景、sRGB
+- 現行実装は1000 x 1000、白背景、sRGB。初回spike時点は960 x 640。
 - brush / eraser / opacity / dot / cancel
 - fixed-point coordinate and compositing rules
 - Browser / Workers WASM build

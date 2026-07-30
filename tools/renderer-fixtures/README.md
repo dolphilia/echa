@@ -14,7 +14,7 @@
 - canvas端のclip
 - cancel
 
-strokeは配列順に適用します。背景は960 x 640の不透明な白、色空間はsRGBです。cancelled strokeは最終RGBAへ影響してはいけません。
+strokeは配列順に適用します。背景は1000 x 1000の不透明な白、色空間はsRGBです。cancelled strokeは最終RGBAへ影響してはいけません。
 
 ## Golden hash
 
@@ -34,4 +34,3 @@ npm --prefix tools/renderer-fixtures test
 ```
 
 この検証はfixtureのschemaとcase IDを確認します。画像hash検証はWASM renderer spikeで追加します。
-

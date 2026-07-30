@@ -110,6 +110,17 @@ export default async function Home({
                   <span />
                   <span />
                   <span />
+                  {env.THUMBNAIL_ENABLED === "true"
+                      && room.thumbnailVersion !== null
+                    ? (
+                      <img
+                        alt=""
+                        src={`/api/rooms/${
+                          encodeURIComponent(room.publicSlug)
+                        }/thumbnail?v=${room.thumbnailVersion}`}
+                      />
+                    )
+                    : null}
                 </div>
                 <div className="home-room-body">
                   <div className="home-room-status">

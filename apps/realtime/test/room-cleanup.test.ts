@@ -20,15 +20,46 @@ function fakeEnv(
   projection: {
     status: string;
     cleanup_job_id: string | null;
+    thumbnail_object_key?: string | null;
     evidence_required?: number;
     metrics_captured?: number;
   } | null,
-  failure?: "metrics" | "r2" | "do" | "d1" | "remaining",
+  failure?:
+    | "metrics"
+    | "r2"
+    | "thumbnail_remains"
+    | "do"
+    | "d1"
+    | "remaining",
 ) {
   const order: string[] = [];
+  const thumbnailKeys = new Set(
+    projection?.thumbnail_object_key
+      ? [projection.thumbnail_object_key]
+      : [],
+  );
   const deleteObjects = vi.fn(async () => {
     order.push("r2");
     if (failure === "r2") throw new Error("injected R2 failure");
+  });
+  const deleteThumbnail = vi.fn(async (keys: string | string[]) => {
+    order.push("thumbnail-r2");
+    if (failure === "r2") throw new Error("injected R2 failure");
+    if (failure === "thumbnail_remains") return;
+    for (const key of typeof keys === "string" ? [keys] : keys) {
+      thumbnailKeys.delete(key);
+    }
+  });
+  const headThumbnail = vi.fn(async (key: string) => {
+    order.push("thumbnail-head");
+    return thumbnailKeys.has(key) ? { key } : null;
+  });
+  const listThumbnails = vi.fn(async () => {
+    order.push("thumbnail-list");
+    return {
+      objects: [...thumbnailKeys].map((key) => ({ key })),
+      truncated: false,
+    };
   });
   const finalizeRoomCleanup = vi.fn(async () => {
     order.push("do");
@@ -53,6 +84,7 @@ function fakeEnv(
           return projection && {
             evidence_required: 0,
             metrics_captured: 0,
+            thumbnail_object_key: null,
             ...projection,
           };
         }
@@ -76,11 +108,24 @@ function fakeEnv(
   const env = {
     DB: { prepare, batch },
     RUNTIME_SNAPSHOTS: { delete: deleteObjects },
+    ROOM_THUMBNAILS: {
+      delete: deleteThumbnail,
+      head: headThumbnail,
+      list: listThumbnails,
+    },
     DRAWING_ROOM: {
       getByName: () => ({ stats, finalizeRoomCleanup }),
     },
   } as unknown as Env;
-  return { env, order, deleteObjects, stats, finalizeRoomCleanup, batch };
+  return {
+    env,
+    order,
+    deleteObjects,
+    deleteThumbnail,
+    stats,
+    finalizeRoomCleanup,
+    batch,
+  };
 }
 
 describe("room cleanup queue processor", () => {
@@ -88,16 +133,23 @@ describe("room cleanup queue processor", () => {
     const fixture = fakeEnv({
       status: "closing",
       cleanup_job_id: job.jobId,
+      thumbnail_object_key:
+        "rooms/room-cleanup-test-0001/thumbnails/20.png",
     });
     await expect(processRoomCleanupJob(job, fixture.env)).resolves.toEqual({
       status: "deleted",
       deletedSnapshotObjectCount: 1,
+      deletedThumbnailObjectCount: 1,
     });
     expect(fixture.order).toEqual([
       "projection",
       "metrics",
       "metrics-write",
       "r2",
+      "thumbnail-r2",
+      "thumbnail-head",
+      "thumbnail-list",
+      "thumbnail-list",
       "do",
       "d1-delete",
       "remaining",
@@ -144,6 +196,28 @@ describe("room cleanup queue processor", () => {
     expect(fixture.batch).not.toHaveBeenCalled();
   });
 
+  it("keeps the D1 fence when the projected thumbnail remains", async () => {
+    const fixture = fakeEnv({
+      status: "closing",
+      cleanup_job_id: job.jobId,
+      thumbnail_object_key:
+        "rooms/room-cleanup-test-0001/thumbnails/20.png",
+    }, "thumbnail_remains");
+    await expect(processRoomCleanupJob(job, fixture.env)).rejects.toThrow(
+      "projected room thumbnail remained after deletion",
+    );
+    expect(fixture.order).toEqual([
+      "projection",
+      "metrics",
+      "metrics-write",
+      "r2",
+      "thumbnail-r2",
+      "thumbnail-head",
+    ]);
+    expect(fixture.finalizeRoomCleanup).not.toHaveBeenCalled();
+    expect(fixture.batch).not.toHaveBeenCalled();
+  });
+
   it("does not delete room data when the final metric capture fails", async () => {
     const fixture = fakeEnv({
       status: "closing",
@@ -175,6 +249,8 @@ describe("room cleanup queue processor", () => {
       "metrics",
       "metrics-write",
       "r2",
+      "thumbnail-list",
+      "thumbnail-list",
       "do",
     ]);
     expect(fixture.batch).not.toHaveBeenCalled();
@@ -193,6 +269,8 @@ describe("room cleanup queue processor", () => {
       "metrics",
       "metrics-write",
       "r2",
+      "thumbnail-list",
+      "thumbnail-list",
       "do",
       "d1-delete",
     ]);
@@ -208,6 +286,8 @@ describe("room cleanup queue processor", () => {
     expect(retry.order).toEqual([
       "projection",
       "r2",
+      "thumbnail-list",
+      "thumbnail-list",
       "do",
       "d1-delete",
       "remaining",
@@ -253,6 +333,8 @@ describe("room cleanup queue processor", () => {
       "metrics",
       "metrics-write",
       "r2",
+      "thumbnail-list",
+      "thumbnail-list",
       "do",
       "d1-delete",
       "remaining",

@@ -44,14 +44,14 @@ describe("canvas download filename", () => {
       createElement: vi.fn(() => output),
     });
     const source = {
-      width: 960,
-      height: 640,
+      width: 1000,
+      height: 1000,
     } as HTMLCanvasElement;
 
     await expect(canvasPngBlob(source)).resolves.toBe(blob);
-    expect(output.width).toBe(960);
-    expect(output.height).toBe(640);
-    expect(fillRect).toHaveBeenCalledWith(0, 0, 960, 640);
+    expect(output.width).toBe(1000);
+    expect(output.height).toBe(1000);
+    expect(fillRect).toHaveBeenCalledWith(0, 0, 1000, 1000);
     expect(drawImage).toHaveBeenCalledWith(source, 0, 0);
     expect(output.toBlob).toHaveBeenCalledWith(
       expect.any(Function),

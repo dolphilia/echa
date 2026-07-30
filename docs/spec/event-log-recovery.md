@@ -1,6 +1,6 @@
 # Event log and recovery
 
-更新日: 2026-07-29
+更新日: 2026-07-30
 状態: Gate B pass。snapshot-first採用、productionはshadow modeで稼働
 
 ## 方針
@@ -67,11 +67,11 @@ type SnapshotManifestV1 = {
   baseRoomSeq: number;
   protocolVersion: 1;
   rendererVersion: 1;
-  canvasGeneration: 1;
+  canvasGeneration: 2;
   generation: number;
   codec: "koge-rgba-deflate-v1";
-  width: 960;
-  height: 640;
+  width: 1000;
+  height: 1000;
   objectKey: string;
   objectBytes: number;
   objectHash: string;
@@ -89,7 +89,7 @@ manifestは外部へ内部room IDや生のR2 keyを不用意に公開しない�
 1. DOが`jobId`、target `baseRoomSeq`、renderer versionを永続化。
 2. Queueへ小さいjob messageを送る。event本体はQueueへ入れない。
 3. consumerがDO RPCからeventをchunk取得。
-4. Workers WASMで960 x 640 RGBAへ描画。
+4. Workers WASMで1000 x 1000 RGBAへ描画。
 5. lossless encodeし、object byte hashとRGBA hashを計算。
 6. 一時keyへR2 PUT。
 7. DO RPCでjobId、baseRoomSeq、hash、generationを検証。

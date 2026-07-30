@@ -10,10 +10,12 @@ import {
   ROOM_TICKET_TTL_MS,
   ROOM_TICKET_VERSION,
   PROTOCOL_LIMITS,
+  PROTOCOL_VERSION,
   ROOM_MAX_DURATION_MS,
   ROOM_PARTICIPANT_LIMIT,
   ROOM_PROVISIONING_VERSION,
   ROOM_VIEWER_LIMIT,
+  SNAPSHOT_CANVAS_GENERATION,
   ProtocolDecodeError,
   StrokeOutbox,
   decodeEvent,
@@ -57,7 +59,7 @@ async function loadFixture(): Promise<RawStrokeFixture> {
   return JSON.parse(await readFile(fixturePath, "utf8")) as RawStrokeFixture;
 }
 
-describe("protocol v1 validation and codecs", () => {
+describe(`protocol v${PROTOCOL_VERSION} validation and codecs`, () => {
   it("round-trips canonical renderer events through every candidate codec", async () => {
     const events = rawFixtureToClientEvents(await loadFixture());
     const codecs: CodecName[] = ["json", "messagepack"];
@@ -98,7 +100,7 @@ describe("protocol v1 validation and codecs", () => {
       connectionId: "server_timeout",
       acceptedAt: 3_000,
       event: {
-        v: 1,
+        v: PROTOCOL_VERSION,
         op: "stroke.end",
         id: "stroke_timeout_0000000001",
         serverGenerated: true,
@@ -115,9 +117,9 @@ describe("protocol v1 validation and codecs", () => {
         jobId: "snapshot-job-00000001",
         roomId: "snapshot-room-0000001",
         baseRoomSeq: 120,
-        protocolVersion: 1,
+        protocolVersion: PROTOCOL_VERSION,
         rendererVersion: 1,
-        canvasGeneration: 1,
+        canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
         generation: 2,
         codec: "koge-rgba-deflate-v1",
         width: PROTOCOL_LIMITS.canvasWidth,
@@ -133,6 +135,34 @@ describe("protocol v1 validation and codecs", () => {
     const decoded = decodeServerMessage(encodeServerMessage(message));
     expect(decoded).toEqual(message);
     expect(decoded.type === "snapshot" && "objectKey" in decoded.manifest).toBe(false);
+  });
+
+  it("rejects a legacy 960 x 640 snapshot offer", () => {
+    const legacy = {
+      type: "snapshot",
+      manifest: {
+        v: 1,
+        jobId: "snapshot-job-legacy-0001",
+        roomId: "snapshot-room-legacy-001",
+        baseRoomSeq: 120,
+        protocolVersion: PROTOCOL_VERSION,
+        rendererVersion: 1,
+        canvasGeneration: 1,
+        generation: 2,
+        codec: "koge-rgba-deflate-v1",
+        width: 960,
+        height: 640,
+        objectBytes: 2_428,
+        objectHash: "a".repeat(64),
+        rgbaHash: "b".repeat(64),
+        createdAt: 1_000,
+      },
+      readToken: "c".repeat(64),
+      expiresAt: 61_000,
+    };
+    expect(() => decodeServerMessage(
+      encodeServerMessage(legacy as never),
+    )).toThrow("Invalid snapshot message");
   });
 
   it("round-trips a room closing lifecycle message", () => {
@@ -265,14 +295,14 @@ describe("protocol v1 validation and codecs", () => {
 
   it("round-trips room start and live lifecycle messages", () => {
     const start = {
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "room.start",
       requestId: "start-request-00000001",
     } as const;
     expect(decodeClientRealtimeMessage(encodeClientRoomStartMessage(start)))
       .toEqual(start);
     const close = {
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "room.close",
       requestId: "close-request-00000002",
     } as const;
@@ -303,7 +333,7 @@ describe("protocol v1 validation and codecs", () => {
 
   it("round-trips bounded cursor and presence messages", () => {
     const cursor = {
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "cursor",
       visible: true,
       x: 120.5,
@@ -341,7 +371,7 @@ describe("protocol v1 validation and codecs", () => {
 
   it("rejects cursor coordinates outside the canvas", () => {
     expect(() => encodeClientCursorMessage({
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "cursor",
       visible: true,
       x: PROTOCOL_LIMITS.canvasWidth + 1,
@@ -351,7 +381,7 @@ describe("protocol v1 validation and codecs", () => {
 
   it("round-trips bounded chat messages and history", () => {
     const outbound = {
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "chat.send",
       id: "chat-message-00000001",
       text: "  こんにちは  ",
@@ -381,13 +411,13 @@ describe("protocol v1 validation and codecs", () => {
 
   it("rejects empty and overlong chat messages", () => {
     expect(() => encodeClientChatMessage({
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "chat.send",
       id: "chat-message-00000002",
       text: "   ",
     })).toThrow("Invalid chat message");
     expect(() => encodeClientChatMessage({
-      v: 1,
+      v: PROTOCOL_VERSION,
       type: "chat.send",
       id: "chat-message-00000003",
       text: "a".repeat(PROTOCOL_LIMITS.maxChatMessageCharacters + 1),
@@ -413,12 +443,18 @@ describe("protocol v1 validation and codecs", () => {
     const fixture = JSON.parse(
       await readFile(measuredFixturePath, "utf8"),
     ) as RawStrokeFixture;
-    expect(rawFixtureToClientEvents(fixture)).toHaveLength(4_112);
+    expect(rawFixtureToClientEvents({
+      ...fixture,
+      canvas: {
+        width: PROTOCOL_LIMITS.canvasWidth,
+        height: PROTOCOL_LIMITS.canvasHeight,
+      },
+    })).toHaveLength(4_112);
   });
 
   it("rejects unknown fields and untrusted server fields", () => {
     const result = validateClientEvent({
-      v: 1,
+      v: PROTOCOL_VERSION,
       op: "stroke.end",
       clientSeq: 1,
       id: "fixture-stroke-000000",
@@ -436,7 +472,7 @@ describe("protocol v1 validation and codecs", () => {
 
   it("rejects append batches over the point limit", () => {
     const result = validateClientEvent({
-      v: 1,
+      v: PROTOCOL_VERSION,
       op: "stroke.append",
       clientSeq: 2,
       id: "fixture-stroke-000000",

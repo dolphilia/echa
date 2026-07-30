@@ -15,7 +15,9 @@
     "SNAPSHOT_TRIGGER_EVENT_COUNT": 50000,
     "SNAPSHOT_TRIGGER_PAYLOAD_BYTES": 16777216,
     "SNAPSHOT_MIN_EVENT_DELTA": 5000,
-    "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304
+    "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304,
+    "THUMBNAIL_ENABLED": "true",
+    "THUMBNAIL_INITIAL_DELAY_MS": 300000
   },
   "d1_databases": [
     {
@@ -45,6 +47,10 @@
     {
       "binding": "RUNTIME_SNAPSHOTS",
       "bucket_name": "koge-runtime-snapshots-local"
+    },
+    {
+      "binding": "ROOM_THUMBNAILS",
+      "bucket_name": "koge-room-thumbnails-local"
     }
   ],
   "queues": {
@@ -115,7 +121,9 @@
         "SNAPSHOT_TRIGGER_EVENT_COUNT": 50000,
         "SNAPSHOT_TRIGGER_PAYLOAD_BYTES": 16777216,
         "SNAPSHOT_MIN_EVENT_DELTA": 5000,
-        "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304
+        "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304,
+        "THUMBNAIL_ENABLED": "true",
+        "THUMBNAIL_INITIAL_DELAY_MS": 300000
       },
       "d1_databases": [
         {
@@ -137,6 +145,10 @@
         {
           "binding": "RUNTIME_SNAPSHOTS",
           "bucket_name": "koge-runtime-snapshots-preview"
+        },
+        {
+          "binding": "ROOM_THUMBNAILS",
+          "bucket_name": "koge-room-thumbnails-preview"
         }
       ],
       "queues": {
@@ -202,7 +214,9 @@
         "SNAPSHOT_TRIGGER_EVENT_COUNT": 50000,
         "SNAPSHOT_TRIGGER_PAYLOAD_BYTES": 16777216,
         "SNAPSHOT_MIN_EVENT_DELTA": 5000,
-        "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304
+        "SNAPSHOT_MIN_PAYLOAD_DELTA_BYTES": 4194304,
+        "THUMBNAIL_ENABLED": "true",
+        "THUMBNAIL_INITIAL_DELAY_MS": 300000
       },
       "d1_databases": [
         {
@@ -224,6 +238,10 @@
         {
           "binding": "RUNTIME_SNAPSHOTS",
           "bucket_name": "koge-runtime-snapshots-production"
+        },
+        {
+          "binding": "ROOM_THUMBNAILS",
+          "bucket_name": "koge-room-thumbnails-production"
         }
       ],
       "queues": {

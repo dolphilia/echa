@@ -12,5 +12,15 @@
         "script_name": "koge-realtime-preview"
       }
     ]
-  }
+  },
+  "r2_buckets": [
+    {
+      "binding": "RUNTIME_SNAPSHOTS",
+      "bucket_name": "koge-runtime-snapshots-preview"
+    },
+    {
+      "binding": "ROOM_THUMBNAILS",
+      "bucket_name": "koge-room-thumbnails-preview"
+    }
+  ]
 }

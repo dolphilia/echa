@@ -1,8 +1,8 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 export const PROTOCOL_LIMITS = {
-  canvasWidth: 960,
-  canvasHeight: 640,
+  canvasWidth: 1000,
+  canvasHeight: 1000,
   appendIntervalMs: 50,
   maxPointsPerAppend: 12,
   maxPointsPerStroke: 4096,

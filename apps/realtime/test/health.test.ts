@@ -102,11 +102,11 @@ describe("phase 0 health", () => {
 
     await expect(firstRoom.health()).resolves.toEqual({
       ok: true,
-      schemaVersion: 28,
+      schemaVersion: 29,
     });
     await expect(secondRoom.health()).resolves.toEqual({
       ok: true,
-      schemaVersion: 28,
+      schemaVersion: 29,
     });
   });
 

@@ -156,7 +156,7 @@ function parseSnapshot(value: Record<string, unknown>): SnapshotOfferMessage {
     || !isNonNegativeInteger(value.manifest.baseRoomSeq)
     || value.manifest.protocolVersion !== PROTOCOL_VERSION
     || value.manifest.rendererVersion !== 1
-    || value.manifest.canvasGeneration !== 1
+    || value.manifest.canvasGeneration !== 2
     || !isNonNegativeInteger(value.manifest.generation)
     || value.manifest.generation < 1
     || value.manifest.codec !== "koge-rgba-deflate-v1"
@@ -186,7 +186,7 @@ function parseSnapshot(value: Record<string, unknown>): SnapshotOfferMessage {
       baseRoomSeq: value.manifest.baseRoomSeq,
       protocolVersion: PROTOCOL_VERSION,
       rendererVersion: 1,
-      canvasGeneration: 1,
+      canvasGeneration: 2,
       generation: value.manifest.generation,
       codec: "koge-rgba-deflate-v1",
       width: value.manifest.width,

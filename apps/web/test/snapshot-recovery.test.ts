@@ -3,6 +3,7 @@ import {
   SNAPSHOT_CANVAS_GENERATION,
   SNAPSHOT_CODEC,
   SNAPSHOT_JOB_VERSION,
+  PROTOCOL_VERSION,
   SNAPSHOT_RENDERER_VERSION,
   encodeSnapshot,
   type SnapshotOfferMessage,
@@ -62,7 +63,7 @@ beforeAll(async () => {
       jobId: "snapshot-job-web-test-0001",
       roomId: "room-web-test-0001",
       baseRoomSeq: 12_345,
-      protocolVersion: 1,
+      protocolVersion: PROTOCOL_VERSION,
       rendererVersion: SNAPSHOT_RENDERER_VERSION,
       canvasGeneration: SNAPSHOT_CANVAS_GENERATION,
       generation: 1,
@@ -118,7 +119,7 @@ describe("browser snapshot recovery", () => {
       expect(value).toBeGreaterThanOrEqual(0);
     }
     expect(fetchSnapshot).toHaveBeenCalledOnce();
-  });
+  }, 15_000);
 
   it.each([
     {

@@ -104,6 +104,29 @@ it("physically removes a room across R2, DO SQLite, and D1", async () => {
     `rooms/${roomId}/snapshots/staging/${snapshot.jobId}.kgs`;
   await env.RUNTIME_SNAPSHOTS.put(objectKey, new Uint8Array([1, 2, 3]));
   expect(await env.RUNTIME_SNAPSHOTS.head(objectKey)).not.toBeNull();
+  const thumbnailObjectKey =
+    `rooms/${roomId}/thumbnails/${snapshot.targetRoomSeq}.png`;
+  const staleThumbnailObjectKey =
+    `rooms/${roomId}/thumbnails/0.png`;
+  await env.ROOM_THUMBNAILS.put(
+    thumbnailObjectKey,
+    new Uint8Array([4, 5, 6]),
+  );
+  await env.ROOM_THUMBNAILS.put(
+    staleThumbnailObjectKey,
+    new Uint8Array([7, 8, 9]),
+  );
+  await env.DB.prepare(
+    `UPDATE rooms
+     SET thumbnail_object_key = ?, thumbnail_base_room_seq = ?,
+         thumbnail_updated_at = ?
+     WHERE id = ?`,
+  ).bind(
+    thumbnailObjectKey,
+    snapshot.targetRoomSeq,
+    now,
+    roomId,
+  ).run();
 
   const close = await room.beginRoomClose({
     closeRequestId: "cleanup-integration-close",
@@ -173,12 +196,19 @@ it("physically removes a room across R2, DO SQLite, and D1", async () => {
      SET status = 'under_review', evidence_manifest_id = ?, updated_at = ?
      WHERE id = ?`,
   ).bind(evidenceId, now, "report-cleanup-integration").run();
-  await expect(processRoomCleanupJob(job, env)).resolves.toEqual({
+  const cleanupResult = await processRoomCleanupJob(job, env);
+  expect(cleanupResult).toMatchObject({
     status: "deleted",
     deletedSnapshotObjectCount: 1,
   });
+  if (cleanupResult.status === "deleted") {
+    expect(cleanupResult.deletedThumbnailObjectCount).toBeGreaterThanOrEqual(1);
+  }
 
   await expect(env.RUNTIME_SNAPSHOTS.head(objectKey)).resolves.toBeNull();
+  await expect(env.ROOM_THUMBNAILS.head(thumbnailObjectKey)).resolves.toBeNull();
+  await expect(env.ROOM_THUMBNAILS.head(staleThumbnailObjectKey)).resolves
+    .toBeNull();
   await expect(env.RUNTIME_SNAPSHOTS.head(evidenceObjectKey)).resolves
     .not.toBeNull();
   await expect(env.DB.prepare(

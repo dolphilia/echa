@@ -5,12 +5,14 @@
 
 ## 現在の状態
 
-更新日: 2026-07-29
+更新日: 2026-07-30
 
 MVPの主要実装、preview検証、production配備と直近の復旧検証まで完了しています。
 `https://koge.app`と`https://realtime.koge.app`は稼働し、Google OAuth、
 ルーム作成・入室、描画、remote cursor、chat、reload復帰、room終了、
 Cloudflare Access配下の管理操作を利用者E2Eで確認済みです。
+1000 x 1000 canvasと公開ルームサムネイルはlocal実装・自動試験まで完了し、
+preview / productionのresource作成と検証はこれからです。
 
 一般公開完了ではありません。規約、retention、alert、backup/restore試験、
 closed betaを含む公開運用gateが残っています。現在の正確な進捗は
@@ -26,11 +28,12 @@ closed betaを含む公開運用gateが残っています。現在の正確な�
 - ログインユーザーの描画・role横断chat、host / participant / viewer
 - server由来の表示名・avatar付き短期chat、presence、remote cursor
 - MessagePack stroke protocolとWebSocket Hibernation
-- 960 x 640の白いCanvas、brush / eraser / eyedropper、pan / zoom
+- 1000 x 1000の白いCanvas、brush / eraser / eyedropper、pan / zoom
 - stroke単位の低opacity描画とWASM canonical renderer
 - 短期chat、rate limit、mute、disconnect
 - waiting / active / idle / closing / suspendedのroom lifecycle
 - snapshot-first recovery、R2、Queue、event-log fallback
+- snapshot RGBAを共有する512 x 512公開ルームサムネイル（local実装）
 - room終了時のR2 → Durable Object → D1 cleanup
 - report、期限付きmoderation evidence、kick、room BAN、service BAN
 - 緊急時のroom作成・入室・描画停止
@@ -175,13 +178,16 @@ WebはVinext adapterのscriptを通して配備します。生成された
 全体配備は次の順序を変えず、各段階の確認に成功してから先へ進みます。
 
 1. 3 Workerの現行versionとD1の未適用migrationを記録する。
-2. production D1へ未適用migrationを適用し、未適用0件を確認する。
-3. Realtimeをdry-run、配備し、versionと`/health`を確認する。
-4. Snapshotをdry-run、配備し、versionとQueue consumerを確認する。
-5. Webをdry-run、配備し、versionを確認する。
-6. HTTP healthに加え、ログイン済み利用者が実際にroomを作成し、自動開始・入室・
+2. 変更が要求するprivate R2 bucketなどのresourceとbindingを先に照合する。
+3. production D1へ未適用migrationを適用し、未適用0件を確認する。
+4. Realtimeをdry-run、配備し、versionと`/health`を確認する。
+5. Snapshotをdry-run、配備し、versionとQueue consumerを確認する。
+6. Webをdry-run、配備し、versionを確認する。
+7. HTTP healthに加え、ログイン済み利用者が実際にroomを作成し、自動開始・入室・
    描画・chat・復帰できることを確認する。
-7. provisioning失敗、Worker error、Queue / DLQ backlogが増えていないことを確認する。
+8. 対象変更にthumbnailが含まれる場合は、public表示、unlisted拒否、終了cleanupを
+   確認する。
+9. provisioning失敗、Worker error、Queue / DLQ backlogが増えていないことを確認する。
 
 共有protocolはconsumer側を旧・新payloadの両方に対応させて先に配備し、その後に
 producerを切り替えるexpand / contractを基本とします。必須fieldを削除しながら

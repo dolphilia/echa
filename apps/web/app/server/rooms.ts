@@ -24,6 +24,7 @@ export type PublicRoom = {
   viewerLimit: number;
   createdAt: number;
   maxEndsAt: number;
+  thumbnailVersion: number | null;
 };
 
 export type RoomDisplayInfo = {
@@ -40,6 +41,7 @@ type PublicRoomRow = {
   viewer_limit: number;
   created_at: number;
   max_ends_at: number;
+  thumbnail_base_room_seq: number | null;
 };
 
 export type CreateRoomInput = {
@@ -433,7 +435,8 @@ export async function listPublicRooms(
          viewer_count,
          viewer_limit,
          created_at,
-         max_ends_at
+         max_ends_at,
+         thumbnail_base_room_seq
        FROM rooms
        WHERE visibility = 'public'
          AND provisioning_status = 'ready'
@@ -460,6 +463,7 @@ export async function listPublicRooms(
     viewerLimit: room.viewer_limit,
     createdAt: room.created_at,
     maxEndsAt: room.max_ends_at,
+    thumbnailVersion: room.thumbnail_base_room_seq,
   }));
 }
 

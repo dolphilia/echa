@@ -15,6 +15,7 @@ CMakeUserPresets.json
 node_modules/
 dist/
 dist-production/
+dist-preview/
 target/
 apps/web/public/generated/
 .next/
@@ -38,6 +39,7 @@ coverage/
 playwright-report/
 test-results/
 reports/private/
+.tmp/
 
 # Local coding-agent instructions
 AGENTS.md

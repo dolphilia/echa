@@ -9,11 +9,13 @@ type InventoryRoomTarget =
 
 type RoomRow = {
   id: string;
+  thumbnail_object_key: string | null;
 };
 
 type OrphanCandidate = {
   objectKey: string;
   roomId: string;
+  kind: "snapshot" | "thumbnail";
   objectBytes: number;
   uploadedAt: number;
 };
@@ -84,6 +86,8 @@ export type SnapshotOrphanScanResult =
 const SNAPSHOT_PREFIX = "rooms/";
 const SNAPSHOT_KEY_PATTERN =
   /^rooms\/([A-Za-z0-9_-]{8,128})\/snapshots\/staging\/([A-Za-z0-9_-]{8,128})\.kgs$/;
+const THUMBNAIL_KEY_PATTERN =
+  /^rooms\/([A-Za-z0-9_-]{8,128})\/thumbnails\/([0-9]+)\.png$/;
 const ORPHAN_GRACE_MS = 60 * 60 * 1_000;
 const MAX_SCANNED_OBJECTS = 10_000;
 const MAX_SCANNED_ROOMS = 500;
@@ -100,6 +104,24 @@ async function sha256Hex(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0")
   ).join("");
+}
+
+function objectKeyMatch(
+  objectKey: string,
+): { roomId: string; kind: OrphanCandidate["kind"] } | undefined {
+  const snapshot = SNAPSHOT_KEY_PATTERN.exec(objectKey);
+  if (snapshot?.[1]) return { roomId: snapshot[1], kind: "snapshot" };
+  const thumbnail = THUMBNAIL_KEY_PATTERN.exec(objectKey);
+  if (thumbnail?.[1]) return { roomId: thumbnail[1], kind: "thumbnail" };
+  return undefined;
+}
+
+function objectBucket(env: Env, objectKey: string): R2Bucket {
+  const match = objectKeyMatch(objectKey);
+  if (!match) throw new TypeError("unsupported orphan object key");
+  return match.kind === "snapshot"
+    ? env.RUNTIME_SNAPSHOTS
+    : env.ROOM_THUMBNAILS;
 }
 
 function deletionPlanPayload(
@@ -153,7 +175,7 @@ function assertDeletionPlanShape(
   for (const object of plan.objects) {
     const match = object && typeof object === "object"
       && typeof object.objectKey === "string"
-      ? SNAPSHOT_KEY_PATTERN.exec(object.objectKey)
+      ? objectKeyMatch(object.objectKey)
       : null;
     if (
       !object
@@ -161,7 +183,7 @@ function assertDeletionPlanShape(
       || typeof object.objectKey !== "string"
       || !match
       || typeof object.roomId !== "string"
-      || match[1] !== object.roomId
+      || match.roomId !== object.roomId
       || typeof object.objectBytes !== "number"
       || !Number.isSafeInteger(object.objectBytes)
       || object.objectBytes < 0
@@ -182,13 +204,13 @@ function assertDeletionPlanShape(
   }
 }
 
-function parseSnapshotObject(object: R2Object): OrphanCandidate | undefined {
-  const match = SNAPSHOT_KEY_PATTERN.exec(object.key);
-  const roomId = match?.[1];
-  if (!roomId) return undefined;
+function parseInventoryObject(object: R2Object): OrphanCandidate | undefined {
+  const match = objectKeyMatch(object.key);
+  if (!match) return undefined;
   return {
     objectKey: object.key,
-    roomId,
+    roomId: match.roomId,
+    kind: match.kind,
     objectBytes: object.size,
     uploadedAt: object.uploaded.getTime(),
   };
@@ -222,7 +244,7 @@ async function createScan(
   }
 }
 
-async function listSnapshotObjects(
+async function listInventoryObjects(
   bucket: R2Bucket,
 ): Promise<OrphanCandidate[]> {
   const objects: OrphanCandidate[] = [];
@@ -235,7 +257,7 @@ async function listSnapshotObjects(
       ...(cursor ? { cursor } : {}),
     });
     for (const object of page.objects) {
-      const candidate = parseSnapshotObject(object);
+      const candidate = parseInventoryObject(object);
       if (candidate) objects.push(candidate);
       if (objects.length > MAX_SCANNED_OBJECTS) {
         throw new Error("snapshot orphan scan object limit exceeded");
@@ -254,8 +276,10 @@ async function classifyOrphans(
   const mature = candidates.filter(
     ({ uploadedAt }) => uploadedAt <= now - ORPHAN_GRACE_MS,
   );
-  const roomRows = await env.DB.prepare("SELECT id FROM rooms").all<RoomRow>();
-  const existingRooms = new Set(roomRows.results.map(({ id }) => id));
+  const roomRows = await env.DB.prepare(
+    "SELECT id, thumbnail_object_key FROM rooms",
+  ).all<RoomRow>();
+  const existingRooms = new Map(roomRows.results.map((room) => [room.id, room]));
   const byRoom = new Map<string, OrphanCandidate[]>();
   for (const candidate of mature) {
     const values = byRoom.get(candidate.roomId) ?? [];
@@ -269,16 +293,21 @@ async function classifyOrphans(
   const orphans: OrphanRecord[] = [];
   const rooms = env.DRAWING_ROOM as DurableObjectNamespace<InventoryRoomTarget>;
   for (const [roomId, objects] of byRoom) {
-    if (!existingRooms.has(roomId)) {
+    const roomRow = existingRooms.get(roomId);
+    if (!roomRow) {
       orphans.push(...objects.map((object) => ({
         ...object,
         reason: "room_missing" as const,
       })));
       continue;
     }
+    const snapshotObjects = objects.filter(({ kind }) => kind === "snapshot");
     const room = rooms.getByName(roomId, { locationHint: "apac-ne" });
-    // oxlint-disable-next-line no-await-in-loop -- each room owns its inventory.
-    const referencedKeys = await room.runtimeSnapshotObjectKeys(roomId);
+    let referencedKeys: readonly string[] = [];
+    if (snapshotObjects.length > 0) {
+      // oxlint-disable-next-line no-await-in-loop -- each room owns its inventory.
+      referencedKeys = await room.runtimeSnapshotObjectKeys(roomId);
+    }
     if (
       !Array.isArray(referencedKeys)
       || referencedKeys.length > MAX_REFERENCED_KEYS_PER_ROOM
@@ -293,7 +322,10 @@ async function classifyOrphans(
     }
     const referenced = new Set(referencedKeys);
     for (const object of objects) {
-      if (!referenced.has(object.objectKey)) {
+      const isReferenced = object.kind === "snapshot"
+        ? referenced.has(object.objectKey)
+        : roomRow.thumbnail_object_key === object.objectKey;
+      if (!isReferenced) {
         orphans.push({ ...object, reason: "unreferenced" });
       }
     }
@@ -384,7 +416,11 @@ export async function scanSnapshotOrphans(
     return { status: "already_running" };
   }
   try {
-    const candidates = await listSnapshotObjects(env.RUNTIME_SNAPSHOTS);
+    const [snapshotCandidates, thumbnailCandidates] = await Promise.all([
+      listInventoryObjects(env.RUNTIME_SNAPSHOTS),
+      listInventoryObjects(env.ROOM_THUMBNAILS),
+    ]);
+    const candidates = [...snapshotCandidates, ...thumbnailCandidates];
     const orphans = await classifyOrphans(env, candidates, now);
     return await commitInventory(env.DB, scanId, now, candidates, orphans);
   } catch (error) {
@@ -419,7 +455,7 @@ export async function createSnapshotOrphanDeletionPlan(
   const objects: SnapshotOrphanDeletionPlanObject[] = [];
   for (const row of rows.results) {
     // oxlint-disable-next-line no-await-in-loop -- each candidate is fail-closed.
-    const object = await env.RUNTIME_SNAPSHOTS.head(row.object_key);
+    const object = await objectBucket(env, row.object_key).head(row.object_key);
     if (
       !object
       || object.size !== row.object_bytes
@@ -527,7 +563,8 @@ export async function deleteSnapshotOrphans(
   const deletable: SnapshotOrphanDeletionPlanObject[] = [];
   for (const planned of plan.objects) {
     // oxlint-disable-next-line no-await-in-loop -- each candidate is fail-closed.
-    const object = await env.RUNTIME_SNAPSHOTS.head(planned.objectKey);
+    const object = await objectBucket(env, planned.objectKey)
+      .head(planned.objectKey);
     if (!object) {
       alreadyMissing.push(planned);
       continue;
@@ -549,12 +586,23 @@ export async function deleteSnapshotOrphans(
   }
 
   if (deletable.length > 0) {
-    await env.RUNTIME_SNAPSHOTS.delete(
-      deletable.map(({ objectKey }) => objectKey),
-    );
+    const snapshotKeys = deletable
+      .map(({ objectKey }) => objectKey)
+      .filter((objectKey) => objectKeyMatch(objectKey)?.kind === "snapshot");
+    const thumbnailKeys = deletable
+      .map(({ objectKey }) => objectKey)
+      .filter((objectKey) => objectKeyMatch(objectKey)?.kind === "thumbnail");
+    await Promise.all([
+      snapshotKeys.length > 0
+        ? env.RUNTIME_SNAPSHOTS.delete(snapshotKeys)
+        : Promise.resolve(),
+      thumbnailKeys.length > 0
+        ? env.ROOM_THUMBNAILS.delete(thumbnailKeys)
+        : Promise.resolve(),
+    ]);
     for (const object of deletable) {
       // oxlint-disable-next-line no-await-in-loop -- deletion verification is bounded.
-      if (await env.RUNTIME_SNAPSHOTS.head(object.objectKey)) {
+      if (await objectBucket(env, object.objectKey).head(object.objectKey)) {
         throw new Error("snapshot orphan object remained after deletion");
       }
     }

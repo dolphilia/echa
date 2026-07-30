@@ -4,7 +4,7 @@ export const SNAPSHOT_JOB_VERSION = 1 as const;
 export const SNAPSHOT_RENDERER_VERSION = 1 as const;
 export const SNAPSHOT_CODEC = "koge-rgba-deflate-v1" as const;
 export const SNAPSHOT_EVENT_CHUNK_LIMIT = 500 as const;
-export const SNAPSHOT_CANVAS_GENERATION = 1 as const;
+export const SNAPSHOT_CANVAS_GENERATION = 2 as const;
 
 export type SnapshotJob = {
   readonly v: typeof SNAPSHOT_JOB_VERSION;

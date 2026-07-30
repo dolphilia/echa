@@ -2,14 +2,14 @@
   "schema": "echa.renderer-fixture-manifest.v1",
   "fixture": "canonical-strokes.json",
   "canvas": {
-    "width": 960,
-    "height": 640,
+    "width": 1000,
+    "height": 1000,
     "background": "#ffffff",
     "colorSpace": "srgb"
   },
   "protocolVersion": 1,
   "rendererVersion": 1,
-  "rgbaHash": "3a4e5e43f7371312ba0f4512f84a297aeb8e9a7012c67eff4512bc1f302537cb",
+  "rgbaHash": "5417cae6587907b72b02cd21756bdee55d96124452d705107767bd14fccbc31b",
   "wasmHash": "7bab6445ddb282e655f6d0c3b950b50eb965ea498ae8250c476a0aac4184037b",
   "objectByteHash": null,
   "cases": [

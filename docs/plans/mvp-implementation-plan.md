@@ -191,7 +191,7 @@ Phase 4のUI・認証トラックはPhase 0後に並行できる。ただしroom
 
 ### 作業
 
-- 960 x 640、白背景、論理サイズ固定のcanvasを実装する。
+- 1000 x 1000、白背景、論理サイズ固定のcanvasを実装する。
 - brush / eraser / eyedropper / zoom / panを実装する。
 - pointer inputを`stroke.begin/append/end/cancel`へ変換する。
 - 50ms / 最大12 pointsの暫定batchingを実装する。
@@ -284,7 +284,7 @@ Browser / Workers共通rendererの決定性と性能を確認し、snapshot + ta
 
 - Queueへjob metadataだけを送る。
 - consumerがDO RPCからtarget `baseRoomSeq`までchunk取得する。
-- WASMで960 x 640 RGBAへ描画し、lossless encodeする。
+- WASMで1000 x 1000 RGBAへ描画し、lossless encodeする。
 - temporary R2 objectを作り、object hashとRGBA hashを計算する。
 - DOがjobとversionを検証してmanifestをcommitする。
 - clientがsnapshotを検証し、tailを再生してlive eventへ追いつく。

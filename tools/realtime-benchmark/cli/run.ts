@@ -1,6 +1,7 @@
 import {
   decodeServerMessage,
   encodeEvent,
+  SNAPSHOT_CANVAS_GENERATION,
   SNAPSHOT_RENDERER_VERSION,
   type ClientStrokeEvent,
   type ServerMessage,
@@ -426,6 +427,10 @@ async function benchmarkConnection(
     const url = new URL(`/rooms/${options.publicSlug}/connect`, options.endpoint);
     url.searchParams.set("ticket", ticket.ticket);
     url.searchParams.set("lastRoomSeq", String(input.lastRoomSeq));
+    url.searchParams.set(
+      "canvasGeneration",
+      String(SNAPSHOT_CANVAS_GENERATION),
+    );
     if (options.recoveryMode === "snapshot-required") {
       url.searchParams.set(
         "rendererVersion",
@@ -445,6 +450,10 @@ async function benchmarkConnection(
   url.searchParams.set("connection", input.connectionId);
   url.searchParams.set("lastRoomSeq", String(input.lastRoomSeq));
   url.searchParams.set("role", input.role);
+  url.searchParams.set(
+    "canvasGeneration",
+    String(SNAPSHOT_CANVAS_GENERATION),
+  );
   if (options.recoveryMode === "snapshot-required") {
     url.searchParams.set("rendererVersion", String(SNAPSHOT_RENDERER_VERSION));
     url.searchParams.set("snapshot", "1");

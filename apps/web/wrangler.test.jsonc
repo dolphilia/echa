@@ -17,13 +17,20 @@
     "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
     "CF_ACCESS_ISSUER": "https://test.cloudflareaccess.com",
     "CF_ACCESS_AUD": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "MODERATION_EVIDENCE_RETENTION_DAYS": 30
+    "MODERATION_EVIDENCE_RETENTION_DAYS": 30,
+    "THUMBNAIL_ENABLED": "true"
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "koge-web-test",
       "database_id": "local"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ROOM_THUMBNAILS",
+      "bucket_name": "koge-room-thumbnails-test"
     }
   ]
 }

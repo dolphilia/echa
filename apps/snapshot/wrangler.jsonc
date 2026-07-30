@@ -8,8 +8,17 @@
     "nodejs_compat"
   ],
   "vars": {
-    "APP_ENV": "local"
+    "APP_ENV": "local",
+    "THUMBNAIL_ENABLED": "true"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "koge-local",
+      "database_id": "local",
+      "migrations_dir": "../../migrations/d1"
+    }
+  ],
   "durable_objects": {
     "bindings": [
       {
@@ -23,9 +32,19 @@
     {
       "binding": "RUNTIME_SNAPSHOTS",
       "bucket_name": "koge-runtime-snapshots-local"
+    },
+    {
+      "binding": "ROOM_THUMBNAILS",
+      "bucket_name": "koge-room-thumbnails-local"
     }
   ],
   "queues": {
+    "producers": [
+      {
+        "binding": "SNAPSHOT_QUEUE",
+        "queue": "koge-snapshot-local"
+      }
+    ],
     "consumers": [
       {
         "queue": "koge-snapshot-local",
@@ -50,8 +69,17 @@
     "preview": {
       "name": "koge-snapshot-preview",
       "vars": {
-        "APP_ENV": "preview"
+        "APP_ENV": "preview",
+        "THUMBNAIL_ENABLED": "true"
       },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "koge-preview",
+          "database_id": "59b84520-bef3-456e-90ec-37f4e496e851",
+          "migrations_dir": "../../migrations/d1"
+        }
+      ],
       "durable_objects": {
         "bindings": [
           {
@@ -65,9 +93,19 @@
         {
           "binding": "RUNTIME_SNAPSHOTS",
           "bucket_name": "koge-runtime-snapshots-preview"
+        },
+        {
+          "binding": "ROOM_THUMBNAILS",
+          "bucket_name": "koge-room-thumbnails-preview"
         }
       ],
       "queues": {
+        "producers": [
+          {
+            "binding": "SNAPSHOT_QUEUE",
+            "queue": "koge-snapshot-preview"
+          }
+        ],
         "consumers": [
           {
             "queue": "koge-snapshot-preview",
@@ -81,8 +119,17 @@
     "production": {
       "name": "koge-snapshot",
       "vars": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "THUMBNAIL_ENABLED": "true"
       },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "koge-production",
+          "database_id": "2071beb0-831b-40cf-9c7d-d068496766b3",
+          "migrations_dir": "../../migrations/d1"
+        }
+      ],
       "durable_objects": {
         "bindings": [
           {
@@ -96,9 +143,19 @@
         {
           "binding": "RUNTIME_SNAPSHOTS",
           "bucket_name": "koge-runtime-snapshots-production"
+        },
+        {
+          "binding": "ROOM_THUMBNAILS",
+          "bucket_name": "koge-room-thumbnails-production"
         }
       ],
       "queues": {
+        "producers": [
+          {
+            "binding": "SNAPSHOT_QUEUE",
+            "queue": "koge-snapshot-production"
+          }
+        ],
         "consumers": [
           {
             "queue": "koge-snapshot-production",
