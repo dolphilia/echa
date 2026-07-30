@@ -731,6 +731,8 @@ Hibernation実行票: [`../spikes/websocket-hibernation.md`](../spikes/websocket
   絞れるようにする。2026-07-30にlocal実装し、初期値を20 room、
   participant 10、viewer 10とした。participantとviewerの合計20接続を
   hard limitとし、20超への拡張は後続のRealtime負荷試験と別判断まで行わない。
+  同じ管理設定で新規roomを公開roomだけに制限できるようにし、有効時は作成UIと
+  Web APIの両方でunlisted roomを無効化する。
   D1の同時作成競合、DOのrole別入室、owner予約席、既存room互換をpreviewで
   検証してからproductionへ協調配備する。
 - production migrationとrollback手順を試す。

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import AuthActions from "./auth-actions";
 import DrawingRoom from "./drawing-room";
 import { createAuth } from "./server/auth";
+import { readServiceCapacityLimits } from "./server/service-capacity";
 import {
   listOwnedLiveRoomSlugs,
   listPublicRooms,
@@ -50,9 +51,10 @@ export default async function Home({
     return <DrawingRoom roomName="E2E同期ルーム" />;
   }
   const requestHeaders = new Headers(await headers());
-  const [session, rooms] = await Promise.all([
+  const [session, rooms, capacityLimits] = await Promise.all([
     createAuth(env).api.getSession({ headers: requestHeaders }),
     listPublicRooms(env.DB),
+    readServiceCapacityLimits(env.DB),
   ]);
   const activeUser = session?.user.status === "active" ? session.user : null;
   const ownedRoomSlugs = activeUser
@@ -82,7 +84,10 @@ export default async function Home({
           ) : (
             <span className="home-user">ゲスト</span>
           )}
-          <AuthActions isAuthenticated={Boolean(activeUser)} />
+          <AuthActions
+            isAuthenticated={Boolean(activeUser)}
+            publicRoomsOnly={capacityLimits.publicRoomsOnly}
+          />
         </div>
       </header>
 

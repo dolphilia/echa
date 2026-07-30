@@ -155,11 +155,12 @@ npm exec wrangler -- d1 execute koge-production --remote \
 ```sh
 npm exec wrangler -- d1 execute koge-production --remote \
   --config apps/realtime/wrangler.jsonc --env production \
-  --command "SELECT revision, live_room_limit, participant_limit, viewer_limit FROM service_capacity_limits WHERE singleton = 1"
+  --command "SELECT revision, live_room_limit, participant_limit, viewer_limit, public_rooms_only FROM service_capacity_limits WHERE singleton = 1"
 ```
 
-初回値が`0, 20, 10, 10`であり、participantとviewerの合計が20以下であることを
-確認する。管理画面から変更するまではD1を直接更新しない。
+初回値が`0, 20, 10, 10, 0`であり、participantとviewerの合計が20以下、
+招待リンク限定roomが許可状態であることを確認する。管理画面から変更するまでは
+D1を直接更新しない。
 
 ## Step 1.5: 新規room作成を停止する
 

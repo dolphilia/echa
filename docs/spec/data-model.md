@@ -89,12 +89,15 @@ suspended`かつprovisioningが`pending | ready`のroomを条件付きINSERT内�
 - `participant_limit`: 1〜20、初期値10
 - `viewer_limit`: 0〜19、初期値10
 - participantとviewerの合計は20以下
+- `public_rooms_only`: 新規roomを公開だけに制限する。初期値false
 - `revision`, `updated_at`, `actor_admin_id`, `reason`
 
 `service_capacity_limit_actions`へ変更者、変更値、理由、適用revisionを記録する。
 通常の利用上限であり、機能を即時停止する`service_controls`とは分離する。
 role別接続数のauthoritativeな判定はroom Durable Objectで行い、D1の
 `participant_count` / `viewer_count`は一覧表示用projectionとして扱う。
+`public_rooms_only`は新規INSERTだけに適用し、既存のunlisted roomや同一requestの
+provisioning再試行には遡及しない。
 
 ### `guest_sessions`
 

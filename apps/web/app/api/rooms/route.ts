@@ -5,6 +5,7 @@ import {
   RoomCreationDisabledError,
   RoomCreationLimitError,
   RoomProvisioningError,
+  RoomVisibilityRestrictedError,
   SiteRoomCreationLimitError,
   createRoom,
   listPublicRooms,
@@ -124,6 +125,12 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(
         { error: "SITE_LIVE_ROOM_LIMIT_REACHED" },
         { status: 429 },
+      );
+    }
+    if (error instanceof RoomVisibilityRestrictedError) {
+      return Response.json(
+        { error: "ROOM_VISIBILITY_RESTRICTED" },
+        { status: 403 },
       );
     }
     if (error instanceof ServiceBanActiveError) {

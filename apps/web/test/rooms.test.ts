@@ -16,6 +16,7 @@ import {
   RoomCreationDisabledError,
   RoomCreationLimitError,
   RoomProvisioningError,
+  RoomVisibilityRestrictedError,
   SiteRoomCreationLimitError,
   createRoom,
   listOwnedLiveRoomSlugs,
@@ -115,6 +116,16 @@ beforeAll(async () => {
       "user-site-limit-test-two",
       "Second site limit owner",
       "site-limit-two@example.test",
+      1,
+      null,
+      NOW,
+      NOW,
+      "active",
+    ),
+    insertUser.bind(
+      "user-visibility-policy-test",
+      "Visibility policy owner",
+      "visibility-policy@example.test",
       1,
       null,
       NOW,
@@ -749,6 +760,67 @@ describe("public room projection", () => {
       await env.DB.prepare(
         `UPDATE service_capacity_limits
          SET live_room_limit = 20, participant_limit = 10, viewer_limit = 10
+         WHERE singleton = 1`,
+      ).run();
+    }
+  });
+
+  it("rejects new unlisted rooms when the public-only policy is enabled", async () => {
+    await env.DB.prepare(
+      `UPDATE service_capacity_limits
+       SET public_rooms_only = 1
+       WHERE singleton = 1`,
+    ).run();
+    const realtime = {
+      async fetch(_input: RequestInfo | URL, init?: RequestInit) {
+        const request = JSON.parse(String(init?.body)) as {
+          roomId: string;
+          createdAt: number;
+          maxEndsAt: number;
+        };
+        return Response.json({
+          status: "initialized" as const,
+          roomId: request.roomId,
+          createdAt: request.createdAt,
+          maxEndsAt: request.maxEndsAt,
+        });
+      },
+    };
+    try {
+      await expect(createRoom(
+        env.DB,
+        realtime,
+        "user-visibility-policy-test",
+        "visibility-policy-unlisted",
+        {
+          name: "限定ルーム",
+          visibility: "unlisted",
+          inviteToken: "f".repeat(64),
+        },
+        NOW + 20,
+      )).rejects.toBeInstanceOf(RoomVisibilityRestrictedError);
+      await expect(
+        env.DB.prepare(
+          "SELECT 1 FROM rooms WHERE owner_user_id = ?",
+        ).bind("user-visibility-policy-test").first(),
+      ).resolves.toBeNull();
+
+      await expect(createRoom(
+        env.DB,
+        realtime,
+        "user-visibility-policy-test",
+        "visibility-policy-public",
+        {
+          name: "公開ルーム",
+          visibility: "public",
+          inviteToken: null,
+        },
+        NOW + 21,
+      )).resolves.toMatchObject({ visibility: "public" });
+    } finally {
+      await env.DB.prepare(
+        `UPDATE service_capacity_limits
+         SET public_rooms_only = 0
          WHERE singleton = 1`,
       ).run();
     }

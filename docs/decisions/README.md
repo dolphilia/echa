@@ -18,4 +18,4 @@
 | [`0010-authenticated-drawing-and-chat.md`](./0010-authenticated-drawing-and-chat.md) | 描画とチャット送信はログインユーザーに限定する | 採用 |
 | [`0011-coordinated-production-deployment.md`](./0011-coordinated-production-deployment.md) | 共有境界を含むproduction配備を協調配備にする | 採用 |
 | [`0012-square-canvas-and-room-thumbnails.md`](./0012-square-canvas-and-room-thumbnails.md) | 1000 x 1000 canvasと一時的な公開ルームサムネイルを採用する | 採用、preview検証前 |
-| [`0013-bounded-service-capacity.md`](./0013-bounded-service-capacity.md) | 管理可能な利用上限を20接続の安全上限内に設ける | 採用、local実装済み |
+| [`0013-bounded-service-capacity.md`](./0013-bounded-service-capacity.md) | 管理可能な利用上限と公開範囲ポリシーを設ける | 採用、local実装済み |

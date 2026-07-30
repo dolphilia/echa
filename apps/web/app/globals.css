@@ -227,6 +227,35 @@ button {
   color: #895b4e;
 }
 
+.admin-capacity-policy {
+  display: flex;
+  padding: 12px;
+  margin-top: 10px;
+  border: 1px solid #d7dbd4;
+  border-radius: 10px;
+  background: #fff;
+  color: #626a61;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.admin-capacity-policy input {
+  margin-top: 3px;
+  accent-color: #6f8c79;
+}
+
+.admin-capacity-policy span {
+  display: grid;
+  font-size: 0.7rem;
+  gap: 4px;
+}
+
+.admin-capacity-policy small {
+  color: #858b83;
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
 @media (max-width: 640px) {
   .admin-capacity-fields {
     grid-template-columns: 1fr;

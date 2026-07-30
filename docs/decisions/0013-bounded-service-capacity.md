@@ -1,4 +1,4 @@
-# 0013: 管理可能なサービス利用上限を安全上限20接続内に設ける
+# 0013: 管理可能なサービス利用上限と公開範囲ポリシーを設ける
 
 更新日: 2026-07-30
 
@@ -30,6 +30,12 @@ hard limitは20だった。表示上のrole limitと実際の接続上限が一�
 - 既存のparticipant 20 / viewer 100 roomは終了まで再接続・再初期化可能な互換経路を
   維持するが、総接続hard limit 20は引き続き適用する。
 - 管理変更はCloudflare Access認証、idempotency key、変更理由、監査actionを必須とする。
+- 管理者は新規roomを公開roomだけに制限できる。初期値では制限しない。
+- 公開room限定時は新規room画面から公開範囲の選択と招待リンク限定の説明を外し、
+  client送信値も`public`へ固定する。
+- UIを迂回した`unlisted`作成は、room INSERTと同じD1条件内で拒否する。
+- 公開room限定への変更は既存roomへ遡及せず、既存のunlisted roomと同一作成requestの
+  provisioning再試行を維持する。
 
 ## 結果
 

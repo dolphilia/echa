@@ -7,6 +7,8 @@ CREATE TABLE "service_capacity_limits" (
     CHECK ("participant_limit" BETWEEN 1 AND 20),
   "viewer_limit" INTEGER NOT NULL DEFAULT 10
     CHECK ("viewer_limit" BETWEEN 0 AND 19),
+  "public_rooms_only" INTEGER NOT NULL DEFAULT 0
+    CHECK ("public_rooms_only" IN (0, 1)),
   "updated_at" INTEGER NOT NULL DEFAULT 0,
   "actor_admin_id" TEXT,
   "reason" TEXT,
@@ -24,6 +26,8 @@ CREATE TABLE "service_capacity_limit_actions" (
     CHECK ("participant_limit" BETWEEN 1 AND 20),
   "viewer_limit" INTEGER NOT NULL
     CHECK ("viewer_limit" BETWEEN 0 AND 19),
+  "public_rooms_only" INTEGER NOT NULL
+    CHECK ("public_rooms_only" IN (0, 1)),
   "reason" TEXT NOT NULL,
   "requested_at" INTEGER NOT NULL,
   "applied_revision" INTEGER NOT NULL UNIQUE,

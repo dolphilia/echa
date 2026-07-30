@@ -111,6 +111,7 @@ export default function AdminRoomConsole({
           liveRoomLimit: capacityDraft.liveRoomLimit,
           participantLimit: capacityDraft.participantLimit,
           viewerLimit: capacityDraft.viewerLimit,
+          publicRoomsOnly: capacityDraft.publicRoomsOnly,
           reason,
         }),
       });
@@ -541,6 +542,23 @@ export default function AdminRoomConsole({
             <small>0人なら閲覧入室を停止</small>
           </label>
         </div>
+        <label className="admin-capacity-policy">
+          <input
+            checked={capacityDraft.publicRoomsOnly}
+            disabled={pendingKey === "capacity"}
+            onChange={(event) => setCapacityDraft((current) => ({
+              ...current,
+              publicRoomsOnly: event.target.checked,
+            }))}
+            type="checkbox"
+          />
+          <span>
+            <strong>公開ルームのみ許可</strong>
+            <small>
+              新しいルームの「招待リンク限定」を非表示にし、APIからの作成も拒否します。
+            </small>
+          </span>
+        </label>
         <p className={
           !capacityDraftValid
             ? "admin-capacity-total invalid"
@@ -568,6 +586,8 @@ export default function AdminRoomConsole({
                 && capacityDraft.participantLimit
                   === capacityLimits.participantLimit
                 && capacityDraft.viewerLimit === capacityLimits.viewerLimit
+                && capacityDraft.publicRoomsOnly
+                  === capacityLimits.publicRoomsOnly
               )
               || !capacityDraftValid
             }

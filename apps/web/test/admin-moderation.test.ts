@@ -94,17 +94,20 @@ describe("administrator moderation boundary", () => {
       liveRoomLimit: 12,
       participantLimit: 4,
       viewerLimit: 16,
+      publicRoomsOnly: true,
       reason: "  staged capacity reduction  ",
     })).toEqual({
       liveRoomLimit: 12,
       participantLimit: 4,
       viewerLimit: 16,
+      publicRoomsOnly: true,
       reason: "staged capacity reduction",
     });
     expect(() => parseServiceCapacityLimitInput({
       liveRoomLimit: 12,
       participantLimit: 4,
       viewerLimit: 17,
+      publicRoomsOnly: true,
       reason: "over combined limit",
     })).toThrow("invalid capacity limit input");
 
@@ -115,6 +118,7 @@ describe("administrator moderation boundary", () => {
         liveRoomLimit: 12,
         participantLimit: 4,
         viewerLimit: 16,
+        publicRoomsOnly: true,
         reason: "staged capacity reduction",
       },
       now: NOW,
@@ -127,6 +131,7 @@ describe("administrator moderation boundary", () => {
           liveRoomLimit: 12,
           participantLimit: 4,
           viewerLimit: 16,
+          publicRoomsOnly: true,
         },
       });
     await expect(applyServiceCapacityLimits(env.DB, input)).resolves
@@ -139,6 +144,7 @@ describe("administrator moderation boundary", () => {
       liveRoomLimit: 12,
       participantLimit: 4,
       viewerLimit: 16,
+      publicRoomsOnly: true,
     });
     await expect(applyServiceCapacityLimits(env.DB, {
       ...input,

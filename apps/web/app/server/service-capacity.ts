@@ -14,6 +14,7 @@ export type ServiceCapacityLimits = {
   liveRoomLimit: number;
   participantLimit: number;
   viewerLimit: number;
+  publicRoomsOnly: boolean;
   updatedAt: number;
 };
 
@@ -21,6 +22,7 @@ export type ServiceCapacityLimitInput = {
   liveRoomLimit: number;
   participantLimit: number;
   viewerLimit: number;
+  publicRoomsOnly: boolean;
   reason: string;
 };
 
@@ -35,6 +37,7 @@ type ServiceCapacityLimitRow = {
   live_room_limit: number;
   participant_limit: number;
   viewer_limit: number;
+  public_rooms_only: number;
   updated_at: number;
 };
 
@@ -43,6 +46,7 @@ type ServiceCapacityLimitActionRow = {
   live_room_limit: number;
   participant_limit: number;
   viewer_limit: number;
+  public_rooms_only: number;
   reason: string;
   requested_at: number;
   applied_revision: number;
@@ -60,6 +64,7 @@ function limitsFromRow(
     liveRoomLimit: row.live_room_limit,
     participantLimit: row.participant_limit,
     viewerLimit: row.viewer_limit,
+    publicRoomsOnly: row.public_rooms_only === 1,
     updatedAt: row.updated_at,
   };
 }
@@ -69,7 +74,7 @@ async function readLimitRow(
 ): Promise<ServiceCapacityLimitRow> {
   const row = await database.prepare(
     `SELECT revision, live_room_limit, participant_limit, viewer_limit,
-            updated_at
+            public_rooms_only, updated_at
      FROM service_capacity_limits WHERE singleton = 1`,
   ).first<ServiceCapacityLimitRow>();
   if (!row) throw new Error("service capacity limits are not initialized");
@@ -90,6 +95,7 @@ export function parseServiceCapacityLimitInput(
   const liveRoomLimit = value.liveRoomLimit;
   const participantLimit = value.participantLimit;
   const viewerLimit = value.viewerLimit;
+  const publicRoomsOnly = value.publicRoomsOnly;
   if (
     typeof liveRoomLimit !== "number"
     || !Number.isSafeInteger(liveRoomLimit)
@@ -103,6 +109,7 @@ export function parseServiceCapacityLimitInput(
     || !Number.isSafeInteger(viewerLimit)
     || viewerLimit < 0
     || viewerLimit >= SERVICE_ROOM_CONNECTION_HARD_LIMIT
+    || typeof publicRoomsOnly !== "boolean"
     || participantLimit + viewerLimit
       > SERVICE_ROOM_CONNECTION_HARD_LIMIT
     || reason.length < 1
@@ -114,6 +121,7 @@ export function parseServiceCapacityLimitInput(
     liveRoomLimit,
     participantLimit,
     viewerLimit,
+    publicRoomsOnly,
     reason,
   };
 }
@@ -128,6 +136,7 @@ function assertMatchingAction(
     || row.live_room_limit !== input.liveRoomLimit
     || row.participant_limit !== input.participantLimit
     || row.viewer_limit !== input.viewerLimit
+    || row.public_rooms_only !== Number(input.publicRoomsOnly)
     || row.reason !== input.reason
   ) {
     throw new ServiceCapacityLimitConflictError(
@@ -149,6 +158,7 @@ function resultFromAction(
       liveRoomLimit: row.live_room_limit,
       participantLimit: row.participant_limit,
       viewerLimit: row.viewer_limit,
+      publicRoomsOnly: row.public_rooms_only === 1,
       updatedAt: row.requested_at,
     },
   };
@@ -160,7 +170,7 @@ async function readAction(
 ): Promise<ServiceCapacityLimitActionRow | null> {
   return database.prepare(
     `SELECT actor_admin_id, live_room_limit, participant_limit, viewer_limit,
-            reason, requested_at, applied_revision
+            public_rooms_only, reason, requested_at, applied_revision
      FROM service_capacity_limit_actions WHERE id = ?`,
   ).bind(actionId).first<ServiceCapacityLimitActionRow>();
 }
@@ -191,15 +201,17 @@ export async function applyServiceCapacityLimits(
     input.limits.liveRoomLimit,
     input.limits.participantLimit,
     input.limits.viewerLimit,
+    Number(input.limits.publicRoomsOnly),
   ] as const;
   try {
     await database.batch([
       database.prepare(
         `INSERT INTO service_capacity_limit_actions (
            id, actor_admin_id, live_room_limit, participant_limit,
-           viewer_limit, reason, requested_at, applied_revision
+           viewer_limit, public_rooms_only, reason, requested_at,
+           applied_revision
          )
-         SELECT ?, ?, ?, ?, ?, ?, ?, revision + 1
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, revision + 1
          FROM service_capacity_limits WHERE singleton = 1`,
       ).bind(
         input.actionId,
@@ -214,6 +226,7 @@ export async function applyServiceCapacityLimits(
              live_room_limit = ?,
              participant_limit = ?,
              viewer_limit = ?,
+             public_rooms_only = ?,
              updated_at = ?,
              actor_admin_id = ?,
              reason = ?

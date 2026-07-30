@@ -83,6 +83,7 @@ export class RoomCreationConflictError extends Error {}
 export class RoomCreationDisabledError extends Error {}
 export class RoomCreationLimitError extends Error {}
 export class SiteRoomCreationLimitError extends Error {}
+export class RoomVisibilityRestrictedError extends Error {}
 export class RoomProvisioningError extends Error {}
 
 function codePointLength(value: string): number {
@@ -301,6 +302,7 @@ export async function createRoom(
           WHERE provisioning_status IN ('pending', 'ready')
             AND status IN ('waiting', 'active', 'idle', 'suspended')
         ) < capacity.live_room_limit
+        AND (capacity.public_rooms_only = 0 OR ? = 'public')
         AND EXISTS (
           SELECT 1 FROM service_controls
           WHERE singleton = 1 AND room_creation_enabled = 1
@@ -318,6 +320,7 @@ export async function createRoom(
         now,
         ownerUserId,
         OWNER_LIVE_ROOM_LIMIT,
+        input.visibility,
       );
       const results = await database.batch([
         roomInsert,
@@ -355,6 +358,7 @@ export async function createRoom(
         const capacity = await database.prepare(
           `SELECT
              limits.live_room_limit,
+             limits.public_rooms_only,
              (
                SELECT COUNT(*) FROM rooms
                WHERE owner_user_id = ?
@@ -370,9 +374,18 @@ export async function createRoom(
            WHERE limits.singleton = 1`,
         ).bind(ownerUserId).first<{
           live_room_limit: number;
+          public_rooms_only: number;
           owner_live_rooms: number;
           live_rooms: number;
         }>();
+        if (
+          input.visibility === "unlisted"
+          && capacity?.public_rooms_only === 1
+        ) {
+          throw new RoomVisibilityRestrictedError(
+            "unlisted room creation is disabled",
+          );
+        }
         if (
           capacity
           && capacity.live_rooms >= capacity.live_room_limit

@@ -7,8 +7,10 @@ const authClient = createAuthClient();
 
 export default function AuthActions({
   isAuthenticated,
+  publicRoomsOnly,
 }: {
   isAuthenticated: boolean;
+  publicRoomsOnly: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -55,9 +57,10 @@ export default function AuthActions({
     setPending(true);
     setCreateError(null);
     const data = new FormData(event.currentTarget);
+    const effectiveVisibility = publicRoomsOnly ? "public" : visibility;
     const settings = {
       name: data.get("name"),
-      visibility,
+      visibility: effectiveVisibility,
     };
     const fingerprint = JSON.stringify(settings);
     if (
@@ -67,7 +70,7 @@ export default function AuthActions({
       createAttempt.current = {
         body: JSON.stringify({
           ...settings,
-          inviteToken: visibility === "unlisted" ? randomHex(32) : null,
+          inviteToken: effectiveVisibility === "unlisted" ? randomHex(32) : null,
         }),
         fingerprint,
         requestId: crypto.randomUUID(),
@@ -112,6 +115,8 @@ export default function AuthActions({
         ? "現在、このアカウントではルームを作成できません。"
         : errorCode === "ROOM_CREATION_PAUSED"
         ? "現在、緊急対応のため新しいルームの作成を一時停止しています。"
+        : errorCode === "ROOM_VISIBILITY_RESTRICTED"
+        ? "現在は公開ルームのみ作成できます。"
         : errorCode === "ROOM_PROVISIONING_FAILED"
         ? "ルームの準備に失敗しました。もう一度お試しください。"
         : "ルームを作成できませんでした。",
@@ -170,26 +175,28 @@ export default function AuthActions({
                     required
                   />
                 </label>
-                <label>
-                  公開範囲
-                  <select
-                    name="visibility"
-                    value={visibility}
-                    onChange={(event) => {
-                      setVisibility(
-                        event.currentTarget.value === "unlisted"
-                          ? "unlisted"
-                          : "public",
-                      );
-                      createAttempt.current = null;
-                    }}
-                  >
-                    <option value="public">公開ルーム</option>
-                    <option value="unlisted">招待リンク限定</option>
-                  </select>
-                </label>
+                {!publicRoomsOnly ? (
+                  <label>
+                    公開範囲
+                    <select
+                      name="visibility"
+                      value={visibility}
+                      onChange={(event) => {
+                        setVisibility(
+                          event.currentTarget.value === "unlisted"
+                            ? "unlisted"
+                            : "public",
+                        );
+                        createAttempt.current = null;
+                      }}
+                    >
+                      <option value="public">公開ルーム</option>
+                      <option value="unlisted">招待リンク限定</option>
+                    </select>
+                  </label>
+                ) : null}
                 <p>
-                  {visibility === "unlisted"
+                  {!publicRoomsOnly && visibility === "unlisted"
                     ? "一覧には表示されません。作成後の招待リンクを共有して参加します。"
                     : "公開一覧に表示されます。"}
                   {" "}作成から2時間で終了します。
