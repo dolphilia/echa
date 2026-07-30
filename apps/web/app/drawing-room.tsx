@@ -34,11 +34,13 @@ import {
   Download,
   Ellipsis,
   Eraser,
+  Hand,
   House,
   Keyboard,
   MessageSquare,
   PanelRightClose,
   Pipette,
+  RotateCw,
   Search,
   SendHorizontal,
   Share2,
@@ -62,6 +64,16 @@ import {
   recoverSnapshotOrFallback,
   type VerifiedSnapshot,
 } from "./snapshot-recovery";
+import {
+  normalizeAngle,
+  screenToCanvas,
+  touchGestureMetrics,
+  viewportAroundAnchor,
+  type CanvasViewport,
+  type ScreenPoint,
+  type TouchGestureMetrics,
+} from "./canvas-viewport";
+import { resolveSingleTouchAction } from "./drawing-input-policy";
 import { shouldSendChatOnKeyDown } from "./chat-input";
 import {
   canvasDownloadFilename,
@@ -75,7 +87,12 @@ import {
 } from "./drawing-shortcuts";
 import { shouldAutoStartRoom } from "./room-auto-start";
 
-type SelectedTool = DrawingTool | "eyedropper" | "zoom";
+type SelectedTool =
+  | DrawingTool
+  | "eyedropper"
+  | "hand"
+  | "rotate"
+  | "zoom";
 type ColorPickerView = "circle" | "square" | "sliders";
 type ColorSliderMode = "hsb" | "rgb";
 type HsvColor = { h: number; s: number; v: number };
@@ -98,7 +115,22 @@ type ActiveDrawing = {
 };
 type DragState =
   | { mode: "pan"; pointerId: number; x: number; y: number }
+  | {
+    mode: "rotate";
+    pointerId: number;
+    centerX: number;
+    centerY: number;
+    pointerAngle: number;
+    rotation: number;
+  }
   | { mode: "zoom"; pointerId: number; x: number; zoom: number };
+type TouchGestureState = {
+  pointerIds: readonly [number, number];
+  start: TouchGestureMetrics;
+  viewport: CanvasViewport;
+  anchor: ScreenPoint;
+  rotationActive: boolean;
+};
 type ReplayedStroke = {
   style: StrokeStyle;
   points: Point[];
@@ -173,6 +205,9 @@ declare global {
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
+const FINGER_DRAWING_STORAGE_KEY = "koge:finger-drawing-enabled";
+const TOUCH_ROTATION_THRESHOLD = 4;
+const TOUCH_ROTATION_SNAP = 3;
 function clampZoom(value: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
 }
@@ -350,6 +385,8 @@ function ToolIcon({ tool }: { tool: SelectedTool }) {
     brush: Brush,
     eraser: Eraser,
     eyedropper: Pipette,
+    hand: Hand,
+    rotate: RotateCw,
     zoom: Search,
   };
   const Icon = icons[tool];
@@ -360,6 +397,8 @@ const TOOL_LABELS: Record<SelectedTool, string> = {
   brush: "ブラシ",
   eraser: "消しゴム",
   eyedropper: "スポイト",
+  hand: "手のひら",
+  rotate: "キャンバス回転",
   zoom: "ズーム",
 };
 
@@ -367,6 +406,8 @@ const TOOL_SHORTCUTS: Record<SelectedTool, string> = {
   brush: "B",
   eraser: "E",
   eyedropper: "I",
+  hand: "H",
+  rotate: "R",
   zoom: "Z",
 };
 
@@ -392,6 +433,7 @@ export default function DrawingRoom({
   const baseCanvasRef = useRef<HTMLCanvasElement>(null);
   const remoteCanvasRef = useRef<HTMLCanvasElement>(null);
   const provisionalCanvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasStageRef = useRef<HTMLDivElement>(null);
   const eyedropperPreviewRef = useRef<HTMLCanvasElement>(null);
   const colorDialogRef = useRef<HTMLDivElement>(null);
   const headerMenuRef = useRef<HTMLDivElement>(null);
@@ -399,6 +441,11 @@ export default function DrawingRoom({
   const outboxRef = useRef(new StrokeOutbox());
   const drawingRef = useRef<ActiveDrawing | undefined>(undefined);
   const dragRef = useRef<DragState | undefined>(undefined);
+  const activeTouchesRef = useRef(new Map<number, ScreenPoint>());
+  const touchGestureRef = useRef<TouchGestureState | undefined>(undefined);
+  const touchSequenceConsumedRef = useRef(false);
+  const activePenPointersRef = useRef(new Set<number>());
+  const ignoreTouchUntilRef = useRef(0);
   const colorDragRef = useRef<
     { pointerId: number; offsetX: number; offsetY: number } | undefined
   >(undefined);
@@ -408,6 +455,8 @@ export default function DrawingRoom({
   >(undefined);
   const lastDrawingToolRef = useRef<DrawingTool>("brush");
   const zoomHudTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const rotationHudTimerRef =
+    useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const realtimeNoticeTimerRef = useRef<number | undefined>(undefined);
   const realtimeNoticeSequenceRef = useRef(0);
   const realtimeNoticeStartedAtRef = useRef(0);
@@ -468,8 +517,18 @@ export default function DrawingRoom({
     useState<SliderPreview | undefined>();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [rotation, setRotation] = useState(0);
+  const viewportRef = useRef<CanvasViewport>({
+    panX: 0,
+    panY: 0,
+    zoom: 1,
+    rotation: 0,
+  });
   const [spacePressed, setSpacePressed] = useState(false);
   const [zooming, setZooming] = useState(false);
+  const [rotating, setRotating] = useState(false);
+  const [touchTransforming, setTouchTransforming] = useState(false);
+  const [fingerDrawingEnabled, setFingerDrawingEnabled] = useState(true);
   const [, setEventCount] = useState(0);
   const [syncEnabled, setSyncEnabled] = useState(Boolean(roomSlug));
   const [requestedRole, setRequestedRole] = useState<
@@ -524,6 +583,16 @@ export default function DrawingRoom({
         navigator.platform || navigator.userAgent,
       ),
     );
+  }, []);
+
+  useEffect(() => {
+    try {
+      setFingerDrawingEnabled(
+        localStorage.getItem(FINGER_DRAWING_STORAGE_KEY) !== "false",
+      );
+    } catch {
+      setFingerDrawingEnabled(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -653,24 +722,51 @@ export default function DrawingRoom({
     setSliderPreview(preview);
   };
 
+  useEffect(() => {
+    viewportRef.current = {
+      panX: pan.x,
+      panY: pan.y,
+      zoom,
+      rotation,
+    };
+  }, [pan.x, pan.y, rotation, zoom]);
+
+  const commitViewport = useCallback((next: CanvasViewport) => {
+    viewportRef.current = next;
+    setPan({ x: next.panX, y: next.panY });
+    setZoom(next.zoom);
+    setRotation(next.rotation);
+  }, []);
+
+  const canvasStageOrigin = useCallback((): ScreenPoint | undefined => {
+    const workspace = workspaceRef.current;
+    const stage = canvasStageRef.current;
+    if (!workspace || !stage) return undefined;
+    const workspaceRect = workspace.getBoundingClientRect();
+    return {
+      x: workspaceRect.left + stage.offsetLeft,
+      y: workspaceRect.top + stage.offsetTop,
+    };
+  }, []);
+
   const canvasPoint = useCallback((
     event: ReactPointerEvent<HTMLCanvasElement>,
   ): Point => {
-    const rect = event.currentTarget.getBoundingClientRect();
+    const origin = canvasStageOrigin();
+    if (!origin) return [0, 0, 0];
+    const point = screenToCanvas(
+      { x: event.clientX, y: event.clientY },
+      origin,
+      viewportRef.current,
+      PROTOCOL_LIMITS.canvasWidth,
+      PROTOCOL_LIMITS.canvasHeight,
+    );
     return [
-      Math.round(
-        ((event.clientX - rect.left) / rect.width)
-        * PROTOCOL_LIMITS.canvasWidth
-        * 100,
-      ) / 100,
-      Math.round(
-        ((event.clientY - rect.top) / rect.height)
-        * PROTOCOL_LIMITS.canvasHeight
-        * 100,
-      ) / 100,
+      Math.round(point.x * 100) / 100,
+      Math.round(point.y * 100) / 100,
       0,
     ];
-  }, []);
+  }, [canvasStageOrigin]);
 
   const applyPickerHsv = useCallback((next: HsvColor) => {
     const normalized = {
@@ -1678,8 +1774,19 @@ export default function DrawingRoom({
     zoomHudTimerRef.current = setTimeout(() => setZooming(false), 700);
   }, []);
 
+  const showRotationHud = useCallback(() => {
+    setRotating(true);
+    if (rotationHudTimerRef.current) {
+      clearTimeout(rotationHudTimerRef.current);
+    }
+    rotationHudTimerRef.current = setTimeout(() => setRotating(false), 700);
+  }, []);
+
   useEffect(() => () => {
     if (zoomHudTimerRef.current) clearTimeout(zoomHudTimerRef.current);
+    if (rotationHudTimerRef.current) {
+      clearTimeout(rotationHudTimerRef.current);
+    }
   }, []);
 
   const sendCursor = useCallback((
@@ -1739,12 +1846,68 @@ export default function DrawingRoom({
     );
   }, []);
 
+  const cancelCurrentDrawing = () => {
+    const drawing = drawingRef.current;
+    if (!drawing) return;
+    const cancel = outboxRef.current.cancel();
+    sendEvents([cancel]);
+    if (!syncEnabled) ownStrokeIdsRef.current.delete(drawing.id);
+    drawingRef.current = undefined;
+    const provisional = provisionalCanvasRef.current;
+    provisional?.getContext("2d")?.clearRect(
+      0,
+      0,
+      provisional.width,
+      provisional.height,
+    );
+    setEventCount(outboxRef.current.lastIssuedClientSeq);
+  };
+
+  const touchInputIsSuppressed = () =>
+    activePenPointersRef.current.size > 0
+    || performance.now() < ignoreTouchUntilRef.current;
+
+  const singleTouchAction = () => resolveSingleTouchAction({
+    fingerDrawingEnabled,
+    isViewer: assignedRole === "viewer",
+    tool,
+  });
+
   const beginDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (spacePressed || event.button !== 0) return;
+    if (spacePressed || tool === "hand" || event.button !== 0) return;
+    if (
+      event.pointerType === "touch"
+      && (
+        singleTouchAction() !== "tool"
+        || touchSequenceConsumedRef.current
+        || touchGestureRef.current !== undefined
+        || touchInputIsSuppressed()
+      )
+    ) return;
     if (tool === "zoom") {
       dragRef.current = { mode: "zoom", pointerId: event.pointerId, x: event.clientX, zoom };
       event.currentTarget.setPointerCapture(event.pointerId);
       setZooming(true);
+      return;
+    }
+    if (tool === "rotate") {
+      const origin = canvasStageOrigin();
+      if (!origin) return;
+      const centerX = origin.x + pan.x;
+      const centerY = origin.y + pan.y;
+      dragRef.current = {
+        mode: "rotate",
+        pointerId: event.pointerId,
+        centerX,
+        centerY,
+        pointerAngle: Math.atan2(
+          event.clientY - centerY,
+          event.clientX - centerX,
+        ) * 180 / Math.PI,
+        rotation,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setRotating(true);
       return;
     }
     const point = canvasPoint(event);
@@ -1776,14 +1939,49 @@ export default function DrawingRoom({
   };
 
   const moveDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (
+      event.pointerType === "touch"
+      && (
+        singleTouchAction() !== "tool"
+        || touchSequenceConsumedRef.current
+        || touchGestureRef.current !== undefined
+        || touchInputIsSuppressed()
+      )
+    ) return;
     sendCursorPosition(event);
     if (tool === "eyedropper" && !spacePressed) {
       updateEyedropperPreview(event);
     }
     const drag = dragRef.current;
     if (drag?.mode === "zoom" && drag.pointerId === event.pointerId) {
-      setZoom(clampZoom(drag.zoom * 2 ** ((event.clientX - drag.x) / 160)));
+      const nextZoom = clampZoom(
+        drag.zoom * 2 ** ((event.clientX - drag.x) / 160),
+      );
+      viewportRef.current = {
+        ...viewportRef.current,
+        zoom: nextZoom,
+      };
+      setZoom(nextZoom);
       showZoomHud();
+      return;
+    }
+    if (drag?.mode === "rotate" && drag.pointerId === event.pointerId) {
+      const pointerAngle = Math.atan2(
+        event.clientY - drag.centerY,
+        event.clientX - drag.centerX,
+      ) * 180 / Math.PI;
+      let nextRotation = normalizeAngle(
+        drag.rotation + normalizeAngle(pointerAngle - drag.pointerAngle),
+      );
+      if (event.shiftKey) {
+        nextRotation = Math.round(nextRotation / 15) * 15;
+      }
+      viewportRef.current = {
+        ...viewportRef.current,
+        rotation: nextRotation,
+      };
+      setRotation(nextRotation);
+      showRotationHud();
       return;
     }
     const drawing = drawingRef.current;
@@ -1805,10 +2003,14 @@ export default function DrawingRoom({
   };
 
   const finishDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (dragRef.current?.pointerId === event.pointerId) {
+    const drag = dragRef.current;
+    if (drag?.pointerId === event.pointerId) {
       dragRef.current = undefined;
-      setZooming(false);
-      event.currentTarget.releasePointerCapture(event.pointerId);
+      if (drag.mode === "zoom") setZooming(false);
+      if (drag.mode === "rotate") showRotationHud();
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
       return;
     }
     const drawing = drawingRef.current;
@@ -1828,28 +2030,197 @@ export default function DrawingRoom({
   };
 
   const cancelDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (dragRef.current?.pointerId === event.pointerId) {
+    const drag = dragRef.current;
+    if (drag?.pointerId === event.pointerId) {
       dragRef.current = undefined;
-      setZooming(false);
+      if (drag.mode === "zoom") setZooming(false);
+      if (drag.mode === "rotate") setRotating(false);
       return;
     }
     if (!drawingRef.current || drawingRef.current.pointerId !== event.pointerId) return;
-    const cancel = outboxRef.current.cancel();
-    sendEvents([cancel]);
-    if (!syncEnabled) ownStrokeIdsRef.current.delete(drawingRef.current.id);
-    drawingRef.current = undefined;
-    const provisional = provisionalCanvasRef.current;
-    provisional?.getContext("2d")?.clearRect(
-      0,
-      0,
-      provisional.width,
-      provisional.height,
+    cancelCurrentDrawing();
+  };
+
+  const isCanvasSurface = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ): boolean =>
+    event.target === event.currentTarget
+    || (
+      event.target instanceof Element
+      && event.target.closest(".canvas-stage") !== null
     );
-    setEventCount(outboxRef.current.lastIssuedClientSeq);
+
+  const startTouchGesture = (
+    workspace: HTMLDivElement,
+  ) => {
+    const entries = Array.from(activeTouchesRef.current.entries()).slice(0, 2);
+    const first = entries[0];
+    const second = entries[1];
+    const origin = canvasStageOrigin();
+    if (!first || !second || !origin) return;
+
+    const start = touchGestureMetrics(first[1], second[1]);
+    const viewport = viewportRef.current;
+    const anchor = screenToCanvas(
+      start.center,
+      origin,
+      viewport,
+      PROTOCOL_LIMITS.canvasWidth,
+      PROTOCOL_LIMITS.canvasHeight,
+    );
+
+    cancelCurrentDrawing();
+    const existingDrag = dragRef.current;
+    dragRef.current = undefined;
+    if (existingDrag?.mode === "zoom") setZooming(false);
+    if (existingDrag?.mode === "rotate") setRotating(false);
+    const canvas = provisionalCanvasRef.current;
+    for (const [pointerId] of entries) {
+      if (canvas?.hasPointerCapture(pointerId)) {
+        canvas.releasePointerCapture(pointerId);
+      }
+      try {
+        workspace.setPointerCapture(pointerId);
+      } catch {
+        // Safari may retain capture until the next pointer event.
+      }
+    }
+
+    touchGestureRef.current = {
+      pointerIds: [first[0], second[0]],
+      start,
+      viewport,
+      anchor,
+      rotationActive: false,
+    };
+    touchSequenceConsumedRef.current = true;
+    setTouchTransforming(true);
+    sendCursor({ visible: false });
+  };
+
+  const handleWorkspacePointerDownCapture = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (event.pointerType === "pen") {
+      activePenPointersRef.current.add(event.pointerId);
+      if (touchGestureRef.current) {
+        touchGestureRef.current = undefined;
+        touchSequenceConsumedRef.current = true;
+        setTouchTransforming(false);
+      }
+      return;
+    }
+    if (
+      event.pointerType !== "touch"
+      || touchInputIsSuppressed()
+      || !isCanvasSurface(event)
+    ) return;
+
+    activeTouchesRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+    if (
+      activeTouchesRef.current.size === 2
+      && touchGestureRef.current === undefined
+    ) {
+      event.preventDefault();
+      startTouchGesture(event.currentTarget);
+    }
+  };
+
+  const handleWorkspacePointerMoveCapture = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (
+      event.pointerType !== "touch"
+      || !activeTouchesRef.current.has(event.pointerId)
+    ) return;
+    activeTouchesRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    const gesture = touchGestureRef.current;
+    if (!gesture || !gesture.pointerIds.includes(event.pointerId)) return;
+    const first = activeTouchesRef.current.get(gesture.pointerIds[0]);
+    const second = activeTouchesRef.current.get(gesture.pointerIds[1]);
+    const origin = canvasStageOrigin();
+    if (!first || !second || !origin) return;
+
+    event.preventDefault();
+    const current = touchGestureMetrics(first, second);
+    const rotationDelta = normalizeAngle(
+      current.angle - gesture.start.angle,
+    );
+    if (
+      !gesture.rotationActive
+      && Math.abs(rotationDelta) >= TOUCH_ROTATION_THRESHOLD
+    ) {
+      gesture.rotationActive = true;
+    }
+    let nextRotation = normalizeAngle(
+      gesture.viewport.rotation
+      + (gesture.rotationActive ? rotationDelta : 0),
+    );
+    if (Math.abs(nextRotation) <= TOUCH_ROTATION_SNAP) {
+      nextRotation = 0;
+    }
+    const nextZoom = clampZoom(
+      gesture.viewport.zoom
+      * current.distance
+      / Math.max(gesture.start.distance, 1),
+    );
+    commitViewport(viewportAroundAnchor({
+      anchor: gesture.anchor,
+      center: current.center,
+      stageOrigin: origin,
+      zoom: nextZoom,
+      rotation: nextRotation,
+      canvasWidth: PROTOCOL_LIMITS.canvasWidth,
+      canvasHeight: PROTOCOL_LIMITS.canvasHeight,
+    }));
+  };
+
+  const handleWorkspacePointerEndCapture = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (event.pointerType === "pen") {
+      activePenPointersRef.current.delete(event.pointerId);
+      ignoreTouchUntilRef.current = performance.now() + 250;
+      return;
+    }
+    if (event.pointerType !== "touch") return;
+
+    activeTouchesRef.current.delete(event.pointerId);
+    const gesture = touchGestureRef.current;
+    if (gesture?.pointerIds.includes(event.pointerId)) {
+      touchGestureRef.current = undefined;
+      touchSequenceConsumedRef.current = true;
+      setTouchTransforming(false);
+      for (const pointerId of gesture.pointerIds) {
+        if (event.currentTarget.hasPointerCapture(pointerId)) {
+          event.currentTarget.releasePointerCapture(pointerId);
+        }
+      }
+    }
+    if (activeTouchesRef.current.size === 0) {
+      touchSequenceConsumedRef.current = false;
+    }
   };
 
   const beginWorkspaceDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!spacePressed || event.button !== 0) return;
+    if (event.button !== 0 || !isCanvasSurface(event)) return;
+    if (event.pointerType === "touch") {
+      if (
+        touchInputIsSuppressed()
+        || touchSequenceConsumedRef.current
+        || touchGestureRef.current !== undefined
+        || singleTouchAction() !== "pan"
+      ) return;
+    } else if (tool !== "hand" && !spacePressed) {
+      return;
+    }
     dragRef.current = {
       mode: "pan",
       pointerId: event.pointerId,
@@ -1860,25 +2231,61 @@ export default function DrawingRoom({
   };
 
   const moveWorkspaceDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (
+      event.pointerType === "touch"
+      && (
+        touchSequenceConsumedRef.current
+        || touchGestureRef.current !== undefined
+      )
+    ) return;
     const drag = dragRef.current;
     if (drag?.mode !== "pan" || drag.pointerId !== event.pointerId) return;
     const deltaX = event.clientX - drag.x;
     const deltaY = event.clientY - drag.y;
     drag.x = event.clientX;
     drag.y = event.clientY;
-    setPan((current) => ({ x: current.x + deltaX, y: current.y + deltaY }));
+    setPan((current) => {
+      const next = { x: current.x + deltaX, y: current.y + deltaY };
+      viewportRef.current = {
+        ...viewportRef.current,
+        panX: next.x,
+        panY: next.y,
+      };
+      return next;
+    });
   };
 
   const endWorkspaceDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (dragRef.current?.mode !== "pan" || dragRef.current.pointerId !== event.pointerId) return;
     dragRef.current = undefined;
-    event.currentTarget.releasePointerCapture(event.pointerId);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   };
 
   const onWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
     event.preventDefault();
-    setZoom((current) => clampZoom(current * 2 ** (-event.deltaY / 480)));
+    setZoom((current) => {
+      const next = clampZoom(current * 2 ** (-event.deltaY / 480));
+      viewportRef.current = {
+        ...viewportRef.current,
+        zoom: next,
+      };
+      return next;
+    });
     showZoomHud();
+  };
+
+  const toggleFingerDrawing = () => {
+    setFingerDrawingEnabled((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(FINGER_DRAWING_STORAGE_KEY, String(next));
+      } catch {
+        // The setting still applies for the current page when storage is blocked.
+      }
+      return next;
+    });
   };
 
   const chooseRole = (role: RequestedRoomRole) => {
@@ -2112,6 +2519,9 @@ export default function DrawingRoom({
           label: "押している間だけスポイト",
         },
         { keys: ["Z"], label: "スクラブズーム" },
+        { keys: ["H"], label: "手のひら" },
+        { keys: ["R"], label: "キャンバス回転" },
+        { keys: ["Shift + ドラッグ"], label: "15度単位で回転" },
         { keys: ["Space"], label: "押している間だけ手のひら" },
       ],
     },
@@ -2256,18 +2666,30 @@ export default function DrawingRoom({
             workspace.width - chatWidth - 96,
           );
           const availableHeight = Math.max(160, workspace.height - 48);
-          setZoom(clampZoom(Math.min(
-            availableWidth / PROTOCOL_LIMITS.canvasWidth,
-            availableHeight / PROTOCOL_LIMITS.canvasHeight,
-          )));
-          setPan({ x: 0, y: 0 });
+          commitViewport({
+            panX: 0,
+            panY: 0,
+            zoom: clampZoom(Math.min(
+              availableWidth / PROTOCOL_LIMITS.canvasWidth,
+              availableHeight / PROTOCOL_LIMITS.canvasHeight,
+            )),
+            rotation: 0,
+          });
         } else if (action.mode === "actual") {
-          setZoom(1);
-          setPan({ x: 0, y: 0 });
+          commitViewport({
+            ...viewportRef.current,
+            panX: 0,
+            panY: 0,
+            zoom: 1,
+          });
         } else {
-          setZoom((current) => clampZoom(
-            current * (action.mode === "in" ? 1.25 : 0.8),
-          ));
+          commitViewport({
+            ...viewportRef.current,
+            zoom: clampZoom(
+              viewportRef.current.zoom
+              * (action.mode === "in" ? 1.25 : 0.8),
+            ),
+          });
         }
         showZoomHud();
         return;
@@ -2320,6 +2742,7 @@ export default function DrawingRoom({
     canDraw,
     chatOpen,
     colorPickerOpen,
+    commitViewport,
     downloadCanvasImage,
     headerMenuOpen,
     isApplePlatform,
@@ -2337,12 +2760,18 @@ export default function DrawingRoom({
     <main className="drawing-app" data-recovery-source={recoverySource}>
       <section
         ref={workspaceRef}
-        className={`drawing-workspace${spacePressed ? " is-hand" : ""}${
+        className={`drawing-workspace${
+          spacePressed || tool === "hand" ? " is-hand" : ""
+        }${
           roomSlug && requestedRole !== undefined && chatOpen
             ? " is-chat-open"
             : ""
         }${connectionNotice ? " has-status-hud" : ""}`}
         aria-label="お絵描きエリア"
+        onPointerDownCapture={handleWorkspacePointerDownCapture}
+        onPointerMoveCapture={handleWorkspacePointerMoveCapture}
+        onPointerUpCapture={handleWorkspacePointerEndCapture}
+        onPointerCancelCapture={handleWorkspacePointerEndCapture}
         onPointerDown={beginWorkspaceDrag}
         onPointerMove={moveWorkspaceDrag}
         onPointerUp={endWorkspaceDrag}
@@ -2358,7 +2787,14 @@ export default function DrawingRoom({
           <House aria-hidden="true" />
         </a>
         <nav className="tool-switcher" aria-label="描画ツール">
-          {(["brush", "eraser", "eyedropper", "zoom"] as const).map((candidate) => (
+          {([
+            "brush",
+            "eraser",
+            "eyedropper",
+            "hand",
+            "rotate",
+            "zoom",
+          ] as const).map((candidate) => (
             <button
               key={candidate}
               className={tool === candidate ? "is-selected" : ""}
@@ -2368,12 +2804,22 @@ export default function DrawingRoom({
               aria-keyshortcuts={TOOL_SHORTCUTS[candidate]}
               title={candidate === "eyedropper"
                 ? `スポイト (I / ${alternateShortcut}長押し)`
+                : candidate === "rotate"
+                ? "キャンバス回転 (R / ダブルクリックで0°)"
                 : `${TOOL_LABELS[candidate]} (${TOOL_SHORTCUTS[candidate]})`}
               disabled={
                 (candidate === "brush" || candidate === "eraser")
                 && !canDraw
               }
               onClick={() => selectTool(candidate)}
+              onDoubleClick={() => {
+                if (candidate !== "rotate") return;
+                commitViewport({
+                  ...viewportRef.current,
+                  rotation: 0,
+                });
+                showRotationHud();
+              }}
             >
               <ToolIcon tool={candidate} />
             </button>
@@ -2441,6 +2887,44 @@ export default function DrawingRoom({
                         ショートカット一覧
                       </span>
                       <strong>?</strong>
+                    </button>
+                    {assignedRole === "host"
+                        || assignedRole === "participant" ? (
+                      <button
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-checked={fingerDrawingEnabled}
+                        onClick={() => {
+                          setHeaderMenuOpen(false);
+                          toggleFingerDrawing();
+                        }}
+                      >
+                        <span>
+                          <Hand aria-hidden="true" />
+                          指で描く
+                        </span>
+                        <strong>
+                          {fingerDrawingEnabled ? "オン" : "オフ"}
+                        </strong>
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={Math.abs(rotation) < 0.1}
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        commitViewport({
+                          ...viewportRef.current,
+                          rotation: 0,
+                        });
+                        showRotationHud();
+                      }}
+                    >
+                      <span>
+                        <RotateCw aria-hidden="true" />
+                        キャンバス角度を0°に戻す
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -2636,9 +3120,10 @@ export default function DrawingRoom({
         </aside>
 
         <div
+          ref={canvasStageRef}
           className={`canvas-stage tool-${tool}`}
           style={{
-            transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scale(${zoom})`,
           }}
         >
           <canvas
@@ -3295,11 +3780,19 @@ export default function DrawingRoom({
           </div>
         ) : null}
 
-        {(tool === "zoom" || zooming) && (
+        {touchTransforming ? (
+          <output className="zoom-hud" aria-live="polite">
+            {Math.round(zoom * 100)}% · {Math.round(rotation)}°
+          </output>
+        ) : tool === "rotate" || rotating ? (
+          <output className="zoom-hud" aria-live="polite">
+            {Math.round(rotation)}°
+          </output>
+        ) : tool === "zoom" || zooming ? (
           <output className="zoom-hud" aria-live="polite">
             {Math.round(zoom * 100)}%
           </output>
-        )}
+        ) : null}
       </section>
     </main>
   );

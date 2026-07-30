@@ -30,6 +30,10 @@ describe("drawing shortcuts", () => {
       .toEqual({ type: "tool", tool: "eraser" });
     expect(resolveDrawingShortcut(keyboardEvent("KeyI"), false))
       .toEqual({ type: "tool", tool: "eyedropper" });
+    expect(resolveDrawingShortcut(keyboardEvent("KeyH"), false))
+      .toEqual({ type: "tool", tool: "hand" });
+    expect(resolveDrawingShortcut(keyboardEvent("KeyR"), false))
+      .toEqual({ type: "tool", tool: "rotate" });
     expect(resolveDrawingShortcut(keyboardEvent("KeyZ"), false))
       .toEqual({ type: "tool", tool: "zoom" });
   });

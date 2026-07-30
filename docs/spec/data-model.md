@@ -69,6 +69,11 @@ statusと人数は一覧用projectionであり、runtimeの正はroom DOとす�
 別roomを増やさない。D1登録後にDO初期化が失敗した場合は`failed`を保存し、
 同じ入力の再送で同じDOを再初期化する。DO側の`room_metadata`も初期化を
 冪等にし、同じroom IDへ異なるmetadataを上書きしない。
+1ユーザーが同時に所有できる未終了roomは1件とする。`waiting | active | idle |
+suspended`かつprovisioningが`pending | ready`のroomを条件付きINSERT内で数え、
+同時requestでも2件目を作らない。`closing`へ遷移したroomは物理削除前でも上限から
+外し、次のroomを作成できる。失敗projectionの再試行も、別の未終了roomがある場合は
+拒否する。
 公開一覧は`visibility = public`、`provisioning_status = ready`、
 `status IN (waiting, active, idle)`だけを返す。終了時に物理削除し、
 復旧backup対象にしない。

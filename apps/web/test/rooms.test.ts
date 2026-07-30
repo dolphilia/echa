@@ -13,6 +13,7 @@ import { GET, POST } from "../app/api/rooms/route";
 import {
   RoomCreationConflictError,
   RoomCreationDisabledError,
+  RoomCreationLimitError,
   RoomProvisioningError,
   createRoom,
   listOwnedLiveRoomSlugs,
@@ -33,8 +34,8 @@ beforeAll(async () => {
   await applySqlMigration(env.DB, serviceBansMigration);
   const insertUser = env.DB.prepare(
     `INSERT INTO user (
-      id, name, email, emailVerified, createdAt, updatedAt, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      id, name, email, emailVerified, image, createdAt, updatedAt, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   await env.DB.batch([
     insertUser.bind(
@@ -42,6 +43,7 @@ beforeAll(async () => {
       "Room owner",
       "owner@example.test",
       1,
+      null,
       NOW,
       NOW,
       "active",
@@ -51,6 +53,7 @@ beforeAll(async () => {
       "Fixture owner",
       "fixture@example.test",
       1,
+      "https://example.test/fixture-owner.png",
       NOW,
       NOW,
       "active",
@@ -60,6 +63,37 @@ beforeAll(async () => {
       "Limit owner",
       "limit@example.test",
       1,
+      null,
+      NOW,
+      NOW,
+      "active",
+    ),
+    insertUser.bind(
+      "user-unlisted-test",
+      "Unlisted owner",
+      "unlisted@example.test",
+      1,
+      null,
+      NOW,
+      NOW,
+      "active",
+    ),
+    insertUser.bind(
+      "user-retry-test",
+      "Retry owner",
+      "retry@example.test",
+      1,
+      null,
+      NOW,
+      NOW,
+      "active",
+    ),
+    insertUser.bind(
+      "user-retry-limit-test",
+      "Retry limit owner",
+      "retry-limit@example.test",
+      1,
+      null,
       NOW,
       NOW,
       "active",
@@ -176,6 +210,8 @@ describe("public room projection", () => {
         participantLimit: 20,
         viewerCount: 8,
         viewerLimit: 100,
+        ownerName: "Fixture owner",
+        ownerImage: "https://example.test/fixture-owner.png",
         createdAt: NOW,
         maxEndsAt: NOW + 7_200_000,
         thumbnailVersion: null,
@@ -351,7 +387,7 @@ describe("public room projection", () => {
     const created = await createRoom(
       env.DB,
       realtime,
-      "user-room-test",
+      "user-unlisted-test",
       "create-request-unlisted",
       input,
       NOW + 3,
@@ -369,7 +405,7 @@ describe("public room projection", () => {
     const repeated = await createRoom(
       env.DB,
       realtime,
-      "user-room-test",
+      "user-unlisted-test",
       "create-request-unlisted",
       input,
       NOW + 4,
@@ -381,7 +417,7 @@ describe("public room projection", () => {
     await expect(createRoom(
       env.DB,
       realtime,
-      "user-room-test",
+      "user-unlisted-test",
       "create-request-unlisted",
       { ...input, inviteToken: "c".repeat(64) },
       NOW + 5,
@@ -417,7 +453,7 @@ describe("public room projection", () => {
       createRoom(
         env.DB,
         realtime,
-        "user-room-test",
+        "user-retry-test",
         "create-request-retry",
         input,
         NOW + 10,
@@ -439,7 +475,7 @@ describe("public room projection", () => {
     const retried = await createRoom(
       env.DB,
       realtime,
-      "user-room-test",
+      "user-retry-test",
       "create-request-retry",
       input,
       NOW + 20,
@@ -457,7 +493,70 @@ describe("public room projection", () => {
     });
   });
 
-  it("enforces the live room limit in the insert statement", async () => {
+  it("does not retry a failed projection beside another live room", async () => {
+    const input = {
+      name: "競合再試行",
+      visibility: "public" as const,
+      inviteToken: null,
+    };
+    await expect(createRoom(
+      env.DB,
+      { fetch: async () => {
+        throw new Error("injected realtime failure");
+      } },
+      "user-retry-limit-test",
+      "retry-limit-failed",
+      input,
+      NOW + 30,
+    )).rejects.toBeInstanceOf(RoomProvisioningError);
+
+    const realtime = {
+      async fetch(_input: RequestInfo | URL, init?: RequestInit) {
+        const request = JSON.parse(String(init?.body)) as {
+          roomId: string;
+          createdAt: number;
+          maxEndsAt: number;
+        };
+        return Response.json({
+          status: "initialized" as const,
+          roomId: request.roomId,
+          createdAt: request.createdAt,
+          maxEndsAt: request.maxEndsAt,
+        });
+      },
+    };
+    await createRoom(
+      env.DB,
+      realtime,
+      "user-retry-limit-test",
+      "retry-limit-live",
+      input,
+      NOW + 31,
+    );
+    await expect(createRoom(
+      env.DB,
+      realtime,
+      "user-retry-limit-test",
+      "retry-limit-failed",
+      input,
+      NOW + 32,
+    )).rejects.toBeInstanceOf(RoomCreationLimitError);
+    await expect(
+      env.DB.prepare(
+        `SELECT provisioning_status
+         FROM rooms WHERE owner_user_id = ? ORDER BY created_at`,
+      ).bind("user-retry-limit-test").all<{
+        provisioning_status: string;
+      }>(),
+    ).resolves.toMatchObject({
+      results: [
+        { provisioning_status: "failed" },
+        { provisioning_status: "ready" },
+      ],
+    });
+  });
+
+  it("allows one live room, rejects concurrent creation, and ignores closing rooms", async () => {
     let initializationCount = 0;
     const realtime = {
       async fetch(_input: RequestInfo | URL, init?: RequestInit) {
@@ -481,18 +580,40 @@ describe("public room projection", () => {
       inviteToken: null,
     };
 
-    for (let index = 0; index < 3; index += 1) {
-      // Sequential creation is the behavior under test for the live-room count.
-      // oxlint-disable-next-line no-await-in-loop
-      await createRoom(
+    const attempts = await Promise.allSettled([
+      createRoom(
         env.DB,
         realtime,
         "user-limit-test",
-        `limit-request-${index}`,
+        "limit-request-a",
         input,
-        NOW + index,
-      );
-    }
+        NOW,
+      ),
+      createRoom(
+        env.DB,
+        realtime,
+        "user-limit-test",
+        "limit-request-b",
+        input,
+        NOW,
+      ),
+    ]);
+    const fulfilled = attempts.filter(
+      (result): result is PromiseFulfilledResult<
+        Awaited<ReturnType<typeof createRoom>>
+      > => result.status === "fulfilled",
+    );
+    const rejected = attempts.filter(
+      (result): result is PromiseRejectedResult =>
+        result.status === "rejected",
+    );
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.reason).toBeInstanceOf(RoomCreationLimitError);
+    expect(initializationCount).toBe(1);
+
+    const firstRoom = fulfilled[0]?.value;
+    expect(firstRoom).toBeDefined();
     await expect(
       createRoom(
         env.DB,
@@ -500,9 +621,44 @@ describe("public room projection", () => {
         "user-limit-test",
         "limit-request-overflow",
         input,
-        NOW + 3,
+        NOW + 1,
       ),
     ).rejects.toThrow("owner live room limit reached");
-    expect(initializationCount).toBe(3);
+    await env.DB.prepare(
+      "UPDATE rooms SET status = 'closing' WHERE id = ?",
+    ).bind(firstRoom?.roomId).run();
+
+    const replacement = await createRoom(
+      env.DB,
+      realtime,
+      "user-limit-test",
+      "limit-request-after-close",
+      input,
+      NOW + 2,
+    );
+    expect(replacement.reused).toBe(false);
+    expect(initializationCount).toBe(2);
+    await expect(
+      env.DB.prepare(
+        `SELECT status FROM rooms
+         WHERE owner_user_id = ? ORDER BY created_at`,
+      ).bind("user-limit-test").all<{ status: string }>(),
+    ).resolves.toMatchObject({
+      results: [{ status: "closing" }, { status: "waiting" }],
+    });
+
+    await env.DB.prepare(
+      "UPDATE rooms SET status = 'suspended' WHERE id = ?",
+    ).bind(replacement.roomId).run();
+    await expect(
+      createRoom(
+        env.DB,
+        realtime,
+        "user-limit-test",
+        "limit-request-while-suspended",
+        input,
+        NOW + 3,
+      ),
+    ).rejects.toBeInstanceOf(RoomCreationLimitError);
   });
 });

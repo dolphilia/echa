@@ -12,7 +12,7 @@ import {
 import { assertSubjectNotServiceBanned } from "./service-bans";
 
 export const PUBLIC_ROOM_LIMIT = 24;
-export const OWNER_LIVE_ROOM_LIMIT = 3;
+export const OWNER_LIVE_ROOM_LIMIT = 1;
 
 export type PublicRoom = {
   publicSlug: string;
@@ -22,6 +22,8 @@ export type PublicRoom = {
   participantLimit: number;
   viewerCount: number;
   viewerLimit: number;
+  ownerName: string;
+  ownerImage: string | null;
   createdAt: number;
   maxEndsAt: number;
   thumbnailVersion: number | null;
@@ -39,6 +41,8 @@ type PublicRoomRow = {
   participant_limit: number;
   viewer_count: number;
   viewer_limit: number;
+  owner_name: string;
+  owner_image: string | null;
   created_at: number;
   max_ends_at: number;
   thumbnail_base_room_seq: number | null;
@@ -287,7 +291,7 @@ export async function createRoom(
           FROM rooms
           WHERE owner_user_id = ?
             AND provisioning_status IN ('pending', 'ready')
-            AND status IN ('waiting', 'active', 'idle')
+            AND status IN ('waiting', 'active', 'idle', 'suspended')
         ) < ?
         AND EXISTS (
           SELECT 1 FROM service_controls
@@ -363,15 +367,48 @@ export async function createRoom(
   }
 
   const request = provisioningRequestFromRow(room);
-  await database.prepare(
+  const provisioningClaim = await database.prepare(
     `UPDATE rooms
      SET provisioning_status = 'pending',
          provisioning_attempts = provisioning_attempts + 1,
          provisioning_error_code = NULL,
          provisioning_updated_at = ?,
          updated_at = ?
-     WHERE id = ? AND provisioning_status IN ('pending', 'failed')`,
-  ).bind(now, now, room.id).run();
+     WHERE id = ?
+       AND provisioning_status IN ('pending', 'failed')
+       AND status IN ('waiting', 'active', 'idle', 'suspended')
+       AND NOT EXISTS (
+         SELECT 1
+         FROM rooms AS other
+         WHERE other.owner_user_id = ?
+           AND other.id <> ?
+           AND other.provisioning_status IN ('pending', 'ready')
+           AND other.status IN ('waiting', 'active', 'idle', 'suspended')
+       )`,
+  ).bind(now, now, room.id, ownerUserId, room.id).run();
+  if (provisioningClaim.meta.changes !== 1) {
+    const latestRoom = await findRoomByCreateRequest(
+      database,
+      ownerUserId,
+      createRequestId,
+    );
+    if (latestRoom?.provisioning_status === "ready") {
+      return createdRoomFromRow(latestRoom, true);
+    }
+    const competingRoom = await database.prepare(
+      `SELECT 1
+       FROM rooms
+       WHERE owner_user_id = ?
+         AND id <> ?
+         AND provisioning_status IN ('pending', 'ready')
+         AND status IN ('waiting', 'active', 'idle', 'suspended')
+       LIMIT 1`,
+    ).bind(ownerUserId, room.id).first();
+    if (competingRoom) {
+      throw new RoomCreationLimitError("owner live room limit reached");
+    }
+    throw new RoomProvisioningError("room is no longer provisionable");
+  }
 
   try {
     const response = await realtime.fetch(
@@ -427,27 +464,30 @@ export async function listPublicRooms(
   const result = await database
     .prepare(
       `SELECT
-         public_slug,
-         name,
-         status,
-         participant_count,
-         participant_limit,
-         viewer_count,
-         viewer_limit,
-         created_at,
-         max_ends_at,
-         thumbnail_base_room_seq
+         rooms.public_slug AS public_slug,
+         rooms.name AS name,
+         rooms.status AS status,
+         rooms.participant_count AS participant_count,
+         rooms.participant_limit AS participant_limit,
+         rooms.viewer_count AS viewer_count,
+         rooms.viewer_limit AS viewer_limit,
+         owner.name AS owner_name,
+         owner.image AS owner_image,
+         rooms.created_at AS created_at,
+         rooms.max_ends_at AS max_ends_at,
+         rooms.thumbnail_base_room_seq AS thumbnail_base_room_seq
        FROM rooms
-       WHERE visibility = 'public'
-         AND provisioning_status = 'ready'
-         AND status IN ('waiting', 'active', 'idle')
+       INNER JOIN "user" AS owner ON owner.id = rooms.owner_user_id
+       WHERE rooms.visibility = 'public'
+         AND rooms.provisioning_status = 'ready'
+         AND rooms.status IN ('waiting', 'active', 'idle')
        ORDER BY
-         CASE status
+         CASE rooms.status
            WHEN 'active' THEN 0
            WHEN 'waiting' THEN 1
            ELSE 2
          END,
-         updated_at DESC
+         rooms.updated_at DESC
        LIMIT ?`,
     )
     .bind(boundedLimit)
@@ -461,6 +501,8 @@ export async function listPublicRooms(
     participantLimit: room.participant_limit,
     viewerCount: room.viewer_count,
     viewerLimit: room.viewer_limit,
+    ownerName: room.owner_name,
+    ownerImage: room.owner_image,
     createdAt: room.created_at,
     maxEndsAt: room.max_ends_at,
     thumbnailVersion: room.thumbnail_base_room_seq,

@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { Eye, Pencil } from "lucide-react";
 import { headers } from "next/headers";
 import AuthActions from "./auth-actions";
 import DrawingRoom from "./drawing-room";
@@ -14,6 +15,22 @@ const STATUS_LABELS: Record<PublicRoom["status"], string> = {
   waiting: "準備中",
   idle: "ひと休み中",
 };
+
+function formatCreatedAt(createdAt: number, now = Date.now()): string {
+  const elapsedMinutes = Math.max(0, Math.floor((now - createdAt) / 60_000));
+  if (elapsedMinutes < 1) return "たった今";
+  if (elapsedMinutes < 60) return `${elapsedMinutes}分前`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours}時間前`;
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  if (elapsedDays < 30) return `${elapsedDays}日前`;
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).format(new Date(createdAt));
+}
 
 export default async function Home({
   searchParams,
@@ -95,38 +112,68 @@ export default async function Home({
           <div className="home-room-grid">
             {rooms.map((room) => (
               <article className="home-room-card" key={room.publicSlug}>
-                <div className="home-room-paper" aria-hidden="true">
-                  {env.THUMBNAIL_ENABLED === "true"
-                      && room.thumbnailVersion !== null
-                    ? (
-                      <img
-                        alt=""
-                        src={`/api/rooms/${
-                          encodeURIComponent(room.publicSlug)
-                        }/thumbnail?v=${room.thumbnailVersion}`}
-                      />
-                    )
-                    : null}
-                </div>
-                <div className="home-room-body">
-                  <div className="home-room-status">
-                    <span className={`status-${room.status}`} />
-                    {STATUS_LABELS[room.status]}
-                    {ownedRoomSlugs.has(room.publicSlug) ? (
-                      <em>あなたのルーム</em>
-                    ) : null}
+                <a
+                  className="home-room-thumbnail"
+                  href={`/rooms/${encodeURIComponent(room.publicSlug)}`}
+                  aria-label={`${room.name}へ入る`}
+                >
+                  <div className="home-room-paper" aria-hidden="true">
+                    {env.THUMBNAIL_ENABLED === "true"
+                        && room.thumbnailVersion !== null
+                      ? (
+                        <img
+                          alt=""
+                          src={`/api/rooms/${
+                            encodeURIComponent(room.publicSlug)
+                          }/thumbnail?v=${room.thumbnailVersion}`}
+                        />
+                      )
+                      : null}
                   </div>
-                  <h3>{room.name}</h3>
-                  <div className="home-room-footer">
-                    <span>
-                      描く人 {room.participantCount}/{room.participantLimit}
+                  <span
+                    className={`home-room-badge is-status status-${room.status}`}
+                  >
+                    {STATUS_LABELS[room.status]}
+                  </span>
+                  <span className="home-room-badge is-count">
+                    <span aria-label={`描く人 ${room.participantCount}人`}>
+                      <Pencil aria-hidden="true" size={13} strokeWidth={2.2} />
+                      {room.participantCount}
                     </span>
-                    <span>
-                      見る人 {room.viewerCount}/{room.viewerLimit}
+                    <span aria-label={`見る人 ${room.viewerCount}人`}>
+                      <Eye aria-hidden="true" size={14} strokeWidth={2.2} />
+                      {room.viewerCount}
                     </span>
-                    <a href={`/rooms/${encodeURIComponent(room.publicSlug)}`}>
-                      入る
-                    </a>
+                  </span>
+                  {ownedRoomSlugs.has(room.publicSlug) ? (
+                    <span className="home-room-badge is-owner">
+                      あなたのルーム
+                    </span>
+                  ) : null}
+                </a>
+                <div className="home-room-meta">
+                  <span className="home-room-avatar" aria-hidden="true">
+                    {room.ownerImage ? (
+                      <img alt="" src={room.ownerImage} />
+                    ) : (
+                      [...room.ownerName].slice(0, 1).join("").toUpperCase()
+                    )}
+                  </span>
+                  <div>
+                    <h3>
+                      <a
+                        href={`/rooms/${encodeURIComponent(room.publicSlug)}`}
+                      >
+                        {room.name}
+                      </a>
+                    </h3>
+                    <p>
+                      <span>{room.ownerName}</span>
+                      <span aria-hidden="true">・</span>
+                      <time dateTime={new Date(room.createdAt).toISOString()}>
+                        {formatCreatedAt(room.createdAt)}
+                      </time>
+                    </p>
                   </div>
                 </div>
               </article>

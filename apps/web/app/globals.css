@@ -618,15 +618,18 @@ button {
 .home-room-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 18px;
+  gap: 28px 18px;
 }
 
 .home-room-card {
-  overflow: hidden;
-  border: 1px solid #dcdcdc;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 10px 30px #36363612;
+  min-width: 0;
+}
+
+.home-room-thumbnail {
+  position: relative;
+  display: block;
+  color: inherit;
+  text-decoration: none;
 }
 
 .home-room-paper {
@@ -634,9 +637,22 @@ button {
   display: grid;
   aspect-ratio: 1;
   overflow: hidden;
-  border-bottom: 1px solid #e2e4df;
+  border: 1px solid #dcdcdc;
+  border-radius: 18px;
   background: #fff;
+  box-shadow: 0 10px 30px #36363612;
   place-items: center;
+  transition: box-shadow 160ms ease;
+}
+
+.home-room-thumbnail:hover .home-room-paper {
+  box-shadow: 0 14px 34px #3636361a;
+}
+
+.home-room-thumbnail:focus-visible {
+  border-radius: 18px;
+  outline: 3px solid rgb(92 144 115 / 28%);
+  outline-offset: 3px;
 }
 
 .home-room-paper img {
@@ -647,73 +663,108 @@ button {
   object-fit: cover;
 }
 
-.home-room-body {
-  padding: 16px;
-}
-
-.home-room-status {
-  display: flex;
-  margin-bottom: 9px;
-  color: #777c73;
-  font-size: 0.7rem;
-  font-weight: 750;
-  gap: 6px;
-  align-items: center;
-}
-
-.home-room-status span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #8d9389;
-}
-
-.home-room-status em {
-  padding: 2px 6px;
-  margin-left: auto;
+.home-room-badge {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  min-height: 25px;
+  padding: 0 9px;
   border-radius: 999px;
-  background: #e6eee8;
-  color: #52735f;
-  font-size: 0.64rem;
-  font-style: normal;
+  background: rgb(48 50 48 / 82%);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+  align-items: center;
+  backdrop-filter: blur(6px);
 }
 
-.home-room-status .status-active {
-  background: #5ca37d;
+.home-room-badge.is-status {
+  top: 12px;
+  left: 12px;
+  background: #539267;
 }
 
-.home-room-status .status-waiting {
-  background: #d69c61;
+.home-room-badge.is-count {
+  bottom: 12px;
+  left: 12px;
+  background: #0000006e;
+  gap: 9px;
 }
 
-.home-room-status .status-idle {
-  background: #8b91a7;
-}
-
-.home-room-body h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.home-room-footer {
-  display: flex;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #e4e6e1;
-  color: #83887f;
-  font-size: 0.68rem;
-  gap: 10px;
+.home-room-badge.is-count > span {
+  display: inline-flex;
+  gap: 4px;
   align-items: center;
 }
 
-.home-room-footer a {
-  padding: 7px 12px;
-  margin-left: auto;
-  border-radius: 9px;
-  background: #e6eee8;
-  color: #4f755f;
+.home-room-badge.is-owner {
+  top: 12px;
+  right: 12px;
+  background: rgb(225 238 230 / 94%);
+  color: #3d684f;
+}
+
+.home-room-meta {
+  display: flex;
+  padding: 12px 3px 0;
+  gap: 11px;
+  align-items: flex-start;
+}
+
+.home-room-avatar {
+  display: inline-grid;
+  overflow: hidden;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #dcdcdc;
+  border-radius: 50%;
+  background: #e8ece9;
+  color: #5e6d63;
+  font-size: 0.7rem;
   font-weight: 850;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.home-room-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-room-meta > div {
+  min-width: 0;
+}
+
+.home-room-meta h3 {
+  margin: 1px 0 0;
+  font-size: 0.9rem;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+}
+
+.home-room-meta h3 a {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #303030;
   text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.home-room-meta h3 a:hover {
+  color: #476755;
+}
+
+.home-room-meta p {
+  display: flex;
+  margin: 5px 0 0;
+  color: #858585;
+  font-size: 0.7rem;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .home-empty {
@@ -1421,6 +1472,10 @@ button {
 
 .canvas-stage.tool-zoom {
   cursor: ew-resize;
+}
+
+.canvas-stage.tool-rotate {
+  cursor: crosshair;
 }
 
 .tool-switcher,
@@ -2959,6 +3014,13 @@ button {
 
   .tool-switcher {
     left: 60px;
+    height: 38px;
+    gap: 0;
+  }
+
+  .tool-switcher > button,
+  .tool-switcher > .header-menu > .header-icon-button {
+    width: 28px;
   }
 
   .brush-rail {

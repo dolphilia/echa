@@ -1,5 +1,14 @@
 export type DrawingShortcutAction =
-  | { type: "tool"; tool: "brush" | "eraser" | "eyedropper" | "zoom" }
+  | {
+    type: "tool";
+    tool:
+      | "brush"
+      | "eraser"
+      | "eyedropper"
+      | "hand"
+      | "rotate"
+      | "zoom";
+  }
   | { type: "temporary-eyedropper"; active: boolean }
   | { type: "brush-size"; direction: -1 | 1 }
   | { type: "opacity"; value: number }
@@ -75,6 +84,8 @@ export function resolveDrawingShortcut(
   if (event.code === "KeyB") return { type: "tool", tool: "brush" };
   if (event.code === "KeyE") return { type: "tool", tool: "eraser" };
   if (event.code === "KeyI") return { type: "tool", tool: "eyedropper" };
+  if (event.code === "KeyH") return { type: "tool", tool: "hand" };
+  if (event.code === "KeyR") return { type: "tool", tool: "rotate" };
   if (event.code === "KeyZ") return { type: "tool", tool: "zoom" };
   if (event.code === "BracketLeft") {
     return { type: "brush-size", direction: -1 };
