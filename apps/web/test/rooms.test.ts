@@ -10,6 +10,7 @@ import serviceBansMigration from "../../../migrations/d1/0017_service_bans.sql?r
 import removeRoomThemesMigration from "../../../migrations/d1/0019_remove_room_themes.sql?raw";
 import roomThumbnailsMigration from "../../../migrations/d1/0020_room_thumbnails.sql?raw";
 import serviceCapacityMigration from "../../../migrations/d1/0021_service_capacity_limits.sql?raw";
+import publicRoomVisibilityMigration from "../../../migrations/d1/0022_public_room_visibility_limit.sql?raw";
 import { GET, POST } from "../app/api/rooms/route";
 import {
   RoomCreationConflictError,
@@ -34,6 +35,7 @@ beforeAll(async () => {
   await applySqlMigration(env.DB, inviteMigration);
   await applySqlMigration(env.DB, serviceControlsMigration);
   await applySqlMigration(env.DB, serviceCapacityMigration);
+  await applySqlMigration(env.DB, publicRoomVisibilityMigration);
   await applySqlMigration(env.DB, moderationMigration);
   await applySqlMigration(env.DB, serviceBansMigration);
   const insertUser = env.DB.prepare(

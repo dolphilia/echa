@@ -1,8 +1,8 @@
 # Data model
 
-更新日: 2026-07-30
-状態: migration `0001`〜`0020`はproduction反映済み。`0021`はlocal実装済み、
-preview / production適用前。
+更新日: 2026-07-31
+状態: migration `0001`〜`0022`はproduction反映済み。`0021`で容量上限、
+`0022`で公開範囲制限を追加。
 
 ## 原則
 

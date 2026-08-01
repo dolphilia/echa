@@ -1,12 +1,14 @@
 # koge documentation
 
-更新日: 2026-07-29
+更新日: 2026-07-31
 
 ## 現在地
 
 kogeはMVP主要機能の実装、preview検証、production配備と直近の復旧検証まで
 完了している。機械的smoke、利用者E2E、終了後health、Worker Analyticsはpassした。
 room provisioning障害は協調配備で復旧し、障害中のfailed projectionも削除済みである。
+service capacity migrationの履歴不一致によるトップページ障害は、前進migration
+`0022`で復旧済みである。
 一般公開前には規約、retention、alert、backup/restore試験、closed betaの
 公開運用gateを完了する。
 

@@ -5,6 +5,7 @@ import roomMigration from "../../../migrations/d1/0003_room_projection.sql?raw";
 import provisioningMigration from "../../../migrations/d1/0004_room_provisioning.sql?raw";
 import serviceControlsMigration from "../../../migrations/d1/0014_service_controls.sql?raw";
 import serviceCapacityMigration from "../../../migrations/d1/0021_service_capacity_limits.sql?raw";
+import publicRoomVisibilityMigration from "../../../migrations/d1/0022_public_room_visibility_limit.sql?raw";
 import {
   AdminModerationConflictError,
   AdminModerationNotAvailableError,
@@ -36,6 +37,7 @@ beforeAll(async () => {
   await applySqlMigration(env.DB, provisioningMigration);
   await applySqlMigration(env.DB, serviceControlsMigration);
   await applySqlMigration(env.DB, serviceCapacityMigration);
+  await applySqlMigration(env.DB, publicRoomVisibilityMigration);
   await env.DB.prepare(
     `INSERT INTO user (
       id, name, email, emailVerified, createdAt, updatedAt, status

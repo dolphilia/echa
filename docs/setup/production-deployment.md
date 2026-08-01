@@ -1,6 +1,6 @@
 # koge production配備runbook
 
-更新日: 2026-07-30
+更新日: 2026-07-31
 
 ## 目的
 
@@ -16,7 +16,7 @@ preview資源をproductionへ流用せず、各段階に停止点を設ける。
 - 3 Workerの`env.production`とgenerated typesは追加済み
 - 3 Workerのproduction dry-runは成功
 - production Access AUDは設定済み
-- production D1へ`0001`〜`0020`を適用済み。`0021`はlocal実装済み、未配備
+- production D1へ`0001`〜`0022`を適用済み
 - production Better Auth / Google OAuth secretsは設定済み
 - Realtime、Snapshot、Webの初回配備とCustom Domain公開は完了
 - 自動smokeと利用者によるOAuth / room / 管理操作E2Eはpass
@@ -141,6 +141,10 @@ npm exec wrangler -- d1 migrations list koge-production --remote \
 
 適用後は未適用0件と、追加・変更したtable、column、indexをread-onlyで確認する。
 migrationは後戻りさせず、旧codeが追加schemaを無視できる前方向互換にする。
+一度でもremoteへ適用したmigration fileは変更しない。追加要件は必ず新しい連番へ
+分離する。適用履歴が「未適用0件」でも実columnがない場合は、適用済みfileを
+書き換えて再実行せず、実際に適用された旧内容を履歴として保持し、新しい前進
+migrationで補正する。
 
 `0020_room_thumbnails.sql`では次を確認する。
 
@@ -150,7 +154,8 @@ npm exec wrangler -- d1 execute koge-production --remote \
   --command "SELECT name FROM pragma_table_info('rooms') WHERE name LIKE 'thumbnail_%' ORDER BY name"
 ```
 
-`0021_service_capacity_limits.sql`を含む配備では、初期値とCHECK境界を確認する。
+`0021_service_capacity_limits.sql`と
+`0022_public_room_visibility_limit.sql`を含む配備では、初期値とCHECK境界を確認する。
 
 ```sh
 npm exec wrangler -- d1 execute koge-production --remote \
@@ -369,4 +374,22 @@ invite、membership、BAN、report、evidence、moderation actionはすべて0�
 [`../results/production-room-provisioning-incident-2026-07-29.md`](../results/production-room-provisioning-incident-2026-07-29.md)
 と
 [`../decisions/0011-coordinated-production-deployment.md`](../decisions/0011-coordinated-production-deployment.md)
+を参照する。
+
+## 2026-07-31 service capacity schema障害と復旧
+
+productionへ適用済みだった`0021_service_capacity_limits.sql`へ後から
+`public_rooms_only`列を追加したため、D1の適用履歴とリポジトリ上のmigration内容が
+不一致になった。Webは列を参照する新codeへ更新済みだったため、トップページのSSRが
+SQLite `no such column: public_rooms_only`でHTTP 500になった。
+
+実際にproductionへ適用された旧0021を履歴として復元し、列追加を
+`0022_public_room_visibility_limit.sql`へ分離した。新規ローカルD1で0001〜0022を
+通し、Webのroom / admin testを通した後、productionへ0022だけを適用した。
+復旧後は未適用migration 0、容量設定`revision = 1`、上限`20 / 5 / 15`、
+`public_rooms_only = 0`を確認した。home、公開API、Realtime healthはHTTP 200、
+ブラウザでもトップページが正常表示されconsole errorは0だった。
+
+詳細は
+[`../results/production-service-capacity-schema-incident-2026-07-31.md`](../results/production-service-capacity-schema-incident-2026-07-31.md)
 を参照する。
