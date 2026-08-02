@@ -1981,6 +1981,19 @@ button {
   backdrop-filter: blur(16px);
 }
 
+.drawing-color-picker,
+.drawing-color-picker * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.drawing-color-picker .color-picker-hex input {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 .drawing-color-picker-header {
   display: flex;
   height: 28px;

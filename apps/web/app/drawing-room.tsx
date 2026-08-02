@@ -65,6 +65,7 @@ import {
   type VerifiedSnapshot,
 } from "./snapshot-recovery";
 import {
+  canvasToScreen,
   normalizeAngle,
   screenToCanvas,
   touchGestureMetrics,
@@ -446,6 +447,11 @@ export default function DrawingRoom({
   const touchSequenceConsumedRef = useRef(false);
   const activePenPointersRef = useRef(new Set<number>());
   const ignoreTouchUntilRef = useRef(0);
+  const eyedropperPointerRef = useRef<number | undefined>(undefined);
+  const lastDrawingPointRef = useRef<ScreenPoint>({
+    x: PROTOCOL_LIMITS.canvasWidth / 2,
+    y: PROTOCOL_LIMITS.canvasHeight / 2,
+  });
   const colorDragRef = useRef<
     { pointerId: number; offsetX: number; offsetY: number } | undefined
   >(undefined);
@@ -801,12 +807,14 @@ export default function DrawingRoom({
     }
     setTool(next);
     if (next !== "eyedropper") {
+      eyedropperPointerRef.current = undefined;
       setEyedropperCursor((current) => ({ ...current, visible: false }));
     }
   }, []);
 
-  const updateEyedropperPreview = useCallback((
-    event: ReactPointerEvent<HTMLCanvasElement>,
+  const updateEyedropperPreviewAt = useCallback((
+    point: ScreenPoint,
+    screenPoint: ScreenPoint,
   ): string | undefined => {
     const preview = eyedropperPreviewRef.current;
     const previewContext = preview?.getContext("2d", {
@@ -815,9 +823,8 @@ export default function DrawingRoom({
     const base = baseCanvasRef.current;
     if (!preview || !previewContext || !base) return undefined;
 
-    const point = canvasPoint(event);
-    const x = clamp(Math.floor(point[0]), 0, base.width - 1);
-    const y = clamp(Math.floor(point[1]), 0, base.height - 1);
+    const x = clamp(Math.floor(point.x), 0, base.width - 1);
+    const y = clamp(Math.floor(point.y), 0, base.height - 1);
     const layers = [
       { canvas: base, opacity: 1 },
       { canvas: remoteCanvasRef.current, opacity: 1 },
@@ -849,12 +856,12 @@ export default function DrawingRoom({
 
     const sampleSize = 11;
     const sourceX = clamp(
-      Math.floor(point[0]) - Math.floor(sampleSize / 2),
+      Math.floor(point.x) - Math.floor(sampleSize / 2),
       0,
       base.width - sampleSize,
     );
     const sourceY = clamp(
-      Math.floor(point[1]) - Math.floor(sampleSize / 2),
+      Math.floor(point.y) - Math.floor(sampleSize / 2),
       0,
       base.height - sampleSize,
     );
@@ -882,13 +889,51 @@ export default function DrawingRoom({
     if (workspaceRect) {
       setEyedropperCursor({
         visible: true,
-        left: event.clientX - workspaceRect.left,
-        top: event.clientY - workspaceRect.top,
+        left: screenPoint.x - workspaceRect.left,
+        top: screenPoint.y - workspaceRect.top,
         sampledColor,
       });
     }
     return sampledColor;
-  }, [canvasPoint]);
+  }, []);
+
+  const updateEyedropperPreview = useCallback((
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ): string | undefined => {
+    const point = canvasPoint(event);
+    return updateEyedropperPreviewAt(
+      { x: point[0], y: point[1] },
+      { x: event.clientX, y: event.clientY },
+    );
+  }, [canvasPoint, updateEyedropperPreviewAt]);
+
+  useEffect(() => {
+    if (tool !== "eyedropper") return;
+    const origin = canvasStageOrigin();
+    const workspaceRect = workspaceRef.current?.getBoundingClientRect();
+    if (!origin || !workspaceRect) return;
+    const point = lastDrawingPointRef.current;
+    const screenPoint = canvasToScreen(
+      point,
+      origin,
+      viewportRef.current,
+      PROTOCOL_LIMITS.canvasWidth,
+      PROTOCOL_LIMITS.canvasHeight,
+    );
+    const previewRadius = 52;
+    updateEyedropperPreviewAt(point, {
+      x: workspaceRect.left + clamp(
+        screenPoint.x - workspaceRect.left,
+        previewRadius,
+        Math.max(previewRadius, workspaceRect.width - previewRadius),
+      ),
+      y: workspaceRect.top + clamp(
+        screenPoint.y - workspaceRect.top,
+        previewRadius,
+        Math.max(previewRadius, workspaceRect.height - previewRadius),
+      ),
+    });
+  }, [canvasStageOrigin, tool, updateEyedropperPreviewAt]);
 
   const updateSvFromPointer = useCallback((
     event: ReactPointerEvent<HTMLDivElement>,
@@ -1925,13 +1970,14 @@ export default function DrawingRoom({
     }
     const point = canvasPoint(event);
     if (tool === "eyedropper") {
-      const sampledColor = updateEyedropperPreview(event);
-      if (sampledColor) applyHexColor(sampledColor);
-      selectTool(lastDrawingToolRef.current);
+      eyedropperPointerRef.current = event.pointerId;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      updateEyedropperPreview(event);
       return;
     }
     if (!rendererReady || !canDraw) return;
 
+    lastDrawingPointRef.current = { x: point[0], y: point[1] };
     const style: StrokeStyle = { tool, color, size, opacity };
     const now = performance.now();
     const begin = outboxRef.current.begin(style, point[0], point[1], now);
@@ -2000,6 +2046,7 @@ export default function DrawingRoom({
     const drawing = drawingRef.current;
     if (!drawing || drawing.pointerId !== event.pointerId) return;
     const point = canvasPoint(event);
+    lastDrawingPointRef.current = { x: point[0], y: point[1] };
     const now = performance.now();
     const normalized: Point = [
       point[0],
@@ -2016,6 +2063,16 @@ export default function DrawingRoom({
   };
 
   const finishDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (eyedropperPointerRef.current === event.pointerId) {
+      const sampledColor = updateEyedropperPreview(event);
+      eyedropperPointerRef.current = undefined;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      if (sampledColor) applyHexColor(sampledColor);
+      selectTool(lastDrawingToolRef.current);
+      return;
+    }
     const drag = dragRef.current;
     if (drag?.pointerId === event.pointerId) {
       dragRef.current = undefined;
@@ -2043,6 +2100,14 @@ export default function DrawingRoom({
   };
 
   const cancelDrawing = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (eyedropperPointerRef.current === event.pointerId) {
+      eyedropperPointerRef.current = undefined;
+      setEyedropperCursor((current) => ({ ...current, visible: false }));
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      return;
+    }
     const drag = dragRef.current;
     if (drag?.pointerId === event.pointerId) {
       dragRef.current = undefined;
@@ -2083,6 +2148,8 @@ export default function DrawingRoom({
     );
 
     cancelCurrentDrawing();
+    eyedropperPointerRef.current = undefined;
+    setEyedropperCursor((current) => ({ ...current, visible: false }));
     const existingDrag = dragRef.current;
     dragRef.current = undefined;
     if (existingDrag?.mode === "zoom") setZooming(false);
@@ -3159,6 +3226,7 @@ export default function DrawingRoom({
             onPointerCancel={cancelDrawing}
             onPointerLeave={() => {
               sendCursor({ visible: false });
+              if (eyedropperPointerRef.current !== undefined) return;
               setEyedropperCursor((current) => ({
                 ...current,
                 visible: false,

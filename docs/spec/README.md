@@ -1,6 +1,6 @@
 # 現行仕様
 
-更新日: 2026-07-31
+更新日: 2026-08-02
 
 このディレクトリには、設計方針を実装・試験・運用へ渡せる粒度にした現行仕様を置く。
 Phase別の当時の状態は`docs/results/`、採用判断は`docs/decisions/`を参照する。
@@ -26,6 +26,7 @@ Phase別の当時の状態は`docs/results/`、採用判断は`docs/decisions/`�
 | ファイル | 対象 | 状態 |
 | --- | --- | --- |
 | `stroke-protocol.md` | stroke wire semantics、順序、再送、上限 | production利用者E2E済み |
+| `drawing-input.md` | 描画ツール、touch gesture、スポイト、カラーUI | iPad向け入力改善をlocal検証済み |
 | `room-lifecycle.md` | 状態遷移、終了、証跡、cleanup | production利用者E2E・終了後health済み |
 | `event-log-recovery.md` | event log、snapshot、復帰、compaction | snapshot-first採用、productionはshadow |
 | `data-model.md` | D1、DO SQLite、R2、retention | D1 migration `0022` production、DO schema v29 |
